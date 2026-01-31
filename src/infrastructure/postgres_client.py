@@ -125,16 +125,17 @@ class PostgresClient:
         """Update task status."""
         pool = await self.get_pool()
         async with pool.acquire() as conn:
-            if output_data:
+            if output_data is not None:
+                import json
                 await conn.execute(
                     """
                     UPDATE tasks
-                    SET status = $2, output_data = $3, completed_at = NOW()
+                    SET status = $2, output_data = $3::jsonb, completed_at = NOW()
                     WHERE id = $1
                     """,
                     task_id,
                     status,
-                    output_data
+                    json.dumps(output_data)
                 )
             elif error:
                 await conn.execute(
