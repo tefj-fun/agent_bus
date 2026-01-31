@@ -61,12 +61,13 @@ class MemoryStore:
                 """,
             )
 
-        if not rows:
+        records = [dict(row) for row in rows]
+        if not records:
             return []
 
         filtered_rows = [
             row
-            for row in rows
+            for row in records
             if pattern_type is None or row.get("pattern_type") == pattern_type
         ]
         if not filtered_rows:
