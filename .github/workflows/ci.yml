@@ -17,12 +17,10 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build + start services
-        working-directory: agent_bus
         run: |
           docker compose up -d --build
 
       - name: Wait for API health
-        working-directory: agent_bus
         run: |
           set -e
           for i in {1..60}; do
@@ -38,7 +36,6 @@ jobs:
           exit 1
 
       - name: Pytest
-        working-directory: agent_bus
         run: |
           docker compose run --rm api pytest -q
 
@@ -52,7 +49,6 @@ jobs:
           fi
 
       - name: Phase 4 smoke (required)
-        working-directory: agent_bus
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           BASE_URL: http://localhost:8000
@@ -63,7 +59,6 @@ jobs:
 
       - name: Dump logs on failure
         if: failure()
-        working-directory: agent_bus
         run: |
           docker compose ps
           docker compose logs --tail=300 api || true
@@ -71,6 +66,5 @@ jobs:
 
       - name: Teardown
         if: always()
-        working-directory: agent_bus
         run: |
           docker compose down -v
