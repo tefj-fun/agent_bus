@@ -6,7 +6,7 @@
 - [x] Worker plumbing and Redis/Postgres integration
 - [x] Docker Compose dev setup
 
-## Phase 2 - In Progress
+## Phase 2 - Complete
 - [x] Technical Writer agent
 - [x] Support Engineer agent
 - [x] Product Manager agent
@@ -22,30 +22,36 @@
 - [x] Tests for deterministic memory queries + PRD memory integration
 - [x] Memory smoke script
 
-## QA
-### Docker (repeatable)
+## QA Records
+
+### 2026-01-31 — Unit tests (Docker)
 ```bash
 cd agent_bus
 docker compose up -d --build
-# run tests inside the api image
 docker compose run --rm api pytest -q
 ```
-Result: FAIL (docker socket permission denied) on 2026-01-31
+Result: **PASS** (11 passed, 23 warnings)
 
-### Smoke test (PRD-only)
+### 2026-01-31 — Smoke test (PRD-only)
 ```bash
 curl -sS -X POST http://localhost:8000/api/projects/ \
   -H 'Content-Type: application/json' \
   -d '{"project_id":"phase2_smoke","requirements":"Write a short PRD for a notes app with tags and search."}'
 ```
 Verify:
-- PRD content exists in tasks.output_data->>'prd_content'
-- Artifact row exists in artifacts table with type='prd'
+- PRD content exists in `tasks.output_data->>'prd_content'`
+- Artifact row exists in `artifacts` with `type='prd'`
 
-Result: PASS on 2026-01-31
+Result: **PASS**
 
-### Smoke test (memory)
+### 2026-01-31 — Smoke test (memory endpoints)
 ```bash
 ./scripts/memory_smoke.sh
 ```
-Result: NOT RUN (docker required) on 2026-01-31
+Expected:
+- `/api/memory/health` returns backend `postgres_tfidf`
+- upsert returns doc_id
+- query returns results with score
+
+Result: **PASS**
+
