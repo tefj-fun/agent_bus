@@ -276,17 +276,18 @@ class BaseAgent(ABC):
         import json
 
         # Write to Postgres agent_events for durability/search
+        import json
         async with self.context.db_pool.acquire() as conn:
             await conn.execute(
                 """
                 INSERT INTO agent_events (agent_id, job_id, event_type, message, data)
-                VALUES ($1, $2, $3, $4, $5)
+                VALUES ($1, $2, $3, $4, $5::jsonb)
                 """,
                 self.agent_id,
                 self.context.job_id,
                 event_type,
                 message,
-                data or {}
+                json.dumps(data or {})
             )
 
         # Also keep a lightweight Redis log stream
