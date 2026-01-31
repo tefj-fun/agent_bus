@@ -194,16 +194,16 @@ class BaseAgent(ABC):
             await conn.execute(
                 """
                 INSERT INTO artifacts (id, agent_id, job_id, type, content, metadata, created_at)
-                VALUES ($1, $2, $3, $4, $5, $6, NOW())
+                VALUES ($1, $2, $3, $4, $5, $6::jsonb, NOW())
                 ON CONFLICT (id) DO UPDATE
-                SET content = $5, metadata = $6, updated_at = NOW()
+                SET content = $5, metadata = $6::jsonb, updated_at = NOW()
                 """,
                 artifact_id,
                 self.agent_id,
                 self.context.job_id,
                 artifact_type,
                 content,
-                metadata or {}
+                json.dumps(metadata or {})
             )
 
         return artifact_id

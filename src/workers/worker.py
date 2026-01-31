@@ -119,7 +119,23 @@ class AgentWorker:
             # Execute
             result = await agent.execute(agent_task)
 
-            # Save result
+            if not result.success:
+                # Persist failure details
+                await self.postgres.update_task_status(
+                    task_id=task_id,
+                    status="failed",
+                    error=result.error or "Agent reported failure"
+                )
+                # Also store output (may contain partials) for master/debug
+                await self.redis.set_with_expiry(
+                    f"agent_bus:results:{task_id}",
+                    json.dumps(result.output or {}),
+                    3600,
+                )
+                print(f"Task {task_id} failed (agent reported failure)")
+                return
+
+            # Save success result
             await self.postgres.update_task_status(
                 task_id=task_id,
                 status="completed",
