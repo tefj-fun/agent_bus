@@ -116,7 +116,7 @@ async def test_prd_agent_queries_memory_and_upserts(monkeypatch, tmp_path):
     ctx = _make_context(tmp_path)
     agent = PRDAgent(ctx)
 
-    async def _fake_query_llm(**_kwargs):
+    async def _fake_query_llm(*_args, **_kwargs):
         return "PRD CONTENT"
 
     monkeypatch.setattr(agent, "query_llm", _fake_query_llm)
