@@ -12,7 +12,7 @@ Agent Bus is a comprehensive multi-agent system where sales inputs requirements,
 - **Claude Skills Integration**: UI/UX Pro Max, Webapp Testing, TDD, Pypict, Systematic Debugging
 - **Distributed Compute**: Kubernetes-based CPU/GPU worker orchestration
 - **ML/CV Pipeline**: Auto-detection and GPU routing for ML workloads
-- **Memory System**: Pattern recognition and template reuse with ChromaDB (falls back to a lightweight in-memory index when ChromaDB/embeddings are unavailable in the Phase 1 Docker image)
+- **Memory System**: Postgres-backed TF-IDF memory for deterministic pattern reuse (no external embeddings)
 - **Full Workflow**: From sales requirements to delivery
 
 ## Quick Start
@@ -98,6 +98,32 @@ curl -X POST http://localhost:8000/api/projects/ \
 curl http://localhost:8000/api/projects/{job_id}
 ```
 
+### Memory Endpoints
+
+```bash
+curl http://localhost:8000/api/memory/health
+```
+
+```bash
+curl -X POST http://localhost:8000/api/memory/upsert \
+  -H "Content-Type: application/json" \
+  -d '{
+    "doc_id": "prd_001",
+    "text": "Sample PRD content",
+    "metadata": {"pattern_type":"prd","project_id":"proj_001"}
+  }'
+```
+
+```bash
+curl -X POST http://localhost:8000/api/memory/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "analytics dashboard",
+    "top_k": 3,
+    "pattern_type": "prd"
+  }'
+```
+
 ## Development
 
 ### Local Setup Without Docker
@@ -126,6 +152,12 @@ python -m src.workers.worker
 
 ```bash
 pytest tests/
+```
+
+### Memory Smoke Test
+
+```bash
+./scripts/memory_smoke.sh
 ```
 
 ## Claude Skills

@@ -15,6 +15,13 @@
 - [x] Worker registry updated for new agents
 - [x] Minimal tests for new agents and registry
 
+## Phase 3 - In Progress
+- [x] Postgres-backed TF-IDF memory store (no external embeddings)
+- [x] Memory API endpoints (health/query/upsert)
+- [x] PRD agent memory retrieval + persistence
+- [x] Tests for deterministic memory queries + PRD memory integration
+- [x] Memory smoke script
+
 ## QA
 ### Docker (repeatable)
 ```bash
@@ -23,7 +30,7 @@ docker compose up -d --build
 # run tests inside the api image
 docker compose run --rm api pytest -q
 ```
-Result: PASS (9 passed) on 2026-01-31
+Result: FAIL (docker socket permission denied) on 2026-01-31
 
 ### Smoke test (PRD-only)
 ```bash
@@ -36,3 +43,9 @@ Verify:
 - Artifact row exists in artifacts table with type='prd'
 
 Result: PASS on 2026-01-31
+
+### Smoke test (memory)
+```bash
+./scripts/memory_smoke.sh
+```
+Result: NOT RUN (docker required) on 2026-01-31
