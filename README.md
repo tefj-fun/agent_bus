@@ -12,7 +12,7 @@ Agent Bus is a comprehensive multi-agent system where sales inputs requirements,
 - **Claude Skills Integration**: UI/UX Pro Max, Webapp Testing, TDD, Pypict, Systematic Debugging
 - **Distributed Compute**: Kubernetes-based CPU/GPU worker orchestration
 - **ML/CV Pipeline**: Auto-detection and GPU routing for ML workloads
-- **Memory System**: Pattern recognition and template reuse with ChromaDB
+- **Memory System**: Pattern recognition and template reuse with ChromaDB (falls back to a lightweight in-memory index when ChromaDB/embeddings are unavailable in the Phase 1 Docker image)
 - **Full Workflow**: From sales requirements to delivery
 
 ## Quick Start
@@ -156,6 +156,10 @@ See [PLAN.md](PLAN.md) for detailed deployment instructions including:
 - Kubernetes setup for distributed compute
 - GPU node configuration
 - Production environment setup
+
+## Progress Tracking
+
+See [PROGRESS.md](PROGRESS.md) for phase status and QA results.
 
 ## Configuration
 

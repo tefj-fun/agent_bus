@@ -6,6 +6,11 @@ Build a comprehensive multi-agent system in the **agent_bus** repository (https:
 **Repository**: `agent_bus`
 **Location**: `/home/bot/clawd/agent_bus/`
 
+## Phase 2 Status (Remaining Agents)
+- Technical Writer, Support Engineer, Product Manager, Project Manager, and Memory Agent implemented as lightweight stubs with Claude-backed prompts.
+- Memory Agent uses ChromaDB when available and degrades gracefully to an in-memory store for Phase 1 Docker.
+- Worker registry updated to include the new agents.
+
 ## System Architecture
 
 ### Core Components
