@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database for state persistence
+  postgres:
+    image: postgres:15-alpine
+    container_name: agent_bus_postgres
+    environment:
+      POSTGRES_DB: agent_bus
+      POSTGRES_USER: agent_bus
+      POSTGRES_PASSWORD: agent_bus_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agent_bus"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for task queue and caching
+  redis:
+    image: redis:7-alpine
+    container_name: agent_bus_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # FastAPI application
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agent_bus_api
+    environment:
+      - DEBUG=true
+      - ENVIRONMENT=development
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=agent_bus
+      - POSTGRES_USER=agent_bus
+      - POSTGRES_PASSWORD=agent_bus_dev_password
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/app/src
+      - ./skills:/app/skills
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Worker for CPU tasks
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agent_bus_worker
+    environment:
+      - WORKER_TYPE=cpu
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=agent_bus
+      - POSTGRES_USER=agent_bus
+      - POSTGRES_PASSWORD=agent_bus_dev_password
+    volumes:
+      - ./src:/app/src
+      - ./skills:/app/skills
+      - worker_workspace:/workspace
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: python -m src.workers.worker
+
+volumes:
+  postgres_data:
+  redis_data:
+  worker_workspace:
