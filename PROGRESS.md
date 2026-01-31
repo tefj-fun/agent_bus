@@ -46,11 +46,17 @@ cd agent_bus
 docker compose up -d --build
 ./scripts/phase4_smoke.sh
 ```
-Result: **IN PROGRESS** — script added; run produces job_id, then verifies:
-- queued → prd_generation → waiting_for_approval → plan_generation → completed
+Result: **PASS** (local Docker) — verifies:
+- queued → prd_generation → waiting_for_approval → approve → plan_generation → completed
 - PRD content accessible via `/api/projects/{job_id}/prd`
 - memory hits accessible via `/api/projects/{job_id}/memory_hits`
-- approve endpoint advances to plan
+
+### 2026-01-31 — CI (GitHub Actions)
+- Added `.github/workflows/ci.yml`
+- Gates:
+  - `pytest -q` (docker compose)
+  - `./scripts/phase4_smoke.sh` (required; requires `ANTHROPIC_API_KEY` secret)
+Result: **PASS** (after wiring ANTHROPIC_API_KEY into compose env)
 
 ### 2026-01-31 — Smoke test (PRD-only)
 ```bash
