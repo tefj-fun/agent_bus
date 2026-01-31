@@ -61,9 +61,48 @@ async def root():
 
 @app.get("/health")
 async def health():
-    """Health check endpoint."""
+    """Health check endpoint.
+
+    Returns 200 when dependencies are reachable; 503 otherwise.
+    """
+    redis_ok = False
+    pg_ok = False
+
+    # Redis ping
+    try:
+        client = await redis_client.get_client()
+        pong = await client.ping()
+        redis_ok = bool(pong)
+    except Exception:
+        redis_ok = False
+
+    # Postgres simple query
+    try:
+        pool = await postgres_client.get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute("SELECT 1")
+        pg_ok = True
+    except Exception:
+        pg_ok = False
+
+    overall_ok = redis_ok and pg_ok
+
+    if not overall_ok:
+        # FastAPI lets you set status_code by returning a Response, but keeping it simple:
+        # raise HTTPException for 503.
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "status": "unhealthy",
+                "redis": "connected" if redis_ok else "down",
+                "postgres": "connected" if pg_ok else "down",
+            },
+        )
+
     return {
         "status": "healthy",
         "redis": "connected",
-        "postgres": "connected"
+        "postgres": "connected",
     }

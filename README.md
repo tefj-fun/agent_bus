@@ -133,7 +133,13 @@ pytest tests/
 ### Installed Skills
 
 - **UI/UX Pro Max** (`skills/ui-ux-pro-max/`) - Design system generation
-- More skills can be added from:
+
+Note: `skills/ui-ux-pro-max` is currently tracked as a **git submodule**. After cloning, run:
+```bash
+git submodule update --init --recursive
+```
+
+More skills can be added from:
   - [ComposioHQ/awesome-claude-skills](https://github.com/ComposioHQ/awesome-claude-skills)
   - [karanb192/awesome-claude-skills](https://github.com/karanb192/awesome-claude-skills)
 

@@ -3,8 +3,8 @@
 ## Overview
 Build a comprehensive multi-agent system in the **agent_bus** repository (https://github.com/tefj-fun/agent_bus) where sales inputs requirements, and 12 specialized AI agents collaborate to deliver complete software solutions. The system automatically routes ML/CV workloads to GPU nodes and maintains project memory for pattern reuse.
 
-**Repository**: `agent_bus` (currently empty - will build from scratch)
-**Location**: `/home/bot/Desktop/bot/agent_bus/`
+**Repository**: `agent_bus`
+**Location**: `/home/bot/clawd/agent_bus/`
 
 ## System Architecture
 
