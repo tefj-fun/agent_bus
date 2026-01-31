@@ -27,8 +27,15 @@ class FakePool:
             args = _args[1:] if _args else []
             if len(args) >= 4:
                 doc_id, pattern_type, content, metadata = args[:4]
+                # In some calls (agent_events), the 5th arg is `message`.
+                # Only JSON-decode metadata when it looks like JSON.
                 if isinstance(metadata, str):
-                    metadata = json.loads(metadata)
+                    s = metadata.strip()
+                    if s.startswith('{') or s.startswith('['):
+                        metadata = json.loads(metadata)
+                    else:
+                        # treat as plain string (not JSON)
+                        metadata = {"raw": metadata}
                 existing = next(
                     (row for row in self._pool.memory_rows if row["id"] == doc_id),
                     None,
