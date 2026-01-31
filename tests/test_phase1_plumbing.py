@@ -12,6 +12,9 @@ def test_no_eval_left_in_repo():
     offenders = []
     for p in py_files:
         txt = p.read_text(encoding='utf-8', errors='ignore')
+        # allow this test file itself to contain the string "eval("
+        if p.name == "test_phase1_plumbing.py":
+            continue
         if 'eval(' in txt:
             offenders.append(str(p.relative_to(root)))
     assert offenders == [], f"Found eval() usage in: {offenders}"

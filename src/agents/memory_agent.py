@@ -13,9 +13,10 @@ class MemoryAgent(BaseAgent):
     """Agent specialized in memory storage and retrieval."""
 
     def __init__(self, context):
-        super().__init__(context)
+        # initialize store before BaseAgent calls define_capabilities()
         persist_dir = context.config.get("chroma_persist_directory", settings.chroma_persist_directory)
         self.store = MemoryStore(persist_directory=persist_dir)
+        super().__init__(context)
 
     def get_agent_id(self) -> str:
         return "memory_agent"
