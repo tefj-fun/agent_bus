@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 from anthropic import AsyncAnthropic
 import json
+import asyncio
 import redis.asyncio as redis
 import asyncpg
 
@@ -101,8 +102,8 @@ class BaseAgent(ABC):
 
         # anthropic SDK may or may not support the `thinking` parameter depending on version/model.
         # Try with thinking first, then fall back.
-        try:
-            response = await self.context.anthropic_client.messages.create(
+        async def _call_with_thinking():
+            return await self.context.anthropic_client.messages.create(
                 model=model,
                 max_tokens=max_tokens,
                 system=system,
@@ -112,13 +113,26 @@ class BaseAgent(ABC):
                     "budget_tokens": thinking_budget,
                 },
             )
-        except TypeError:
-            response = await self.context.anthropic_client.messages.create(
+
+        async def _call_no_thinking():
+            return await self.context.anthropic_client.messages.create(
                 model=model,
                 max_tokens=max_tokens,
                 system=system,
                 messages=[{"role": "user", "content": prompt}],
             )
+
+        # Guard against indefinite hangs (network/provider stalls)
+        timeout_s = 180
+        try:
+            response = await asyncio.wait_for(_call_with_thinking(), timeout=timeout_s)
+        except TypeError:
+            try:
+                response = await asyncio.wait_for(_call_no_thinking(), timeout=timeout_s)
+            except asyncio.TimeoutError as e:
+                raise TimeoutError(f"LLM call timed out after {timeout_s}s") from e
+        except asyncio.TimeoutError as e:
+            raise TimeoutError(f"LLM call timed out after {timeout_s}s") from e
 
         return self._extract_response(response)
 

@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      # Make sure docker compose gets the key at container startup
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build + start services
+        run: |
+          docker compose up -d --build
+
+      - name: Wait for API health
+        run: |
+          set -e
+          for i in {1..60}; do
+            if curl -fsS http://localhost:8000/health >/dev/null; then
+              echo "API healthy"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "API did not become healthy" >&2
+          docker compose logs --tail=200 api || true
+          docker compose logs --tail=200 worker || true
+          exit 1
+
+      - name: Pytest
+        run: |
+          docker compose run --rm api pytest -q
+
+      - name: Require ANTHROPIC_API_KEY for smoke
+        shell: bash
+        run: |
+          if [ -z "${{ secrets.ANTHROPIC_API_KEY }}" ]; then
+            echo "ANTHROPIC_API_KEY secret is required to run the end-to-end smoke test." >&2
+            echo "Add it in GitHub: Settings → Secrets and variables → Actions → New repository secret." >&2
+            exit 1
+          fi
+
+      - name: Phase 4 smoke (required)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          BASE_URL: http://localhost:8000
+          PROJECT_ID: gha_phase4_smoke
+          TIMEOUT_SECS: "420"
+        run: |
+          ./scripts/phase4_smoke.sh
+
+      - name: Dump logs on failure
+        if: failure()
+        run: |
+          docker compose ps
+          docker compose logs --tail=300 api || true
+          docker compose logs --tail=300 worker || true
+
+      - name: Teardown
+        if: always()
+        run: |
+          docker compose down -v

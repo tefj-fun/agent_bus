@@ -108,7 +108,10 @@ class PRDAgent(BaseAgent):
             return result
 
         except Exception as e:
-            await self.log_event("error", f"PRD generation failed: {str(e)}")
+            await self.log_event(
+                "error",
+                f"PRD generation failed: {type(e).__name__}: {str(e) or repr(e)}",
+            )
 
             result = AgentResult(
                 task_id=task.task_id,

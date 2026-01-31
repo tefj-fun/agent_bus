@@ -42,6 +42,7 @@ services:
       dockerfile: Dockerfile
     container_name: agent_bus_api
     environment:
+      - PYTHONUNBUFFERED=1
       - DEBUG=true
       - ENVIRONMENT=development
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
@@ -62,7 +63,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+    # Note: avoid --reload in compose (it can kill in-process background tasks during long-running jobs)
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8000
 
   # Worker for CPU tasks
   worker:
@@ -71,6 +73,7 @@ services:
       dockerfile: Dockerfile
     container_name: agent_bus_worker
     environment:
+      - PYTHONUNBUFFERED=1
       - WORKER_TYPE=cpu
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - REDIS_HOST=redis

@@ -137,7 +137,11 @@ class AgentWorker:
                 # Also store output (may contain partials) for master/debug
                 await self.redis.set_with_expiry(
                     f"agent_bus:results:{task_id}",
-                    json.dumps(result.output or {}),
+                    json.dumps({
+                        "success": False,
+                        "error": result.error or "Agent reported failure",
+                        **(result.output or {}),
+                    }),
                     3600,
                 )
                 print(f"Task {task_id} failed (agent reported failure)")
@@ -166,6 +170,13 @@ class AgentWorker:
                 task_id=task_id,
                 status="failed",
                 error=str(e)
+            )
+
+            # Ensure master agent doesn't hang forever waiting for a result key
+            await self.redis.set_with_expiry(
+                f"agent_bus:results:{task_id}",
+                json.dumps({"error": str(e), "success": False, "task_id": task_id}),
+                3600,
             )
 
 

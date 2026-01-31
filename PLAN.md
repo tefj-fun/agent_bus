@@ -14,6 +14,12 @@ Build a comprehensive multi-agent system in the **agent_bus** repository (https:
 - HITL gate pauses after PRD (`waiting_for_approval`) with approve/request_changes endpoints.
 - PlanAgent generates milestone/task/dependency plans and stores `plan` artifacts.
 
+## Phase 5 Status (Next)
+**Goal:** Integration & end-to-end testing (CPU-only for now; ignore Jetson/GPU).
+- Add a repeatable Phase 4 smoke run (script + recorded results)
+- Add integration tests for the async + HITL flow (create → PRD → approve → plan)
+- Stabilize orchestration so jobs can complete reliably even if the API process reloads/restarts
+
 ## System Architecture
 
 ### Core Components
