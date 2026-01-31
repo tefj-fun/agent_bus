@@ -38,29 +38,19 @@ cd agent_bus
 docker compose up -d --build
 docker compose run --rm api pytest -q
 ```
-Result: **FAIL** — Docker not available (`/var/run/docker.sock` permission denied).
+Result: **PASS** (11 passed, 23 warnings)
 
 ### 2026-01-31 — Smoke script (async flow)
 ```bash
-curl -sS -X POST http://localhost:8000/api/projects/ \
-  -H 'Content-Type: application/json' \
-  -d '{"project_id":"phase4_async","requirements":"PRD for a lightweight bug tracker with tags, search, and SLAs."}'
-
-# Poll status (replace job_id from create response)
-curl -sS http://localhost:8000/api/projects/{job_id}
-
-# Fetch latest PRD
-curl -sS http://localhost:8000/api/projects/{job_id}/prd
-
-# Fetch memory hits
-curl -sS http://localhost:8000/api/projects/{job_id}/memory_hits
-
-# Approve and kick off plan stage
-curl -sS -X POST http://localhost:8000/api/projects/{job_id}/approve \
-  -H 'Content-Type: application/json' \
-  -d '{"notes":"Looks good. Proceed to planning."}'
+cd agent_bus
+docker compose up -d --build
+./scripts/phase4_smoke.sh
 ```
-Result: **PENDING** — requires Docker runtime.
+Result: **IN PROGRESS** — script added; run produces job_id, then verifies:
+- queued → prd_generation → waiting_for_approval → plan_generation → completed
+- PRD content accessible via `/api/projects/{job_id}/prd`
+- memory hits accessible via `/api/projects/{job_id}/memory_hits`
+- approve endpoint advances to plan
 
 ### 2026-01-31 — Smoke test (PRD-only)
 ```bash

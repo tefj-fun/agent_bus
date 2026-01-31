@@ -241,6 +241,12 @@ class MasterAgent:
         # Wait for completion
         result = await self._wait_for_task(task_id, timeout=3600)
 
+        # Normalize failure signaling (worker writes a result key even on crash)
+        if isinstance(result, dict) and result.get("success") is False:
+            raise RuntimeError(result.get("error") or f"Task {task_id} failed")
+        if isinstance(result, dict) and result.get("error"):
+            raise RuntimeError(result.get("error"))
+
         return result
 
     def _is_ml_workload(self, inputs: Dict) -> bool:
