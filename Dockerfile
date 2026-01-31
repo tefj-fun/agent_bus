@@ -28,11 +28,12 @@ RUN pip install --no-cache-dir --upgrade pip && \
     asyncpg==0.29.0 \
     httpx==0.27.2 \
     pytest==8.0.0 \
-    pytest-asyncio==0.23.0
+    pytest-asyncio==0.21.1
 
 # Copy application code
 COPY src/ ./src/
 COPY skills/ ./skills/
+COPY tests/ ./tests/
 
 # Expose port
 EXPOSE 8000
