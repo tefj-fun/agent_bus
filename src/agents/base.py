@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
-from anthropic import Anthropic
+from anthropic import AsyncAnthropic
 import json
 import redis.asyncio as redis
 import asyncpg
@@ -22,7 +22,7 @@ class AgentContext:
     workspace_dir: str
     redis_client: redis.Redis
     db_pool: asyncpg.Pool
-    anthropic_client: Anthropic
+    anthropic_client: AsyncAnthropic
     skills_manager: SkillsManager
     config: Dict[str, Any]
 
