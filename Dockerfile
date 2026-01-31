@@ -26,8 +26,6 @@ RUN pip install --no-cache-dir --upgrade pip && \
     sqlalchemy==2.0.25 \
     alembic==1.13.0 \
     asyncpg==0.29.0 \
-    chromadb==0.4.22 \
-    sentence-transformers==2.3.1 \
     httpx==0.27.2
 
 # Copy application code
