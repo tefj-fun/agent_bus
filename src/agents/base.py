@@ -239,17 +239,16 @@ class BaseAgent(ABC):
         Args:
             result: Result of the task execution
         """
+        import json
+        payload = json.dumps(result.__dict__)
+
         await self.context.redis_client.publish(
-            f"agent_bus:events:task_completed",
-            result.__dict__
+            "agent_bus:events:task_completed",
+            payload
         )
 
-        # Also store in Redis for retrieval
-        await self.context.redis_client.setex(
-            f"agent_bus:results:{result.task_id}",
-            3600,  # 1 hour TTL
-            str(result.__dict__)
-        )
+        # Note: the worker process is responsible for writing the authoritative
+        # agent_bus:results:{task_id} payload (typically result.output) for the master agent.
 
     async def log_event(
         self,
@@ -274,9 +273,26 @@ class BaseAgent(ABC):
             "timestamp": "NOW()"
         }
 
+        import json
+
+        # Write to Postgres agent_events for durability/search
+        async with self.context.db_pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO agent_events (agent_id, job_id, event_type, message, data)
+                VALUES ($1, $2, $3, $4, $5)
+                """,
+                self.agent_id,
+                self.context.job_id,
+                event_type,
+                message,
+                data or {}
+            )
+
+        # Also keep a lightweight Redis log stream
         await self.context.redis_client.lpush(
             f"agent_bus:logs:{self.context.job_id}",
-            str(event)
+            json.dumps(event)
         )
 
         print(f"[{self.agent_id}] {event_type.upper()}: {message}")

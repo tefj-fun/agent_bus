@@ -14,7 +14,8 @@ class RedisClient:
     async def connect(self) -> redis.Redis:
         """Connect to Redis."""
         if self._client is None:
-            self._client = await redis.from_url(
+            # redis.asyncio.from_url returns a configured client (not awaitable)
+            self._client = redis.from_url(
                 settings.redis_url,
                 encoding="utf-8",
                 decode_responses=True
@@ -47,8 +48,9 @@ class RedisClient:
         client = await self.get_client()
         task_id = task_data.get("task_id")
 
-        # Push to queue
-        await client.lpush(queue_name, str(task_data))
+        # Push JSON to queue
+        import json
+        await client.lpush(queue_name, json.dumps(task_data))
 
         return task_id
 
@@ -68,7 +70,8 @@ class RedisClient:
 
         if result:
             _, task_data = result
-            return eval(task_data)  # TODO: Use json.loads instead
+            import json
+            return json.loads(task_data)
         return None
 
     async def publish_event(self, channel: str, message: dict) -> None:

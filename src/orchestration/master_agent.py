@@ -59,105 +59,26 @@ class MasterAgent:
         print(f"[MasterAgent] Starting job {job_id} for project {project_id}")
 
         try:
-            # Stage 1: PRD Generation
+            # Phase 1 scope: PRD only. Later phases can enable downstream stages.
             prd_result = await self._execute_stage(
                 job_id=job_id,
+                project_id=project_id,
                 stage=WorkflowStage.PRD_GENERATION,
                 inputs={"requirements": requirements}
             )
 
-            # Stage 2: Architecture Design
-            arch_result = await self._execute_stage(
-                job_id=job_id,
-                stage=WorkflowStage.ARCHITECTURE_DESIGN,
-                inputs={"prd": prd_result}
-            )
-
-            # Stage 3: UI/UX Design
-            uiux_result = await self._execute_stage(
-                job_id=job_id,
-                stage=WorkflowStage.UIUX_DESIGN,
-                inputs={"architecture": arch_result, "prd": prd_result}
-            )
-
-            # Stage 4: Development
-            dev_result = await self._execute_stage(
-                job_id=job_id,
-                stage=WorkflowStage.DEVELOPMENT,
-                inputs={
-                    "architecture": arch_result,
-                    "design_system": uiux_result,
-                    "prd": prd_result
-                }
-            )
-
-            # Stage 5: Parallel Execution (QA, Security, Docs)
-            parallel_results = await asyncio.gather(
-                self._execute_stage(
-                    job_id=job_id,
-                    stage=WorkflowStage.QA_TESTING,
-                    inputs={"code": dev_result}
-                ),
-                self._execute_stage(
-                    job_id=job_id,
-                    stage=WorkflowStage.SECURITY_REVIEW,
-                    inputs={"code": dev_result}
-                ),
-                self._execute_stage(
-                    job_id=job_id,
-                    stage=WorkflowStage.DOCUMENTATION,
-                    inputs={"code": dev_result, "architecture": arch_result}
-                ),
-                self._execute_stage(
-                    job_id=job_id,
-                    stage=WorkflowStage.SUPPORT_DOCS,
-                    inputs={"code": dev_result, "user_docs": None}
-                )
-            )
-
-            # Stage 6: PM Review
-            pm_result = await self._execute_stage(
-                job_id=job_id,
-                stage=WorkflowStage.PM_REVIEW,
-                inputs={
-                    "development": dev_result,
-                    "qa": parallel_results[0],
-                    "security": parallel_results[1],
-                    "documentation": parallel_results[2],
-                    "support": parallel_results[3]
-                }
-            )
-
-            # Stage 7: Delivery
-            await self._execute_stage(
-                job_id=job_id,
-                stage=WorkflowStage.DELIVERY,
-                inputs={"all_outputs": pm_result}
-            )
-
-            # Mark as completed
             await self.postgres.update_job_status(
                 job_id=job_id,
                 status="completed",
                 workflow_stage=WorkflowStage.COMPLETED.value
             )
 
-            print(f"[MasterAgent] Job {job_id} completed successfully")
+            print(f"[MasterAgent] Job {job_id} completed successfully (Phase 1)")
 
             return {
                 "job_id": job_id,
                 "status": "completed",
-                "results": {
-                    "prd": prd_result,
-                    "architecture": arch_result,
-                    "design": uiux_result,
-                    "development": dev_result,
-                    "qa": parallel_results[0],
-                    "security": parallel_results[1],
-                    "documentation": parallel_results[2],
-                    "support": parallel_results[3],
-                    "pm_review": pm_result
-                }
+                "results": {"prd": prd_result}
             }
 
         except Exception as e:
@@ -178,6 +99,7 @@ class MasterAgent:
     async def _execute_stage(
         self,
         job_id: str,
+        project_id: str,
         stage: WorkflowStage,
         inputs: Dict
     ) -> Dict:
@@ -208,6 +130,7 @@ class MasterAgent:
         task_data = {
             "task_id": task_id,
             "job_id": job_id,
+            "project_id": project_id,
             "agent_type": agent_id,
             "stage": stage.value,
             "inputs": inputs,
@@ -279,7 +202,8 @@ class MasterAgent:
         while (datetime.now() - start_time).seconds < timeout:
             result = await self.redis.get(result_key)
             if result:
-                return eval(result)  # TODO: Use json.loads
+                import json
+                return json.loads(result)
 
             await asyncio.sleep(1)
 
