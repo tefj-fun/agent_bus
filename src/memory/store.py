@@ -1,130 +1,153 @@
-"""Memory store with optional ChromaDB backend."""
+"""Postgres-backed TF-IDF memory store."""
 
 from __future__ import annotations
 
-import hashlib
+import json
 import math
-import os
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
+
+import asyncpg
 
 
 class MemoryStore:
-    """Store and query project memory using ChromaDB when available."""
+    """Store and query project memory using Postgres persistence."""
 
-    def __init__(self, persist_directory: str, collection_name: str = "agent_bus"):
-        self.persist_directory = persist_directory
-        self.collection_name = collection_name
-        self.backend = "memory"
+    def __init__(self, db_pool: asyncpg.Pool, pattern_type_default: str = "document"):
+        self.db_pool = db_pool
+        self.pattern_type_default = pattern_type_default
+        self.backend = "postgres_tfidf"
         self.last_error: Optional[str] = None
-        self._client = None
-        self._collection = None
-        self._items: Dict[str, Dict[str, Any]] = {}
-        self._init_backend()
 
-    def _init_backend(self) -> None:
-        try:
-            import chromadb  # type: ignore
-
-            os.makedirs(self.persist_directory, exist_ok=True)
-            self._client = chromadb.PersistentClient(path=self.persist_directory)
-            self._collection = self._client.get_or_create_collection(
-                name=self.collection_name,
-                metadata={"hnsw:space": "cosine"},
-            )
-            self.backend = "chromadb"
-        except Exception as exc:  # ImportError or runtime errors
-            self.backend = "memory"
-            self.last_error = str(exc)
-
-    def upsert_document(
+    async def upsert_document(
         self,
         doc_id: str,
         text: str,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> str:
-        record = {
-            "id": doc_id,
-            "text": text,
-            "metadata": metadata or {},
-        }
-
-        if self.backend == "chromadb" and self._collection is not None:
-            embedding = self._embed(text)
-            self._collection.upsert(
-                ids=[doc_id],
-                documents=[text],
-                metadatas=[record["metadata"]],
-                embeddings=[embedding],
+        record_metadata = metadata or {}
+        pattern_type = record_metadata.get("pattern_type", self.pattern_type_default)
+        async with self.db_pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO memory_patterns (
+                    id, pattern_type, content, metadata, created_at, last_used_at
+                )
+                VALUES ($1, $2, $3, $4::jsonb, NOW(), NOW())
+                ON CONFLICT (id) DO UPDATE
+                SET pattern_type = $2,
+                    content = $3,
+                    metadata = $4::jsonb,
+                    last_used_at = NOW()
+                """,
+                doc_id,
+                pattern_type,
+                text,
+                json.dumps(record_metadata),
             )
-        else:
-            self._items[doc_id] = record
-
         return doc_id
 
-    def query_similar(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
-        if self.backend == "chromadb" and self._collection is not None:
-            if self._collection.count() == 0:
-                return []
-            embedding = self._embed(query)
-            response = self._collection.query(
-                query_embeddings=[embedding],
-                n_results=top_k,
-                include=["documents", "metadatas", "distances"],
+    async def query_similar(
+        self,
+        query: str,
+        top_k: int = 5,
+        pattern_type: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        async with self.db_pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT id, content, metadata, pattern_type
+                FROM memory_patterns
+                """,
             )
-            ids = response.get("ids", [[]])[0]
-            docs = response.get("documents", [[]])[0]
-            metas = response.get("metadatas", [[]])[0]
-            distances = response.get("distances", [[]])[0]
-            results = []
-            for idx, doc_id in enumerate(ids):
-                distance = distances[idx] if idx < len(distances) else None
-                score = None if distance is None else 1 - distance
-                results.append(
-                    {
-                        "id": doc_id,
-                        "text": docs[idx] if idx < len(docs) else "",
-                        "metadata": metas[idx] if idx < len(metas) else {},
-                        "score": score,
-                    }
-                )
-            return results
 
-        query_vec = self._embed(query)
-        scored = []
-        for record in self._items.values():
-            score = self._cosine_similarity(query_vec, self._embed(record["text"]))
-            scored.append({**record, "score": score})
-        scored.sort(key=lambda item: item.get("score", 0.0), reverse=True)
+        if not rows:
+            return []
+
+        filtered_rows = [
+            row
+            for row in rows
+            if pattern_type is None or row.get("pattern_type") == pattern_type
+        ]
+        if not filtered_rows:
+            return []
+
+        docs = [row.get("content", "") for row in filtered_rows]
+        doc_tokens = [self._tokenize(text) for text in docs]
+        idf = self._compute_idf(doc_tokens)
+        doc_vectors = [self._tfidf(tokens, idf) for tokens in doc_tokens]
+
+        query_tokens = self._tokenize(query)
+        query_vec = self._tfidf(query_tokens, idf)
+
+        scored: List[Dict[str, Any]] = []
+        for row, doc_vec in zip(filtered_rows, doc_vectors):
+            score = self._cosine_similarity(query_vec, doc_vec)
+            scored.append(
+                {
+                    "id": row.get("id"),
+                    "text": row.get("content", ""),
+                    "metadata": row.get("metadata") or {},
+                    "score": score,
+                }
+            )
+
+        scored.sort(key=lambda item: (item.get("score", 0.0), item.get("id", "")), reverse=True)
         return scored[:top_k]
 
-    def count(self) -> int:
-        if self.backend == "chromadb" and self._collection is not None:
-            return self._collection.count()
-        return len(self._items)
+    async def count(self) -> int:
+        async with self.db_pool.acquire() as conn:
+            count = await conn.fetchval("SELECT COUNT(1) FROM memory_patterns")
+        return int(count or 0)
 
-    def health(self) -> Dict[str, Any]:
+    async def health(self) -> Dict[str, Any]:
+        try:
+            count = await self.count()
+        except Exception as exc:
+            self.last_error = str(exc)
+            return {
+                "backend": self.backend,
+                "count": 0,
+                "last_error": self.last_error,
+            }
+
         return {
             "backend": self.backend,
-            "count": self.count(),
-            "persist_directory": self.persist_directory,
+            "count": count,
             "last_error": self.last_error,
         }
 
-    def _embed(self, text: str, dim: int = 64) -> List[float]:
-        tokens = re.findall(r"[a-z0-9]+", text.lower())
-        vector = [0.0] * dim
+    def _tokenize(self, text: str) -> List[str]:
+        return re.findall(r"[a-z0-9]+", text.lower())
+
+    def _compute_idf(self, docs_tokens: Iterable[List[str]]) -> Dict[str, float]:
+        docs_tokens_list = list(docs_tokens)
+        doc_count = len(docs_tokens_list)
+        df: Dict[str, int] = {}
+        for tokens in docs_tokens_list:
+            for token in set(tokens):
+                df[token] = df.get(token, 0) + 1
+        idf = {
+            token: math.log((1 + doc_count) / (1 + freq)) + 1.0
+            for token, freq in df.items()
+        }
+        return idf
+
+    def _tfidf(self, tokens: List[str], idf: Dict[str, float]) -> Dict[str, float]:
+        if not tokens:
+            return {}
+        tf: Dict[str, float] = {}
+        total = float(len(tokens))
         for token in tokens:
-            token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
-            bucket = int(token_hash[:8], 16) % dim
-            vector[bucket] += 1.0
+            tf[token] = tf.get(token, 0.0) + 1.0
+        return {token: (count / total) * idf.get(token, 0.0) for token, count in tf.items()}
 
-        norm = math.sqrt(sum(value * value for value in vector))
-        if norm == 0:
-            return vector
-        return [value / norm for value in vector]
-
-    def _cosine_similarity(self, vec_a: List[float], vec_b: List[float]) -> float:
+    def _cosine_similarity(self, vec_a: Dict[str, float], vec_b: Dict[str, float]) -> float:
         if not vec_a or not vec_b:
             return 0.0
-        return sum(a * b for a, b in zip(vec_a, vec_b))
+        dot = sum(value * vec_b.get(token, 0.0) for token, value in vec_a.items())
+        norm_a = math.sqrt(sum(value * value for value in vec_a.values()))
+        norm_b = math.sqrt(sum(value * value for value in vec_b.values()))
+        if norm_a == 0.0 or norm_b == 0.0:
+            return 0.0
+        return dot / (norm_a * norm_b)

@@ -24,19 +24,34 @@ class FakeRedis:
 
 
 class FakePool:
+    def __init__(self):
+        self.memory_rows = []
+
     class _Conn:
+        def __init__(self, pool):
+            self._pool = pool
+
         async def execute(self, *args, **kwargs):
             return None
 
+        async def fetch(self, *args, **kwargs):
+            return self._pool.memory_rows
+
+        async def fetchval(self, *args, **kwargs):
+            return len(self._pool.memory_rows)
+
     class _Acquire:
+        def __init__(self, pool):
+            self._pool = pool
+
         async def __aenter__(self):
-            return FakePool._Conn()
+            return FakePool._Conn(self._pool)
 
         async def __aexit__(self, exc_type, exc, tb):
             return False
 
     def acquire(self):
-        return FakePool._Acquire()
+        return FakePool._Acquire(self)
 
 
 def _make_context(tmp_path):
@@ -83,8 +98,10 @@ def test_worker_registry_includes_phase2_agents():
         assert agent_id in registry
 
 
-def test_memory_store_health(tmp_path):
-    store = MemoryStore(persist_directory=str(tmp_path / "chroma"))
-    health = store.health()
-    assert health["backend"] in {"chromadb", "memory"}
+@pytest.mark.asyncio
+async def test_memory_store_health(tmp_path):
+    pool = FakePool()
+    store = MemoryStore(db_pool=pool)
+    health = await store.health()
+    assert health["backend"] == "postgres_tfidf"
     assert health["count"] == 0

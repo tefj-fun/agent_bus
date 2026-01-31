@@ -6,7 +6,6 @@ from typing import Any, Dict
 
 from .base import BaseAgent, AgentResult, AgentTask
 from ..memory import MemoryStore
-from ..config import settings
 
 
 class MemoryAgent(BaseAgent):
@@ -14,8 +13,7 @@ class MemoryAgent(BaseAgent):
 
     def __init__(self, context):
         # initialize store before BaseAgent calls define_capabilities()
-        persist_dir = context.config.get("chroma_persist_directory", settings.chroma_persist_directory)
-        self.store = MemoryStore(persist_directory=persist_dir)
+        self.store = MemoryStore(db_pool=context.db_pool)
         super().__init__(context)
 
     def get_agent_id(self) -> str:
@@ -43,7 +41,7 @@ class MemoryAgent(BaseAgent):
                     raise ValueError("Memory store requires 'text' or 'document' field")
                 doc_id = task.input_data.get("id") or f"mem_{uuid.uuid4().hex[:12]}"
                 metadata = task.input_data.get("metadata") or {}
-                stored_id = self.store.upsert_document(doc_id=doc_id, text=text, metadata=metadata)
+                stored_id = await self.store.upsert_document(doc_id=doc_id, text=text, metadata=metadata)
                 output = {
                     "action": "store",
                     "doc_id": stored_id,
@@ -57,14 +55,14 @@ class MemoryAgent(BaseAgent):
                     )
 
             elif action in {"health", "status"}:
-                output = self.store.health()
+                output = await self.store.health()
 
             else:
                 query = task.input_data.get("query") or task.input_data.get("text")
                 if not query:
                     raise ValueError("Memory query requires 'query' or 'text' field")
                 top_k = int(task.input_data.get("top_k", 5))
-                results = self.store.query_similar(query=query, top_k=top_k)
+                results = await self.store.query_similar(query=query, top_k=top_k)
                 output = {
                     "action": "query",
                     "query": query,
