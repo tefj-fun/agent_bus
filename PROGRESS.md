@@ -16,8 +16,23 @@
 - [x] Minimal tests for new agents and registry
 
 ## QA
-### Local
+### Docker (repeatable)
+```bash
+cd agent_bus
+docker compose up -d --build
+# run tests inside the api image
+docker compose run --rm api pytest -q
 ```
-python -m pytest -q
+Result: PASS (9 passed) on 2026-01-31
+
+### Smoke test (PRD-only)
+```bash
+curl -sS -X POST http://localhost:8000/api/projects/ \
+  -H 'Content-Type: application/json' \
+  -d '{"project_id":"phase2_smoke","requirements":"Write a short PRD for a notes app with tags and search."}'
 ```
-Result: FAILED (python not available in environment) on 2026-01-31
+Verify:
+- PRD content exists in tasks.output_data->>'prd_content'
+- Artifact row exists in artifacts table with type='prd'
+
+Result: PASS on 2026-01-31
