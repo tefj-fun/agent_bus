@@ -38,6 +38,7 @@ class PostgresClient:
         self,
         job_id: str,
         project_id: str,
+        status: str = "created",
         workflow_stage: str = "initialization"
     ) -> None:
         """Create a new job."""
@@ -46,10 +47,11 @@ class PostgresClient:
             await conn.execute(
                 """
                 INSERT INTO jobs (id, project_id, status, workflow_stage)
-                VALUES ($1, $2, 'created', $3)
+                VALUES ($1, $2, $3, $4)
                 """,
                 job_id,
                 project_id,
+                status,
                 workflow_stage
             )
 
@@ -83,6 +85,21 @@ class PostgresClient:
                     job_id,
                     status
                 )
+
+    async def update_job_metadata(self, job_id: str, metadata: dict) -> None:
+        """Merge metadata into the job's metadata JSON."""
+        pool = await self.get_pool()
+        async with pool.acquire() as conn:
+            import json
+            await conn.execute(
+                """
+                UPDATE jobs
+                SET metadata = COALESCE(metadata, '{}'::jsonb) || $2::jsonb
+                WHERE id = $1
+                """,
+                job_id,
+                json.dumps(metadata)
+            )
 
     async def create_task(
         self,

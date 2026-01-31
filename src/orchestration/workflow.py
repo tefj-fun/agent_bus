@@ -9,6 +9,8 @@ class WorkflowStage(Enum):
 
     INITIALIZATION = "initialization"
     PRD_GENERATION = "prd_generation"
+    WAITING_FOR_APPROVAL = "waiting_for_approval"
+    PLAN_GENERATION = "plan_generation"
     ARCHITECTURE_DESIGN = "architecture_design"
     UIUX_DESIGN = "uiux_design"
     DEVELOPMENT = "development"
@@ -32,6 +34,14 @@ class WorkflowStateMachine:
             WorkflowStage.FAILED
         ],
         WorkflowStage.PRD_GENERATION: [
+            WorkflowStage.WAITING_FOR_APPROVAL,
+            WorkflowStage.FAILED
+        ],
+        WorkflowStage.WAITING_FOR_APPROVAL: [
+            WorkflowStage.PLAN_GENERATION,
+            WorkflowStage.FAILED
+        ],
+        WorkflowStage.PLAN_GENERATION: [
             WorkflowStage.ARCHITECTURE_DESIGN,
             WorkflowStage.FAILED
         ],
@@ -81,6 +91,7 @@ class WorkflowStateMachine:
     # Map stages to required agents
     STAGE_AGENTS: Dict[WorkflowStage, str] = {
         WorkflowStage.PRD_GENERATION: "prd_agent",
+        WorkflowStage.PLAN_GENERATION: "plan_agent",
         WorkflowStage.ARCHITECTURE_DESIGN: "solution_architect",
         WorkflowStage.UIUX_DESIGN: "uiux_designer",
         WorkflowStage.DEVELOPMENT: "developer_agent",

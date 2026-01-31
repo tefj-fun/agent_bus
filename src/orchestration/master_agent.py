@@ -36,7 +36,9 @@ class MasterAgent:
     async def orchestrate_project(
         self,
         project_id: str,
-        requirements: str
+        requirements: str,
+        job_id: Optional[str] = None,
+        create_job: bool = True
     ) -> Dict:
         """
         Main orchestration loop for a project.
@@ -49,12 +51,15 @@ class MasterAgent:
             Final project results
         """
         # Create job
-        job_id = f"job_{uuid.uuid4().hex[:12]}"
-        await self.postgres.create_job(
-            job_id=job_id,
-            project_id=project_id,
-            workflow_stage=WorkflowStage.INITIALIZATION.value
-        )
+        if job_id is None:
+            job_id = f"job_{uuid.uuid4().hex[:12]}"
+        if create_job:
+            await self.postgres.create_job(
+                job_id=job_id,
+                project_id=project_id,
+                status="queued",
+                workflow_stage=WorkflowStage.INITIALIZATION.value
+            )
 
         print(f"[MasterAgent] Starting job {job_id} for project {project_id}")
 
@@ -69,15 +74,15 @@ class MasterAgent:
 
             await self.postgres.update_job_status(
                 job_id=job_id,
-                status="completed",
-                workflow_stage=WorkflowStage.COMPLETED.value
+                status="waiting_for_approval",
+                workflow_stage=WorkflowStage.WAITING_FOR_APPROVAL.value
             )
 
-            print(f"[MasterAgent] Job {job_id} completed successfully (Phase 1)")
+            print(f"[MasterAgent] Job {job_id} ready for approval after PRD generation")
 
             return {
                 "job_id": job_id,
-                "status": "completed",
+                "status": "waiting_for_approval",
                 "results": {"prd": prd_result}
             }
 
@@ -95,6 +100,79 @@ class MasterAgent:
                 "status": "failed",
                 "error": str(e)
             }
+
+    async def continue_after_approval(self, job_id: str) -> Dict:
+        """
+        Continue the workflow after HITL approval.
+
+        Args:
+            job_id: Job identifier
+
+        Returns:
+            Updated job results
+        """
+        project_id, prd_content = await self._fetch_project_and_prd(job_id)
+        if not project_id:
+            raise ValueError(f"Job {job_id} not found")
+        if not prd_content:
+            raise ValueError(f"No PRD content available for job {job_id}")
+
+        plan_result = await self._execute_stage(
+            job_id=job_id,
+            project_id=project_id,
+            stage=WorkflowStage.PLAN_GENERATION,
+            inputs={"prd": prd_content}
+        )
+
+        await self.postgres.update_job_status(
+            job_id=job_id,
+            status="completed",
+            workflow_stage=WorkflowStage.COMPLETED.value
+        )
+
+        return {
+            "job_id": job_id,
+            "status": "completed",
+            "results": {"plan": plan_result}
+        }
+
+    async def _fetch_project_and_prd(self, job_id: str) -> tuple[Optional[str], Optional[str]]:
+        """Fetch project_id and latest PRD content for a job."""
+        pool = await self.postgres.get_pool()
+        async with pool.acquire() as conn:
+            job_row = await conn.fetchrow(
+                "SELECT project_id FROM jobs WHERE id = $1",
+                job_id
+            )
+            project_id = job_row["project_id"] if job_row else None
+
+            artifact_row = await conn.fetchrow(
+                """
+                SELECT content
+                FROM artifacts
+                WHERE job_id = $1 AND type = 'prd'
+                ORDER BY updated_at DESC, created_at DESC
+                LIMIT 1
+                """,
+                job_id
+            )
+            if artifact_row and artifact_row.get("content"):
+                return project_id, artifact_row["content"]
+
+            task_row = await conn.fetchrow(
+                """
+                SELECT output_data->>'prd_content' AS prd_content
+                FROM tasks
+                WHERE job_id = $1 AND task_type = $2
+                ORDER BY completed_at DESC, created_at DESC
+                LIMIT 1
+                """,
+                job_id,
+                WorkflowStage.PRD_GENERATION.value
+            )
+            prd_content = task_row["prd_content"] if task_row else None
+
+        return project_id, prd_content
 
     async def _execute_stage(
         self,

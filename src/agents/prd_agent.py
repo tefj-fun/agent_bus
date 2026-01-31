@@ -40,6 +40,11 @@ class PRDAgent(BaseAgent):
 
             memory_store = MemoryStore(db_pool=self.context.db_pool, pattern_type_default="prd")
             similar_prds = await self._query_similar_prds(memory_store, sales_requirements)
+            memory_hits = [
+                {"id": item.get("id"), "score": item.get("score")}
+                for item in similar_prds
+                if item.get("id") is not None
+            ]
 
             # Build comprehensive system prompt
             system_prompt = self._build_prd_system_prompt()
@@ -61,7 +66,8 @@ class PRDAgent(BaseAgent):
                 metadata={
                     "requirements_length": len(sales_requirements),
                     "prd_length": len(prd_content),
-                    "task_id": task.task_id
+                    "task_id": task.task_id,
+                    "memory_hits": memory_hits
                 }
             )
 
@@ -87,12 +93,14 @@ class PRDAgent(BaseAgent):
                 output={
                     "prd_content": prd_content,
                     "artifact_id": artifact_id,
-                    "next_stage": "architecture_design"
+                    "next_stage": "architecture_design",
+                    "memory_hits": memory_hits
                 },
                 artifacts=[artifact_id],
                 metadata={
                     "word_count": len(prd_content.split()),
-                    "sections": self._count_sections(prd_content)
+                    "sections": self._count_sections(prd_content),
+                    "memory_hits": memory_hits
                 }
             )
 
