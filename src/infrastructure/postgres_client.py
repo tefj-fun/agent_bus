@@ -97,20 +97,21 @@ class PostgresClient:
         """Create a new task."""
         pool = await self.get_pool()
         async with pool.acquire() as conn:
+            import json
             await conn.execute(
                 """
                 INSERT INTO tasks (
                     id, job_id, agent_id, task_type, status,
                     priority, input_data, dependencies
                 )
-                VALUES ($1, $2, $3, $4, 'pending', $5, $6, $7)
+                VALUES ($1, $2, $3, $4, 'pending', $5, $6::jsonb, $7)
                 """,
                 task_id,
                 job_id,
                 agent_id,
                 task_type,
                 priority,
-                input_data,
+                json.dumps(input_data),
                 dependencies or []
             )
 
