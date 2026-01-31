@@ -6,10 +6,13 @@ Build a comprehensive multi-agent system in the **agent_bus** repository (https:
 **Repository**: `agent_bus`
 **Location**: `/home/bot/clawd/agent_bus/`
 
-## Phase 2 Status (Remaining Agents)
-- Technical Writer, Support Engineer, Product Manager, Project Manager, and Memory Agent implemented as lightweight stubs with Claude-backed prompts.
-- Memory Agent uses ChromaDB when available and degrades gracefully to an in-memory store for Phase 1 Docker.
-- Worker registry updated to include the new agents.
+## Phase 4 Status (Current)
+- Async project creation returns queued job IDs; background orchestration runs in-process.
+- Job status endpoint includes workflow stage, timestamps, metadata, and latest task snapshot.
+- PRD retrieval endpoint prefers `artifacts` (type `prd`) with task-output fallback.
+- PRD generation captures memory hits; API exposes hits per job.
+- HITL gate pauses after PRD (`waiting_for_approval`) with approve/request_changes endpoints.
+- PlanAgent generates milestone/task/dependency plans and stores `plan` artifacts.
 
 ## System Architecture
 
@@ -39,7 +42,9 @@ Build a comprehensive multi-agent system in the **agent_bus** repository (https:
 
 ### Workflow
 ```
-Sales Input → PRD Generation → Architecture Design → UI/UX Design (UI/UX Pro Max)
+Sales Input → PRD Generation → HITL Approval → Plan Generation
+    ↓
+    → Architecture Design → UI/UX Design (UI/UX Pro Max)
     ↓
     → Development (with TDD)
     ↓
