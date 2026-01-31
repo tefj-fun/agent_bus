@@ -6,6 +6,11 @@ from typing import Dict, Optional
 
 from ..agents.base import BaseAgent, AgentContext, AgentTask
 from ..agents.prd_agent import PRDAgent
+from ..agents.technical_writer import TechnicalWriter
+from ..agents.support_engineer import SupportEngineer
+from ..agents.product_manager import ProductManager
+from ..agents.project_manager import ProjectManager
+from ..agents.memory_agent import MemoryAgent
 # TODO: Import other specialized agents as they are implemented
 # from ..agents.solution_architect import SolutionArchitect
 # from ..agents.uiux_designer import UIUXDesigner
@@ -33,16 +38,17 @@ class AgentWorker:
         """Register all available agent types."""
         return {
             "prd_agent": PRDAgent,
+            "tech_writer": TechnicalWriter,
+            "support_engineer": SupportEngineer,
+            "product_manager": ProductManager,
+            "project_manager": ProjectManager,
+            "memory_agent": MemoryAgent,
             # TODO: Register other agents
             # "solution_architect": SolutionArchitect,
             # "uiux_designer": UIUXDesigner,
             # "developer_agent": DeveloperAgent,
             # "qa_engineer": QAEngineer,
             # "security_engineer": SecurityEngineer,
-            # "tech_writer": TechnicalWriter,
-            # "support_engineer": SupportEngineer,
-            # "product_manager": ProductManager,
-            # "project_manager": ProjectManager,
         }
 
     async def run(self):

@@ -82,8 +82,9 @@ class RedisClient:
             channel: Channel name
             message: Message to publish
         """
+        import json
         client = await self.get_client()
-        await client.publish(channel, str(message))
+        await client.publish(channel, json.dumps(message))
 
     async def set_with_expiry(self, key: str, value: str, ttl: int) -> None:
         """
