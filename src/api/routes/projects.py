@@ -184,6 +184,18 @@ async def get_job_memory_hits(job_id: str):
             raise HTTPException(status_code=404, detail="Memory hits not found")
 
         hits = task_row.get("memory_hits") or task_row.get("metadata_hits") or []
+
+        # Normalize hits to a JSON array (some historical rows stored a JSON-encoded string)
+        if isinstance(hits, str):
+            import json
+            try:
+                hits = json.loads(hits)
+            except Exception:
+                hits = []
+
+        if hits is None:
+            hits = []
+
         return {"job_id": job_id, "memory_hits": hits}
     except HTTPException:
         raise

@@ -63,12 +63,6 @@ print(f"[phase4_smoke] prd ok (len={len(content)})")
 status, hits = req('GET', f'/api/projects/{job_id}/memory_hits')
 assert status == 200, (status, hits)
 mh = hits.get('memory_hits')
-# API may return memory_hits as a JSON-encoded string; normalize to list.
-if isinstance(mh, str):
-    try:
-        mh = json.loads(mh)
-    except Exception:
-        pass
 assert isinstance(mh, list), {'job_id': job_id, 'memory_hits': hits.get('memory_hits')}
 print(f"[phase4_smoke] memory_hits ok (n={len(mh)})")
 
