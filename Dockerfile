@@ -29,7 +29,11 @@ RUN pip install --no-cache-dir --upgrade pip && \
     httpx==0.27.2 \
     python-multipart==0.0.9 \
     pytest==8.0.0 \
-    pytest-asyncio==0.21.1
+    pytest-asyncio==0.21.1 \
+    chromadb==0.4.22 \
+    sentence-transformers==2.3.1 \
+    packaging==23.0 \
+    pyyaml==6.0
 
 # Copy application code
 COPY src/ ./src/
