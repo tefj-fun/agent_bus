@@ -1,17 +1,23 @@
-FROM python:3.11-slim
+# Multi-stage Dockerfile for agent_bus - Production Ready
+# Stage 1: Builder - Install dependencies and build
+FROM python:3.11-slim AS builder
 
-WORKDIR /app
+WORKDIR /build
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
     git \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy dependency files
+# Copy dependency files first (better layer caching)
 COPY pyproject.toml ./
+
+# Create virtual environment and install dependencies
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
 # Install Python dependencies
 RUN pip install --no-cache-dir --upgrade pip && \
@@ -33,16 +39,43 @@ RUN pip install --no-cache-dir --upgrade pip && \
     chromadb==0.4.22 \
     sentence-transformers==2.3.1 \
     packaging==23.0 \
-    pyyaml==6.0
+    pyyaml==6.0 \
+    prometheus-client==0.19.0
+
+# Stage 2: Runtime - Minimal production image
+FROM python:3.11-slim AS runtime
+
+# Create non-root user for security
+RUN groupadd -r agent_bus && useradd -r -g agent_bus agent_bus
+
+WORKDIR /app
+
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
+
+# Set environment to use venv
+ENV PATH="/opt/venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
 
 # Copy application code
-COPY src/ ./src/
-COPY skills/ ./skills/
-COPY tests/ ./tests/
-COPY scripts/ ./scripts/
+COPY --chown=agent_bus:agent_bus src/ ./src/
+COPY --chown=agent_bus:agent_bus skills/ ./skills/
+COPY --chown=agent_bus:agent_bus scripts/ ./scripts/
+
+# Create necessary directories
+RUN mkdir -p /app/logs /workspace && \
+    chown -R agent_bus:agent_bus /app /workspace
+
+# Switch to non-root user
+USER agent_bus
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD python -c "import httpx; httpx.get('http://localhost:8000/health', timeout=5)" || exit 1
 
 # Expose port
 EXPOSE 8000
 
-# Default command (can be overridden in docker-compose)
+# Default command (can be overridden in docker-compose or k8s)
 CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]

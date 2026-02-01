@@ -157,7 +157,11 @@ All stages implemented and tested:
   - PRs: #28 (KAN-81), #29 (KAN-82), #30 (KAN-83)
 
 ### 4) KAN-36 — Deployment & scaling (Docker/K8s)
-- [ ] (Break down into child tickets in Jira if not already)
+- [ ] KAN-86 Docker: Optimize Dockerfile and multi-stage builds
+- [ ] KAN-87 K8s: Create base manifests (deployments, services, ConfigMaps)
+- [ ] KAN-88 K8s: Implement Helm charts for environment management
+- [ ] KAN-89 K8s: GPU worker jobs and node affinity
+- [ ] KAN-90 Observability: Add Prometheus metrics and basic monitoring
 
 ### 5) KAN-40 — CI/CD hardening
 - [ ] KAN-79 CD: release tagging + deployment stub
