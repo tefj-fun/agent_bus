@@ -97,6 +97,21 @@ class BaseAgent(ABC):
         Returns:
             Response text from Claude
         """
+        # Provider routing
+        provider = settings.llm_provider
+
+        if provider == "openai":
+            from ..infrastructure.openai_client import openai_chat_complete
+            # model parameter maps to OPENAI_MODEL for openai provider
+            text = await openai_chat_complete(
+                prompt=prompt,
+                system=system,
+                model=model,
+                max_tokens=max_tokens,
+            )
+            return text
+
+        # default: anthropic
         if model is None:
             model = settings.anthropic_model
 

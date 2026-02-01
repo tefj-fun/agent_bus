@@ -20,11 +20,16 @@ class Settings(BaseSettings):
 
     # LLM
     llm_mode: str = Field(default="real", env="LLM_MODE")  # real|mock
+    llm_provider: str = Field(default="anthropic", env="LLM_PROVIDER")  # anthropic|openai
 
-    # Anthropic Claude (only required when LLM_MODE=real)
+    # Anthropic Claude (only required when LLM_PROVIDER=anthropic and LLM_MODE=real)
     anthropic_api_key: str = Field(default="", env="ANTHROPIC_API_KEY")
     anthropic_model: str = Field(default="claude-sonnet-4-5-20250929", env="ANTHROPIC_MODEL")
     anthropic_max_tokens: int = Field(default=8192, env="ANTHROPIC_MAX_TOKENS")
+
+    # OpenAI (only required when LLM_PROVIDER=openai and LLM_MODE=real)
+    openai_api_key: str = Field(default="", env="OPENAI_API_KEY")
+    openai_model: str = Field(default="gpt-4o-mini", env="OPENAI_MODEL")
 
     # Redis
     redis_host: str = Field(default="localhost", env="REDIS_HOST")
