@@ -1,17 +1,12 @@
 """API routes for project management."""
 
-import asyncio
 import uuid
 from datetime import datetime, timezone
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 
-from ...orchestration.master_agent import MasterAgent
-from ...infrastructure.redis_client import redis_client
 from ...infrastructure.postgres_client import postgres_client
-from ...skills.manager import SkillsManager
-from ...config import settings
 
 
 router = APIRouter()
@@ -35,7 +30,7 @@ class ProjectResponse(BaseModel):
 
 
 @router.post("/", response_model=ProjectResponse)
-async def create_project(request: ProjectRequest, background_tasks: BackgroundTasks):
+async def create_project(request: ProjectRequest):
     """
     Create a new project and start the SWE workflow.
 
@@ -46,16 +41,6 @@ async def create_project(request: ProjectRequest, background_tasks: BackgroundTa
         Project response with job ID
     """
     try:
-        # Initialize components
-        skills_manager = SkillsManager(settings.skills_directory)
-
-        # Create master agent
-        master_agent = MasterAgent(
-            redis_client=redis_client,
-            postgres_client=postgres_client,
-            skills_manager=skills_manager
-        )
-
         job_id = f"job_{uuid.uuid4().hex[:12]}"
         await postgres_client.create_job(
             job_id=job_id,
@@ -64,18 +49,14 @@ async def create_project(request: ProjectRequest, background_tasks: BackgroundTa
             workflow_stage="initialization"
         )
 
-        async def _schedule_orchestration() -> None:
-            asyncio.create_task(
-                master_agent.orchestrate_project(
-                    project_id=request.project_id,
-                    requirements=request.requirements,
-                    job_id=job_id,
-                    create_job=False
-                )
-            )
-
-        # Start orchestration in background
-        background_tasks.add_task(_schedule_orchestration)
+        # Persist requirements for the orchestrator service
+        await postgres_client.update_job_metadata(
+            job_id=job_id,
+            metadata={
+                "requirements": request.requirements,
+                "project_metadata": request.metadata or {},
+            },
+        )
 
         return ProjectResponse(
             job_id=job_id,
@@ -217,21 +198,17 @@ class ApprovalRequest(BaseModel):
 
 
 @router.post("/{job_id}/approve")
-async def approve_job(job_id: str, request: ApprovalRequest, background_tasks: BackgroundTasks):
-    """Approve a job after PRD generation and continue workflow."""
+async def approve_job(job_id: str, request: ApprovalRequest):
+    """Approve a job after PRD generation.
+
+    Note: continuation is handled by the orchestrator service (not the API process).
+    """
     try:
         pool = await postgres_client.get_pool()
         async with pool.acquire() as conn:
             exists = await conn.fetchval("SELECT 1 FROM jobs WHERE id = $1", job_id)
         if not exists:
             raise HTTPException(status_code=404, detail="Job not found")
-
-        skills_manager = SkillsManager(settings.skills_directory)
-        master_agent = MasterAgent(
-            redis_client=redis_client,
-            postgres_client=postgres_client,
-            skills_manager=skills_manager
-        )
 
         await postgres_client.update_job_status(
             job_id=job_id,
@@ -246,10 +223,6 @@ async def approve_job(job_id: str, request: ApprovalRequest, background_tasks: B
             }
         )
 
-        async def _continue() -> None:
-            asyncio.create_task(master_agent.continue_after_approval(job_id))
-
-        background_tasks.add_task(_continue)
         return {"job_id": job_id, "status": "approved"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
