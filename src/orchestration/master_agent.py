@@ -169,6 +169,20 @@ class MasterAgent:
             }
         )
 
+        # Execute Security Review stage
+        qa_content = await self._fetch_artifact_content(job_id, "qa")
+        security_result = await self._execute_stage(
+            job_id=job_id,
+            project_id=project_id,
+            stage=WorkflowStage.SECURITY_REVIEW,
+            inputs={
+                "development": development_content or "",
+                "architecture": architecture_content or "",
+                "qa": qa_content or "",
+                "prd": prd_content
+            }
+        )
+
         await self.postgres.update_job_status(
             job_id=job_id,
             status="completed",
@@ -183,7 +197,8 @@ class MasterAgent:
                 "architecture": architecture_result,
                 "ui_ux": uiux_result,
                 "development": development_result,
-                "qa": qa_result
+                "qa": qa_result,
+                "security": security_result
             }
         }
 

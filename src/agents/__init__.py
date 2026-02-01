@@ -12,6 +12,7 @@ from .architect_agent import ArchitectAgent
 from .uiux_agent import UIUXAgent
 from .developer_agent import DeveloperAgent
 from .qa_agent import QAAgent
+from .security_agent import SecurityAgent
 
 __all__ = [
     "BaseAgent",
@@ -29,4 +30,5 @@ __all__ = [
     "UIUXAgent",
     "DeveloperAgent",
     "QAAgent",
+    "SecurityAgent",
 ]

@@ -61,7 +61,7 @@ class WorkflowStateMachine:
             WorkflowStage.FAILED
         ],
         WorkflowStage.QA_TESTING: [
-            WorkflowStage.PM_REVIEW,
+            WorkflowStage.SECURITY_REVIEW,
             WorkflowStage.FAILED
         ],
         WorkflowStage.SECURITY_REVIEW: [
@@ -96,7 +96,7 @@ class WorkflowStateMachine:
         WorkflowStage.UIUX_DESIGN: "uiux_agent",
         WorkflowStage.DEVELOPMENT: "developer_agent",
         WorkflowStage.QA_TESTING: "qa_agent",
-        WorkflowStage.SECURITY_REVIEW: "security_engineer",
+        WorkflowStage.SECURITY_REVIEW: "security_agent",
         WorkflowStage.DOCUMENTATION: "tech_writer",
         WorkflowStage.SUPPORT_DOCS: "support_engineer",
         WorkflowStage.PM_REVIEW: "product_manager",
