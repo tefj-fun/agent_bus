@@ -104,6 +104,202 @@ skills/
 3. **Python Version**: If specified, must be valid version string
 4. **No Extra Fields**: Schema forbids additional fields not in spec
 
+## CLI Commands
+
+The Agent Bus Skills Manager provides a command-line interface for managing skills:
+
+### Installation
+
+```bash
+# Install the CLI
+poetry install
+
+# Or use directly
+python -m src.cli --help
+```
+
+### Commands
+
+#### `install` - Install a skill from git
+
+```bash
+# Basic usage (auto-extracts name from URL)
+agent-bus-skills install https://github.com/user/awesome-skill
+
+# With custom name
+agent-bus-skills install https://github.com/user/skill --name my-skill
+
+# With custom skills directory
+agent-bus-skills --skills-dir ./my-skills install https://github.com/user/skill
+```
+
+Features:
+- Clones git repository to skills directory
+- Validates skill structure (skill.json, entry point files)
+- Registers skill in registry
+- Shows installed skill info
+
+#### `update` - Update an installed skill
+
+```bash
+# Update skill from its git repository
+agent-bus-skills update my-skill
+
+# Output:
+# ✓ Successfully updated skill 'my-skill'
+```
+
+Features:
+- Pulls latest changes from git
+- Validates updated skill
+- Clears cache for updated skill
+- Reloads registry
+
+#### `list` - List installed skills
+
+```bash
+# Basic list
+agent-bus-skills list
+
+# Output:
+# Installed skills (2):
+#   • ui-ux-pro-max (v1.0.0) - Professional UI/UX design system generator
+#   • test-skill (v1.2.3) - Testing automation skill
+
+# Verbose output
+agent-bus-skills list --verbose
+
+# Output includes:
+# - Description
+# - Author
+# - Capabilities
+# - Tags
+```
+
+#### `info` - Show detailed skill information
+
+```bash
+# Show all metadata for a skill
+agent-bus-skills info ui-ux-pro-max
+
+# Output:
+# Skill: ui-ux-pro-max
+# Version: 1.0.0
+# Description: Professional UI/UX design system generator
+# Author: ComposioHQ
+# Path: /path/to/skills/ui-ux-pro-max
+# Entry Point: skill.md
+# Repository: https://github.com/ComposioHQ/awesome-claude-skills
+# License: MIT
+# Capabilities: ui-design, design-systems
+# Required Tools: browser
+# Tags: design, ui, ux, frontend
+```
+
+### Error Handling
+
+The CLI provides clear error messages:
+
+```bash
+# Skill already exists
+$ agent-bus-skills install https://github.com/user/skill
+✗ Installation failed: Skill directory 'skill' already exists
+
+# Invalid git URL
+$ agent-bus-skills install https://invalid-url
+✗ Installation failed: Git clone failed: ...
+
+# Skill not found
+$ agent-bus-skills update nonexistent
+✗ Skill not found: Skill 'nonexistent' not found in registry
+
+# Invalid skill format
+$ agent-bus-skills install https://github.com/user/bad-skill
+✗ Installation failed: Invalid skill: No entry point file found
+```
+
+## API Endpoints
+
+The skills system provides REST API endpoints for programmatic access:
+
+### `POST /api/skills/install` - Install a skill
+
+Request:
+```json
+{
+  "git_url": "https://github.com/user/skill-repo",
+  "skill_name": "my-skill"  // optional, auto-extracted from URL
+}
+```
+
+Response (201 Created):
+```json
+{
+  "name": "my-skill",
+  "version": "1.0.0",
+  "description": "Skill description",
+  "author": "Author Name",
+  "capabilities": ["capability1"],
+  "required_tools": ["browser"],
+  "path": "/path/to/skills/my-skill",
+  "repository": "https://github.com/user/skill-repo",
+  "license": "MIT",
+  "tags": ["tag1", "tag2"]
+}
+```
+
+### `POST /api/skills/{skill_name}/update` - Update a skill
+
+Response (200 OK):
+```json
+{
+  "success": true,
+  "message": "Skill 'my-skill' updated successfully"
+}
+```
+
+### `GET /api/skills` - List all skills
+
+Query parameters:
+- `capability`: Filter by capability
+- `tag`: Filter by tag
+
+Response (200 OK):
+```json
+{
+  "skills": [
+    {
+      "name": "skill1",
+      "version": "1.0.0",
+      ...
+    }
+  ],
+  "total": 1
+}
+```
+
+### `GET /api/skills/{skill_name}` - Get skill info
+
+Response (200 OK):
+```json
+{
+  "name": "my-skill",
+  "version": "1.0.0",
+  "description": "Skill description",
+  ...
+}
+```
+
+### `POST /api/skills/reload` - Reload registry
+
+Response (200 OK):
+```json
+{
+  "success": true,
+  "message": "Registry reloaded. 5 skills found."
+}
+```
+
 ## Usage
 
 ### Discovery and Loading
@@ -126,6 +322,27 @@ capabilities = skill.get_capabilities()
 
 ### Installation
 
+#### Via CLI
+
+```bash
+# Install skill from GitHub
+agent-bus-skills install https://github.com/user/skill-repo
+
+# Install with custom name
+agent-bus-skills install https://github.com/user/skill-repo --name my-skill
+
+# Update installed skill
+agent-bus-skills update my-skill
+
+# List all installed skills
+agent-bus-skills list
+
+# Show detailed info
+agent-bus-skills info my-skill
+```
+
+#### Via Python API
+
 ```python
 # Install skill from GitHub
 await manager.install_skill(
@@ -135,6 +352,27 @@ await manager.install_skill(
 
 # Update existing skill
 await manager.update_skill("ui-ux-pro-max")
+```
+
+#### Via REST API
+
+```bash
+# Install skill
+curl -X POST http://localhost:8000/api/skills/install \
+  -H "Content-Type: application/json" \
+  -d '{"git_url": "https://github.com/user/skill-repo", "skill_name": "my-skill"}'
+
+# Update skill
+curl -X POST http://localhost:8000/api/skills/my-skill/update
+
+# List skills
+curl http://localhost:8000/api/skills
+
+# Get skill info
+curl http://localhost:8000/api/skills/my-skill
+
+# Reload registry
+curl -X POST http://localhost:8000/api/skills/reload
 ```
 
 ### Querying Skills
@@ -346,14 +584,36 @@ The skills system includes comprehensive test coverage:
   - Error scenarios
   - Git operations
 
+- **CLI tests** (`tests/test_cli.py`)
+  - Install command (success, auto-name, errors)
+  - Update command
+  - List command (basic, verbose)
+  - Info command
+  - Name extraction
+  - Error handling
+
+- **API tests** (`tests/test_api_skills.py`)
+  - Install endpoint
+  - Update endpoint
+  - List endpoint (with filters)
+  - Get skill endpoint
+  - Reload endpoint
+  - Error responses
+
 ### Running Tests
 
 ```bash
 # All skills tests
-pytest tests/test_skills_*.py -v
+pytest tests/test_skills_*.py tests/test_cli.py tests/test_api_skills.py -v
 
 # Specific test file
 pytest tests/test_skills_registry.py -v
+
+# CLI tests only
+pytest tests/test_cli.py -v
+
+# API tests only
+pytest tests/test_api_skills.py -v
 
 # Single test
 pytest tests/test_skills_registry.py::TestSkillRegistry::test_load_skill_with_valid_metadata -v
