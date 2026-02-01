@@ -2,19 +2,31 @@ import os
 import time
 import uuid
 
-import requests
+import urllib.request
+import json
 
 
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8000").rstrip("/")
+
+
+def http(method: str, url: str, payload=None, timeout=10):
+    data = None
+    headers = {"Accept": "application/json"}
+    if payload is not None:
+        data = json.dumps(payload).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+    req = urllib.request.Request(url, data=data, headers=headers, method=method)
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        body = resp.read().decode("utf-8")
+        return resp.status, json.loads(body or "{}")
 
 
 def wait_for(job_id: str, predicate, timeout_s: float = 60.0, poll_s: float = 1.0):
     start = time.time()
     last = None
     while time.time() - start < timeout_s:
-        r = requests.get(f"{BASE_URL}/api/projects/{job_id}", timeout=10)
-        r.raise_for_status()
-        last = r.json()
+        status, last = http("GET", f"{BASE_URL}/api/projects/{job_id}")
+        assert status == 200
         if predicate(last):
             return last
         time.sleep(poll_s)
@@ -28,16 +40,16 @@ def test_async_hitl_flow_end_to_end():
     """
     project_id = f"it_{uuid.uuid4().hex[:10]}"
 
-    r = requests.post(
+    status, created = http(
+        "POST",
         f"{BASE_URL}/api/projects/",
-        json={
+        payload={
             "project_id": project_id,
             "requirements": "PRD for a lightweight bug tracker with tags, search, and SLAs.",
         },
         timeout=10,
     )
-    r.raise_for_status()
-    created = r.json()
+    assert status == 200
     job_id = created["job_id"]
 
     # Wait for PRD stage to complete
@@ -49,16 +61,17 @@ def test_async_hitl_flow_end_to_end():
     assert job.get("status") in {"waiting_for_approval", "in_progress", "orchestrating", "queued", "approved"}
 
     # PRD exists
-    prd = requests.get(f"{BASE_URL}/api/projects/{job_id}/prd", timeout=10).json()
+    _, prd = http("GET", f"{BASE_URL}/api/projects/{job_id}/prd", timeout=10)
     assert prd.get("content")
 
     # Approve
-    r = requests.post(
+    status, _ = http(
+        "POST",
         f"{BASE_URL}/api/projects/{job_id}/approve",
-        json={"notes": "integration test"},
+        payload={"notes": "integration test"},
         timeout=10,
     )
-    r.raise_for_status()
+    assert status == 200
 
     # Completed
     job = wait_for(
