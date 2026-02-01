@@ -414,6 +414,90 @@ async def get_job_security(job_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/{job_id}/documentation")
+async def get_job_documentation(job_id: str):
+    """Fetch the latest documentation for a job."""
+    try:
+        pool = await postgres_client.get_pool()
+        async with pool.acquire() as conn:
+            artifact_row = await conn.fetchrow(
+                """
+                SELECT id, content, metadata, updated_at, created_at
+                FROM artifacts
+                WHERE job_id = $1 AND type = 'documentation'
+                ORDER BY updated_at DESC, created_at DESC
+                LIMIT 1
+                """,
+                job_id
+            )
+            if artifact_row:
+                return dict(artifact_row)
+
+            task_row = await conn.fetchrow(
+                """
+                SELECT id, output_data->'documentation' AS documentation,
+                       output_data, completed_at, created_at
+                FROM tasks
+                WHERE job_id = $1 AND task_type = 'documentation'
+                ORDER BY completed_at DESC, created_at DESC
+                LIMIT 1
+                """,
+                job_id
+            )
+            if task_row and task_row.get("documentation"):
+                payload = dict(task_row)
+                payload["content"] = payload.pop("documentation")
+                return payload
+
+        raise HTTPException(status_code=404, detail="Documentation not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{job_id}/support_docs")
+async def get_job_support_docs(job_id: str):
+    """Fetch the latest support documentation for a job."""
+    try:
+        pool = await postgres_client.get_pool()
+        async with pool.acquire() as conn:
+            artifact_row = await conn.fetchrow(
+                """
+                SELECT id, content, metadata, updated_at, created_at
+                FROM artifacts
+                WHERE job_id = $1 AND type = 'support_docs'
+                ORDER BY updated_at DESC, created_at DESC
+                LIMIT 1
+                """,
+                job_id
+            )
+            if artifact_row:
+                return dict(artifact_row)
+
+            task_row = await conn.fetchrow(
+                """
+                SELECT id, output_data->'support_docs' AS support_docs,
+                       output_data, completed_at, created_at
+                FROM tasks
+                WHERE job_id = $1 AND task_type = 'support_docs'
+                ORDER BY completed_at DESC, created_at DESC
+                LIMIT 1
+                """,
+                job_id
+            )
+            if task_row and task_row.get("support_docs"):
+                payload = dict(task_row)
+                payload["content"] = payload.pop("support_docs")
+                return payload
+
+        raise HTTPException(status_code=404, detail="Support documentation not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/{job_id}/memory_hits")
 async def get_job_memory_hits(job_id: str):
     """Return memory hits captured during PRD generation."""

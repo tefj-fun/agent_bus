@@ -183,6 +183,42 @@ class MasterAgent:
             }
         )
 
+        # Execute Documentation and Support stages in parallel after Security
+        security_content = await self._fetch_artifact_content(job_id, "security")
+        
+        # Run documentation and support in parallel
+        documentation_task = self._execute_stage(
+            job_id=job_id,
+            project_id=project_id,
+            stage=WorkflowStage.DOCUMENTATION,
+            inputs={
+                "development": development_content or "",
+                "architecture": architecture_content or "",
+                "qa": qa_content or "",
+                "security": security_content or "",
+                "prd": prd_content
+            }
+        )
+        
+        support_task = self._execute_stage(
+            job_id=job_id,
+            project_id=project_id,
+            stage=WorkflowStage.SUPPORT_DOCS,
+            inputs={
+                "development": development_content or "",
+                "architecture": architecture_content or "",
+                "qa": qa_content or "",
+                "security": security_content or "",
+                "prd": prd_content
+            }
+        )
+        
+        # Wait for both to complete
+        documentation_result, support_result = await asyncio.gather(
+            documentation_task,
+            support_task
+        )
+
         await self.postgres.update_job_status(
             job_id=job_id,
             status="completed",
@@ -198,7 +234,9 @@ class MasterAgent:
                 "ui_ux": uiux_result,
                 "development": development_result,
                 "qa": qa_result,
-                "security": security_result
+                "security": security_result,
+                "documentation": documentation_result,
+                "support": support_result
             }
         }
 
