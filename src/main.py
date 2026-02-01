@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from .infrastructure.redis_client import redis_client
 from .infrastructure.postgres_client import postgres_client
 from .api.routes import projects, memory
-from .api.routes import ui
+from .api.routes import ui, ui_jobs
 from .config import settings
 
 
@@ -50,6 +50,7 @@ app.add_middleware(
 app.include_router(projects.router, prefix="/api/projects", tags=["projects"])
 app.include_router(memory.router, prefix="/api/memory", tags=["memory"])
 app.include_router(ui.router, prefix="/ui", tags=["ui"])
+app.include_router(ui_jobs.router, prefix="/ui", tags=["ui"])
 
 
 @app.get("/")
