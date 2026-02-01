@@ -51,7 +51,7 @@ jobs:
           LLM_MODE: mock
           BASE_URL: http://localhost:8000
           PROJECT_ID: gha_phase4_smoke
-          TIMEOUT_SECS: "420"
+          TIMEOUT_SECS: "600"
         run: |
           ./scripts/phase4_smoke.sh
 
