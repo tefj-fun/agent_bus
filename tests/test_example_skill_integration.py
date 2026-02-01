@@ -5,8 +5,11 @@ test_agent_skill_permissions.py, we skip the entire module in CI. Run locally fo
 """
 
 # Skip entire module in CI (same pattern as test_agent_skill_permissions.py)
+import os
 import pytest
-pytestmark = pytest.mark.skipif(True, reason="Requires database - run manually or in full integration tests")
+
+SKIP_DB_TESTS = os.getenv("CI") == "true"
+pytestmark = pytest.mark.skipif(SKIP_DB_TESTS, reason="Requires database - run manually or in full integration tests")
 
 import asyncpg
 import json
@@ -482,7 +485,7 @@ class TestSkillsManagerIntegration:
         # Create manager with allowlist
         manager_with_perms = SkillsManager(
             skills_manager.skills_dir,
-            allowlist_manager=allowlist_manager
+            db_pool=db_pool
         )
         
         # Should succeed
@@ -504,7 +507,7 @@ class TestSkillsManagerIntegration:
         
         manager_with_perms = SkillsManager(
             skills_manager.skills_dir,
-            allowlist_manager=allowlist_manager
+            db_pool=db_pool
         )
         
         # Should raise SkillPermissionError
@@ -571,7 +574,7 @@ class TestEndToEndWorkflow:
         # 5. Agent loads skill (with permission check)
         manager_with_perms = SkillsManager(
             skills_manager.skills_dir,
-            allowlist_manager=allowlist_manager
+            db_pool=db_pool
         )
         
         loaded_skill = await manager_with_perms.load_skill(
