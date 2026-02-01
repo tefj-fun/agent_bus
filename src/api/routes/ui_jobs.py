@@ -28,10 +28,10 @@ async def jobs_list(limit: int = 50):
         trs.append(
             f"<tr>"
             f"<td><a href=\"/api/projects/{job_id}\">{job_id}</a></td>"
-            f"<td>{r[project_id]}</td>"
-            f"<td>{r[status]}</td>"
-            f"<td>{r[workflow_stage]}</td>"
-            f"<td>{r[updated_at]}</td>"
+            f"<td>{r['project_id']}</td>"
+            f"<td>{r['status']}</td>"
+            f"<td>{r['workflow_stage']}</td>"
+            f"<td>{r['updated_at']}</td>"
             f"</tr>"
         )
 
