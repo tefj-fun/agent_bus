@@ -81,3 +81,11 @@ def test_async_hitl_flow_end_to_end():
         timeout_s=180,
     )
     assert job.get("status") == "completed"
+
+    # Plan exists
+    _, plan = http("GET", f"{BASE_URL}/api/projects/{job_id}/plan", timeout=10)
+    assert plan.get("content") or plan.get("output_data")
+
+    # Architecture exists
+    _, arch = http("GET", f"{BASE_URL}/api/projects/{job_id}/architecture", timeout=10)
+    assert arch.get("content") or arch.get("output_data")

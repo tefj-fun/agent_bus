@@ -8,6 +8,7 @@ from .product_manager import ProductManager
 from .project_manager import ProjectManager
 from .memory_agent import MemoryAgent
 from .plan_agent import PlanAgent
+from .architect_agent import ArchitectAgent
 
 __all__ = [
     "BaseAgent",
@@ -21,4 +22,5 @@ __all__ = [
     "ProjectManager",
     "MemoryAgent",
     "PlanAgent",
+    "ArchitectAgent",
 ]

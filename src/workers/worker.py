@@ -12,8 +12,8 @@ from ..agents.product_manager import ProductManager
 from ..agents.project_manager import ProjectManager
 from ..agents.memory_agent import MemoryAgent
 from ..agents.plan_agent import PlanAgent
+from ..agents.architect_agent import ArchitectAgent
 # TODO: Import other specialized agents as they are implemented
-# from ..agents.solution_architect import SolutionArchitect
 # from ..agents.uiux_designer import UIUXDesigner
 # etc.
 
@@ -45,8 +45,8 @@ class AgentWorker:
             "project_manager": ProjectManager,
             "memory_agent": MemoryAgent,
             "plan_agent": PlanAgent,
+            "architect_agent": ArchitectAgent,
             # TODO: Register other agents
-            # "solution_architect": SolutionArchitect,
             # "uiux_designer": UIUXDesigner,
             # "developer_agent": DeveloperAgent,
             # "qa_engineer": QAEngineer,

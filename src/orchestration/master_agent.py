@@ -117,11 +117,21 @@ class MasterAgent:
         if not prd_content:
             raise ValueError(f"No PRD content available for job {job_id}")
 
+        # Execute plan generation
         plan_result = await self._execute_stage(
             job_id=job_id,
             project_id=project_id,
             stage=WorkflowStage.PLAN_GENERATION,
             inputs={"prd": prd_content}
+        )
+
+        # Execute architecture design
+        plan_content = await self._fetch_artifact_content(job_id, "plan")
+        architecture_result = await self._execute_stage(
+            job_id=job_id,
+            project_id=project_id,
+            stage=WorkflowStage.ARCHITECTURE_DESIGN,
+            inputs={"prd": prd_content, "plan": plan_content or ""}
         )
 
         await self.postgres.update_job_status(
@@ -133,7 +143,10 @@ class MasterAgent:
         return {
             "job_id": job_id,
             "status": "completed",
-            "results": {"plan": plan_result}
+            "results": {
+                "plan": plan_result,
+                "architecture": architecture_result
+            }
         }
 
     async def _fetch_project_and_prd(self, job_id: str) -> tuple[Optional[str], Optional[str]]:
@@ -173,6 +186,23 @@ class MasterAgent:
             prd_content = task_row["prd_content"] if task_row else None
 
         return project_id, prd_content
+
+    async def _fetch_artifact_content(self, job_id: str, artifact_type: str) -> Optional[str]:
+        """Fetch artifact content by type for a job."""
+        pool = await self.postgres.get_pool()
+        async with pool.acquire() as conn:
+            artifact_row = await conn.fetchrow(
+                """
+                SELECT content
+                FROM artifacts
+                WHERE job_id = $1 AND type = $2
+                ORDER BY updated_at DESC, created_at DESC
+                LIMIT 1
+                """,
+                job_id,
+                artifact_type
+            )
+            return artifact_row["content"] if artifact_row else None
 
     async def _execute_stage(
         self,
