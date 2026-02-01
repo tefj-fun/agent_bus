@@ -1,0 +1,71 @@
+{
+  "dashboard": {
+    "title": "Agent Bus System Overview",
+    "panels": [
+      {
+        "title": "HTTP Request Rate",
+        "targets": [
+          {
+            "expr": "rate(agent_bus_http_requests_total[5m])"
+          }
+        ]
+      },
+      {
+        "title": "Active Jobs",
+        "targets": [
+          {
+            "expr": "agent_bus_jobs_active"
+          }
+        ]
+      },
+      {
+        "title": "Job Completion Rate",
+        "targets": [
+          {
+            "expr": "rate(agent_bus_jobs_completed_total[5m])"
+          }
+        ]
+      },
+      {
+        "title": "Agent Execution Duration (p95)",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(agent_bus_agent_execution_duration_seconds_bucket[5m]))"
+          }
+        ]
+      },
+      {
+        "title": "LLM API Calls",
+        "targets": [
+          {
+            "expr": "rate(agent_bus_agent_llm_calls_total[5m])"
+          }
+        ]
+      },
+      {
+        "title": "Error Rate",
+        "targets": [
+          {
+            "expr": "rate(agent_bus_errors_total[5m])"
+          }
+        ]
+      },
+      {
+        "title": "Worker Queue Size",
+        "targets": [
+          {
+            "expr": "agent_bus_worker_queue_size"
+          }
+        ]
+      },
+      {
+        "title": "Database Connections",
+        "targets": [
+          {
+            "expr": "agent_bus_db_connections_active"
+          }
+        ]
+      }
+    ]
+  }
+}
