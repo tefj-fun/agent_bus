@@ -306,8 +306,7 @@ class TestCLIMain:
             captured = capsys.readouterr()
             # Should show help
 
-    @pytest.mark.asyncio
-    async def test_main_install(self):
+    def test_main_install(self):
         """Test install command via main."""
         with tempfile.TemporaryDirectory() as tmpdir:
             skill_dir = Path(tmpdir) / "test-skill"
