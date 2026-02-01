@@ -15,6 +15,7 @@ from ..agents.plan_agent import PlanAgent
 from ..agents.architect_agent import ArchitectAgent
 from ..agents.uiux_agent import UIUXAgent
 from ..agents.developer_agent import DeveloperAgent
+from ..agents.qa_agent import QAAgent
 # TODO: Import other specialized agents as they are implemented
 # etc.
 
@@ -49,8 +50,8 @@ class AgentWorker:
             "architect_agent": ArchitectAgent,
             "uiux_agent": UIUXAgent,
             "developer_agent": DeveloperAgent,
+            "qa_agent": QAAgent,
             # TODO: Register other agents
-            # "qa_engineer": QAEngineer,
             # "security_engineer": SecurityEngineer,
         }
 

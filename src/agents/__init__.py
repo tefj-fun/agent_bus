@@ -11,6 +11,7 @@ from .plan_agent import PlanAgent
 from .architect_agent import ArchitectAgent
 from .uiux_agent import UIUXAgent
 from .developer_agent import DeveloperAgent
+from .qa_agent import QAAgent
 
 __all__ = [
     "BaseAgent",
@@ -27,4 +28,5 @@ __all__ = [
     "ArchitectAgent",
     "UIUXAgent",
     "DeveloperAgent",
+    "QAAgent",
 ]

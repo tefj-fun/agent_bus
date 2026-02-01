@@ -330,6 +330,48 @@ async def get_job_development(job_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/{job_id}/qa")
+async def get_job_qa(job_id: str):
+    """Fetch the latest QA strategy and test plans for a job."""
+    try:
+        pool = await postgres_client.get_pool()
+        async with pool.acquire() as conn:
+            artifact_row = await conn.fetchrow(
+                """
+                SELECT id, content, metadata, updated_at, created_at
+                FROM artifacts
+                WHERE job_id = $1 AND type = 'qa'
+                ORDER BY updated_at DESC, created_at DESC
+                LIMIT 1
+                """,
+                job_id
+            )
+            if artifact_row:
+                return dict(artifact_row)
+
+            task_row = await conn.fetchrow(
+                """
+                SELECT id, output_data->'qa' AS qa,
+                       output_data, completed_at, created_at
+                FROM tasks
+                WHERE job_id = $1 AND task_type = 'qa_testing'
+                ORDER BY completed_at DESC, created_at DESC
+                LIMIT 1
+                """,
+                job_id
+            )
+            if task_row and task_row.get("qa"):
+                payload = dict(task_row)
+                payload["content"] = payload.pop("qa")
+                return payload
+
+        raise HTTPException(status_code=404, detail="QA strategy not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/{job_id}/memory_hits")
 async def get_job_memory_hits(job_id: str):
     """Return memory hits captured during PRD generation."""

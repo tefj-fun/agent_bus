@@ -95,7 +95,7 @@ class WorkflowStateMachine:
         WorkflowStage.ARCHITECTURE_DESIGN: "architect_agent",
         WorkflowStage.UIUX_DESIGN: "uiux_agent",
         WorkflowStage.DEVELOPMENT: "developer_agent",
-        WorkflowStage.QA_TESTING: "qa_engineer",
+        WorkflowStage.QA_TESTING: "qa_agent",
         WorkflowStage.SECURITY_REVIEW: "security_engineer",
         WorkflowStage.DOCUMENTATION: "tech_writer",
         WorkflowStage.SUPPORT_DOCS: "support_engineer",
