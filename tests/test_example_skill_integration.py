@@ -67,7 +67,7 @@ class RestrictedAgent(BaseAgent):
 async def db_pool():
     """Create test database pool."""
     pool = await asyncpg.create_pool(
-        host="localhost",
+        host="postgres",
         port=5432,
         database="agent_bus_test",
         user="agent_bus",
@@ -104,7 +104,7 @@ def example_skills_dir():
     skill_json = {
         "name": "weather-toolkit",
         "version": "1.0.0",
-        "description": "Weather data fetching and analysis toolkit",
+        "description": "Weather data fetching and analysis toolkit with forecasting capabilities",
         "author": "Agent Bus Example",
         "capabilities": [
             {
@@ -125,35 +125,55 @@ def example_skills_dir():
             {"name": "exec", "required": False}
         ],
         "dependencies": [
-            {"name": "requests", "version": ">=2.28.0", "optional": False}
+            {"name": "requests", "version": ">=2.28.0", "optional": False},
+            {"name": "python-dateutil", "version": ">=2.8.0", "optional": False}
         ],
         "entry_point": "skill.md",
         "min_python_version": "3.10",
         "repository": "https://github.com/example/weather-toolkit",
         "license": "MIT",
-        "tags": ["weather", "data", "api", "example"],
+        "tags": ["weather", "data", "api", "forecasting", "example"],
         "metadata": {
             "example": True,
-            "api_endpoint": "https://api.weather.gov"
+            "api_endpoint": "https://api.weather.gov",
+            "rate_limit": "5 requests per second",
+            "coverage": "US locations only (NOAA data)"
         }
     }
     
     with open(skill_dir / "skill.json", "w") as f:
         json.dump(skill_json, f, indent=2)
     
-    skill_md = """# Weather Toolkit
+    # Use the actual skill.md content from the repository
+    skill_md_path = Path(__file__).parent.parent / "skills" / "weather-toolkit" / "skill.md"
+    if skill_md_path.exists():
+        with open(skill_md_path, "r") as f:
+            skill_md = f.read()
+    else:
+        # Fallback if the actual skill file doesn't exist
+        skill_md = """# Weather Toolkit
 
-Example skill demonstrating Agent Bus skills system.
+A comprehensive skill for fetching, analyzing, and interpreting weather data using the NOAA Weather API.
+
+## Overview
+
+The Weather Toolkit provides capabilities for:
+- **Current conditions**: Real-time weather data for any US location
+- **Multi-day forecasts**: Extended weather predictions
+- **Pattern analysis**: Identify trends and anomalies in weather data
 
 ## Capabilities
 
-- weather-query: Get current conditions
-- weather-forecast: Get multi-day forecasts
-- weather-analysis: Analyze patterns
+### 1. weather-query
+Fetch current weather conditions including temperature, humidity, wind, and precipitation.
 
-## Usage
+### 2. weather-forecast
+Retrieve multi-day forecasts with detailed hourly and daily predictions.
 
-This skill integrates with NOAA Weather API.
+### 3. weather-analysis
+Analyze weather patterns, detect anomalies, and provide insights.
+
+## Implementation guidance and usage examples would go here...
 """
     
     with open(skill_dir / "skill.md", "w") as f:
