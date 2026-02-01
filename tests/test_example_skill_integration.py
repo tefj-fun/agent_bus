@@ -66,12 +66,22 @@ class RestrictedAgent(BaseAgent):
 @pytest.fixture
 async def db_pool():
     """Create test database pool."""
+    if SKIP_DB_TESTS:
+        pytest.skip("Database tests skipped in CI environment")
+    
+    # Use Docker Compose database settings (agent_bus database)
+    # In production/CI, use separate test database
+    db_host = os.getenv("DB_HOST", "postgres")
+    db_name = os.getenv("DB_NAME", "agent_bus")
+    db_user = os.getenv("DB_USER", "agent_bus")
+    db_password = os.getenv("DB_PASSWORD", "agent_bus_dev_password")
+    
     pool = await asyncpg.create_pool(
-        host="postgres",
+        host=db_host,
         port=5432,
-        database="agent_bus_test",
-        user="agent_bus",
-        password="test_password",
+        database=db_name,
+        user=db_user,
+        password=db_password,
         min_size=1,
         max_size=5
     )

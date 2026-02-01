@@ -35,6 +35,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY src/ ./src/
 COPY skills/ ./skills/
 COPY tests/ ./tests/
+COPY scripts/ ./scripts/
 
 # Expose port
 EXPOSE 8000
