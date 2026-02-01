@@ -54,12 +54,12 @@ async def home():
 
 @router.post("/create", response_class=HTMLResponse)
 async def create(project_id: str = Form(...), requirements: str = Form(...)):
-    # Reuse API create_project logic
-    req = ProjectRequest(project_id=project_id, requirements=requirements, metadata=None)
-    resp = await create_project(req)
+    try:
+        req = ProjectRequest(project_id=project_id, requirements=requirements, metadata=None)
+        resp = await create_project(req)
+        job_id = resp.job_id
 
-    job_id = resp.job_id
-    return f"""
+        return f"""
 <!doctype html>
 <html>
   <head>
@@ -70,13 +70,47 @@ async def create(project_id: str = Form(...), requirements: str = Form(...)):
       body {{ font-family: ui-sans-serif, system-ui; margin: 24px; }}
       a {{ color: #2563eb; }}
       code {{ background:#f3f4f6; padding:2px 6px; border-radius:6px; }}
+      .ok {{ padding: 10px 12px; border-radius: 10px; background: #ecfdf5; border: 1px solid #a7f3d0; }}
     </style>
   </head>
   <body>
-    <h2>Created job</h2>
-    <p><strong>job_id:</strong> <code>{job_id}</code></p>
-    <p><a href=\"/ui/\">Create another</a></p>
-    <p>API status endpoint: <a href=\"/api/projects/{job_id}\">/api/projects/{job_id}</a></p>
+    <div class=\"ok\">
+      <h2 style=\"margin:0 0 8px 0\">Created job</h2>
+      <p><strong>job_id:</strong> <code>{job_id}</code></p>
+      <p>
+        <a href=\"/ui/\">Create another</a> ·
+        <a href=\"/ui/jobs\">Jobs</a> ·
+        <a href=\"/ui/prd/{job_id}\">PRD</a> ·
+        <a href=\"/ui/plan/{job_id}\">Plan</a> ·
+        <a href=\"/api/projects/{job_id}\">API status</a>
+      </p>
+    </div>
+  </body>
+</html>
+"""
+
+    except Exception as e:
+        msg = str(e)
+        return f"""
+<!doctype html>
+<html>
+  <head>
+    <meta charset=\"utf-8\" />
+    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+    <title>Error</title>
+    <style>
+      body {{ font-family: ui-sans-serif, system-ui; margin: 24px; }}
+      .err {{ padding: 10px 12px; border-radius: 10px; background: #fef2f2; border: 1px solid #fecaca; }}
+      pre {{ white-space: pre-wrap; }}
+      a {{ color: #2563eb; }}
+    </style>
+  </head>
+  <body>
+    <div class=\"err\">
+      <h2 style=\"margin:0 0 8px 0\">Create failed</h2>
+      <pre>{msg}</pre>
+      <p><a href=\"/ui/\">Back</a></p>
+    </div>
   </body>
 </html>
 """
