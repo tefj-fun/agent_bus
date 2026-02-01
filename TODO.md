@@ -158,8 +158,25 @@ All subtasks implemented and merged:
 - [ ] (Break down into child tickets in Jira if not already)
 
 ### 5) KAN-40 — CI/CD hardening
+**Status:** In Progress (1/5 complete, 1 in review)
+
+Subtasks (implementation order):
+- [x] KAN-80 CI: Make smoke test mock-LLM required; run real-Claude nightly ✅
+  - nightly-real-smoke.yml workflow exists
+  - Mock smoke test runs on every PR
+  - Real Claude smoke test runs nightly
+- [ ] KAN-76 CI: add lint/format (ruff/black) + checks 🔄
+  - PR #38 created, CI running (2nd attempt)
+  - Added separate lint job (ruff + black checks)
+  - Fixed 45 lint issues, reformatted 73 files
+  - Fixed missing dependencies in Dockerfile
+  - Waiting for CI to pass before merge
+- [ ] KAN-77 CI: container build cache improvements
+  - Branch created, implementation ready
+  - Will use GitHub Actions cache + docker/build-push-action
+- [ ] KAN-78 CI: branch protection rules
 - [ ] KAN-79 CD: release tagging + deployment stub
-- [ ] (Other KAN-40 children as created)
+- [ ] (KAN-86 Security scanning - recommended addition)
 
 ## Notes / guardrails
 - Do not “randomly” start tickets outside this order.
