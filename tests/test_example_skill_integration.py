@@ -363,10 +363,10 @@ class TestCapabilityMapping:
             priority=10
         )
         
-        # Higher priority should come first
+        # Lower priority number = higher priority (should come first)
         skills = await allowlist_manager.get_skills_by_capability("data-fetch")
-        assert skills[0] == "other-toolkit"
-        assert skills[1] == "weather-toolkit"
+        assert skills[0] == "weather-toolkit"  # priority=5 (higher)
+        assert skills[1] == "other-toolkit"  # priority=10 (lower)
     
     @pytest.mark.asyncio
     async def test_multiple_skills_per_capability(self, allowlist_manager):
