@@ -1,0 +1,53 @@
+{
+  "name": "weather-toolkit",
+  "version": "1.0.0",
+  "description": "Weather data fetching and analysis toolkit with forecasting capabilities",
+  "author": "Agent Bus Example",
+  "capabilities": [
+    {
+      "name": "weather-query",
+      "description": "Fetch current weather conditions for any location"
+    },
+    {
+      "name": "weather-forecast",
+      "description": "Get multi-day weather forecasts"
+    },
+    {
+      "name": "weather-analysis",
+      "description": "Analyze weather patterns and trends"
+    }
+  ],
+  "required_tools": [
+    {
+      "name": "web_fetch",
+      "required": true
+    },
+    {
+      "name": "exec",
+      "required": false
+    }
+  ],
+  "dependencies": [
+    {
+      "name": "requests",
+      "version": ">=2.28.0",
+      "optional": false
+    },
+    {
+      "name": "python-dateutil",
+      "version": ">=2.8.0",
+      "optional": false
+    }
+  ],
+  "entry_point": "skill.md",
+  "min_python_version": "3.10",
+  "repository": "https://github.com/example/weather-toolkit",
+  "license": "MIT",
+  "tags": ["weather", "data", "api", "forecasting", "example"],
+  "metadata": {
+    "example": true,
+    "api_endpoint": "https://api.weather.gov",
+    "rate_limit": "5 requests per second",
+    "coverage": "US locations only (NOAA data)"
+  }
+}
