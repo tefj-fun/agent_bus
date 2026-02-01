@@ -316,19 +316,19 @@ class TestCapabilityMapping:
         """Test mapping weather capabilities to example skill."""
         # Map all three capabilities
         await allowlist_manager.add_capability_mapping(
-            capability="weather-query",
+            capability_name="weather-query",
             skill_name="weather-toolkit",
             priority=10
         )
         
         await allowlist_manager.add_capability_mapping(
-            capability="weather-forecast",
+            capability_name="weather-forecast",
             skill_name="weather-toolkit",
             priority=10
         )
         
         await allowlist_manager.add_capability_mapping(
-            capability="weather-analysis",
+            capability_name="weather-analysis",
             skill_name="weather-toolkit",
             priority=5
         )
@@ -347,13 +347,13 @@ class TestCapabilityMapping:
         """Test that capabilities respect priority ordering."""
         # Add weather-toolkit with different priorities
         await allowlist_manager.add_capability_mapping(
-            capability="data-fetch",
+            capability_name="data-fetch",
             skill_name="weather-toolkit",
             priority=5
         )
         
         await allowlist_manager.add_capability_mapping(
-            capability="data-fetch",
+            capability_name="data-fetch",
             skill_name="other-toolkit",
             priority=10
         )
@@ -367,13 +367,13 @@ class TestCapabilityMapping:
     async def test_multiple_skills_per_capability(self, allowlist_manager):
         """Test that multiple skills can provide same capability."""
         await allowlist_manager.add_capability_mapping(
-            capability="weather-query",
+            capability_name="weather-query",
             skill_name="weather-toolkit",
             priority=10
         )
         
         await allowlist_manager.add_capability_mapping(
-            capability="weather-query",
+            capability_name="weather-query",
             skill_name="alternate-weather",
             priority=8
         )
@@ -479,7 +479,7 @@ class TestSkillsManagerIntegration:
         
         # Create manager with allowlist
         manager_with_perms = SkillsManager(
-            skills_manager.skills_directory,
+            skills_manager.skills_dir,
             allowlist_manager=allowlist_manager
         )
         
@@ -501,7 +501,7 @@ class TestSkillsManagerIntegration:
         )
         
         manager_with_perms = SkillsManager(
-            skills_manager.skills_directory,
+            skills_manager.skills_dir,
             allowlist_manager=allowlist_manager
         )
         
@@ -568,7 +568,7 @@ class TestEndToEndWorkflow:
         
         # 5. Agent loads skill (with permission check)
         manager_with_perms = SkillsManager(
-            skills_manager.skills_directory,
+            skills_manager.skills_dir,
             allowlist_manager=allowlist_manager
         )
         
