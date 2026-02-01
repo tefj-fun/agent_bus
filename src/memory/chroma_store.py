@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import uuid
 from typing import Any, Dict, List, Optional
 
 import chromadb
@@ -168,12 +167,20 @@ class ChromaDBStore:
             formatted = []
             if results and results.get("ids"):
                 for i, doc_id in enumerate(results["ids"][0]):
-                    formatted.append({
-                        "id": doc_id,
-                        "text": results["documents"][0][i] if results.get("documents") else "",
-                        "metadata": results["metadatas"][0][i] if results.get("metadatas") else {},
-                        "score": 1.0 - results["distances"][0][i] if results.get("distances") else 0.0,  # Convert distance to similarity
-                    })
+                    formatted.append(
+                        {
+                            "id": doc_id,
+                            "text": results["documents"][0][i] if results.get("documents") else "",
+                            "metadata": (
+                                results["metadatas"][0][i] if results.get("metadatas") else {}
+                            ),
+                            "score": (
+                                1.0 - results["distances"][0][i]
+                                if results.get("distances")
+                                else 0.0
+                            ),  # Convert distance to similarity
+                        }
+                    )
 
             self.last_error = None
             return formatted
@@ -239,7 +246,7 @@ class ChromaDBStore:
             embedding_info = {}
             if self.embedding_generator:
                 embedding_info = self.embedding_generator.get_info()
-            
+
             return {
                 "backend": self.backend,
                 "mode": self.mode,
@@ -271,16 +278,13 @@ class ChromaDBStore:
         """
         try:
             # Get all patterns from Postgres
-            import asyncpg
-            
+
             async with postgres_store.db_pool.acquire() as conn:
-                rows = await conn.fetch(
-                    """
+                rows = await conn.fetch("""
                     SELECT id, content, metadata, pattern_type
                     FROM memory_patterns
                     ORDER BY created_at
-                    """
-                )
+                    """)
 
             # Upsert to ChromaDB
             migrated = 0
@@ -290,7 +294,7 @@ class ChromaDBStore:
                 metadata = row.get("metadata") or {}
                 if isinstance(metadata, str):
                     metadata = json.loads(metadata)
-                
+
                 # Add pattern_type to metadata
                 metadata["pattern_type"] = row.get("pattern_type", "document")
 

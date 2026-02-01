@@ -1,6 +1,5 @@
 """Skills manager for loading and executing Claude Skills."""
 
-import os
 import subprocess
 from typing import Dict, Optional, Any, List
 from pathlib import Path
@@ -11,16 +10,16 @@ from .registry import (
     SkillRegistry,
     SkillMetadata,
     SkillRegistryError,
-    SkillValidationError,
     SkillNotFoundError,
 )
-from .allowlist import SkillAllowlistManager, SkillPermissionError
+from .allowlist import SkillAllowlistManager
 
 logger = logging.getLogger(__name__)
 
 
 class SkillLoadError(Exception):
     """Failed to load skill content."""
+
     pass
 
 
@@ -45,7 +44,7 @@ class Skill:
 class SkillsManager:
     """
     Manages loading and execution of Claude Skills.
-    
+
     Features:
     - Skill discovery and validation via SkillRegistry
     - Lazy loading of skill content
@@ -56,11 +55,7 @@ class SkillsManager:
     - Comprehensive error handling
     """
 
-    def __init__(
-        self,
-        skills_dir: str = "./skills",
-        db_pool: Optional[asyncpg.Pool] = None
-    ):
+    def __init__(self, skills_dir: str = "./skills", db_pool: Optional[asyncpg.Pool] = None):
         self.skills_dir = Path(skills_dir)
         self.loaded_skills: Dict[str, Skill] = {}
         self.registry = SkillRegistry(str(skills_dir))
@@ -68,10 +63,7 @@ class SkillsManager:
         self.allowlist_manager = SkillAllowlistManager(db_pool) if db_pool else None
 
     async def load_skill(
-        self,
-        skill_name: str,
-        agent_id: Optional[str] = None,
-        enforce_permissions: bool = True
+        self, skill_name: str, agent_id: Optional[str] = None, enforce_permissions: bool = True
     ) -> Optional[Skill]:
         """
         Load a skill from the local directory with optional permission check.
@@ -83,7 +75,7 @@ class SkillsManager:
 
         Returns:
             Loaded Skill object or None if not found
-            
+
         Raises:
             SkillNotFoundError: If skill is not in registry
             SkillLoadError: If skill content cannot be loaded
@@ -92,7 +84,7 @@ class SkillsManager:
         # Check permissions if agent_id provided and allowlist available
         if enforce_permissions and agent_id and self.allowlist_manager:
             await self.allowlist_manager.enforce_permission(agent_id, skill_name)
-        
+
         # Check cache first
         if skill_name in self.loaded_skills:
             logger.debug(f"Returning cached skill: {skill_name}")
@@ -121,13 +113,13 @@ class SkillsManager:
     def _load_skill_content(self, metadata: SkillMetadata) -> str:
         """
         Load skill prompt content from filesystem.
-        
+
         Args:
             metadata: SkillMetadata containing path and entry_point
-            
+
         Returns:
             Skill prompt content as string
-            
+
         Raises:
             SkillLoadError: If content cannot be loaded
         """
@@ -147,22 +139,18 @@ class SkillsManager:
                 try:
                     with open(prompt_path, "r", encoding="utf-8") as f:
                         content = f.read()
-                    
+
                     if not content.strip():
                         logger.warning(
                             f"Empty content in {prompt_file} for skill '{metadata.name}'"
                         )
                         continue
-                    
-                    logger.debug(
-                        f"Loaded content from {prompt_file} for skill '{metadata.name}'"
-                    )
+
+                    logger.debug(f"Loaded content from {prompt_file} for skill '{metadata.name}'")
                     return content
-                    
+
                 except Exception as e:
-                    logger.error(
-                        f"Failed to read {prompt_file} for skill '{metadata.name}': {e}"
-                    )
+                    logger.error(f"Failed to read {prompt_file} for skill '{metadata.name}': {e}")
                     continue
 
         # No valid content found
@@ -181,7 +169,7 @@ class SkillsManager:
 
         Returns:
             True if successful, False otherwise
-            
+
         Raises:
             SkillRegistryError: If installation fails
         """
@@ -193,17 +181,17 @@ class SkillsManager:
 
         try:
             logger.info(f"Installing skill '{skill_name}' from {git_url}")
-            
+
             result = subprocess.run(
                 ["git", "clone", git_url, str(target_path)],
                 check=True,
                 capture_output=True,
                 text=True,
-                timeout=60
+                timeout=60,
             )
-            
+
             logger.debug(f"Git clone output: {result.stdout}")
-            
+
             # Validate the cloned skill
             is_valid, error = self.registry.validate_skill_directory(target_path)
             if not is_valid:
@@ -211,16 +199,16 @@ class SkillsManager:
                 # Clean up invalid clone
                 subprocess.run(["rm", "-rf", str(target_path)], check=False)
                 raise SkillRegistryError(f"Invalid skill: {error}")
-            
+
             # Reload registry to pick up new skill
             self.registry.reload()
-            
+
             # Save updated registry
             self.registry.save_registry()
-            
+
             logger.info(f"Successfully installed skill '{skill_name}'")
             return True
-            
+
         except subprocess.TimeoutExpired:
             logger.error(f"Git clone timed out for {git_url}")
             raise SkillRegistryError("Git clone operation timed out")
@@ -240,7 +228,7 @@ class SkillsManager:
 
         Returns:
             True if successful
-            
+
         Raises:
             SkillNotFoundError: If skill is not found
             SkillRegistryError: If update fails
@@ -252,30 +240,30 @@ class SkillsManager:
 
         try:
             logger.info(f"Updating skill '{skill_name}'")
-            
+
             result = subprocess.run(
                 ["git", "-C", skill_path, "pull"],
                 check=True,
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=30,
             )
-            
+
             logger.debug(f"Git pull output: {result.stdout}")
-            
+
             # Clear cache for this skill
             if skill_name in self.loaded_skills:
                 del self.loaded_skills[skill_name]
-            
+
             # Reload registry
             self.registry.reload()
-            
+
             # Save updated registry
             self.registry.save_registry()
-            
+
             logger.info(f"Successfully updated skill '{skill_name}'")
             return True
-            
+
         except subprocess.TimeoutExpired:
             logger.error(f"Git pull timed out for '{skill_name}'")
             raise SkillRegistryError("Git pull operation timed out")
@@ -289,7 +277,7 @@ class SkillsManager:
     def list_skills(self) -> list[SkillMetadata]:
         """
         List all available skills.
-        
+
         Returns:
             List of SkillMetadata objects
         """
@@ -298,20 +286,16 @@ class SkillsManager:
     def get_skill_info(self, skill_name: str) -> Optional[SkillMetadata]:
         """
         Get information about a skill.
-        
+
         Args:
             skill_name: Name of the skill
-            
+
         Returns:
             SkillMetadata or None if not found
         """
         return self.registry.get_skill(skill_name)
 
-    async def execute_skill(
-        self,
-        skill_name: str,
-        context: Dict[str, Any]
-    ) -> Optional[str]:
+    async def execute_skill(self, skill_name: str, context: Dict[str, Any]) -> Optional[str]:
         """
         Execute a skill with given context.
 
@@ -324,13 +308,13 @@ class SkillsManager:
 
         Returns:
             Skill prompt with context
-            
+
         Raises:
             SkillNotFoundError: If skill is not found
             SkillLoadError: If skill cannot be loaded
         """
         skill = await self.load_skill(skill_name)
-        
+
         # For now, return the skill prompt
         # The agent will use this prompt when calling Claude
         # Future: could apply context templating here
@@ -346,10 +330,10 @@ class SkillsManager:
     def get_skills_by_capability(self, capability: str) -> list[SkillMetadata]:
         """
         Find skills that provide a specific capability.
-        
+
         Args:
             capability: Capability name to search for
-            
+
         Returns:
             List of matching skills
         """
@@ -358,78 +342,67 @@ class SkillsManager:
     def get_skills_by_tag(self, tag: str) -> list[SkillMetadata]:
         """
         Find skills with a specific tag.
-        
+
         Args:
             tag: Tag to search for
-            
+
         Returns:
             List of matching skills
         """
         return self.registry.get_skills_by_tag(tag)
-    
+
     async def find_skills_for_capability(
-        self,
-        capability: str,
-        agent_id: Optional[str] = None
+        self, capability: str, agent_id: Optional[str] = None
     ) -> List[str]:
         """
         Find skills that provide a capability, filtered by agent permissions.
-        
+
         This uses the capability mapping table and agent allowlist.
-        
+
         Args:
             capability: Capability name (e.g., 'ui-design')
             agent_id: Optional agent ID to filter by permissions
-            
+
         Returns:
             List of skill names, ordered by priority
         """
         if not self.allowlist_manager:
             # Fallback to registry-based capability search
-            logger.warning(
-                "Allowlist manager not available, using registry-only capability search"
-            )
+            logger.warning("Allowlist manager not available, using registry-only capability search")
             skills = self.registry.get_skills_by_capability(capability)
             return [s.name for s in skills]
-        
-        return await self.allowlist_manager.get_skills_by_capability(
-            capability,
-            agent_id=agent_id
-        )
-    
+
+        return await self.allowlist_manager.get_skills_by_capability(capability, agent_id=agent_id)
+
     async def get_allowed_skills(self, agent_id: str) -> List[str]:
         """
         Get list of skills explicitly allowed for an agent.
-        
+
         Args:
             agent_id: Agent identifier
-            
+
         Returns:
             List of allowed skill names (empty if using default allow-all)
         """
         if not self.allowlist_manager:
             logger.warning("Allowlist manager not available")
             return []
-        
+
         return await self.allowlist_manager.get_agent_allowed_skills(agent_id)
-    
-    async def check_skill_permission(
-        self,
-        agent_id: str,
-        skill_name: str
-    ) -> bool:
+
+    async def check_skill_permission(self, agent_id: str, skill_name: str) -> bool:
         """
         Check if an agent has permission to use a skill.
-        
+
         Args:
             agent_id: Agent identifier
             skill_name: Skill name
-            
+
         Returns:
             True if permitted, False otherwise (or if allowlist not available)
         """
         if not self.allowlist_manager:
             # Backward compatibility: allow all if no allowlist
             return True
-        
+
         return await self.allowlist_manager.check_permission(agent_id, skill_name)

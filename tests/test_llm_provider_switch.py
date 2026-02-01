@@ -26,6 +26,7 @@ async def test_query_llm_routes_to_openai(monkeypatch):
         return "hello from openai"
 
     import src.infrastructure.openai_client as oc
+
     monkeypatch.setattr(oc, "openai_chat_complete", fake_openai_chat_complete)
 
     ctx = AgentContext(
@@ -34,7 +35,7 @@ async def test_query_llm_routes_to_openai(monkeypatch):
         session_key="s",
         workspace_dir="/tmp",
         redis_client=None,  # unused
-        db_pool=None,       # unused
+        db_pool=None,  # unused
         anthropic_client=None,  # unused
         skills_manager=SkillsManager("./skills"),
         config={},

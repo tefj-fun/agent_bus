@@ -14,7 +14,7 @@ from .base import MemoryStoreBase
 
 class PostgresMemoryStore(MemoryStoreBase):
     """Store and query project memory using Postgres persistence with TF-IDF search.
-    
+
     This backend stores documents in the memory_patterns table and performs
     TF-IDF-based similarity search for queries. Suitable for keyword-based
     retrieval and when vector embeddings are not needed.
@@ -35,7 +35,7 @@ class PostgresMemoryStore(MemoryStoreBase):
         """Store or update a document in Postgres."""
         record_metadata = metadata or {}
         pattern_type = record_metadata.get("pattern_type", self.pattern_type_default)
-        
+
         async with self.db_pool.acquire() as conn:
             await conn.execute(
                 """
@@ -70,10 +70,10 @@ class PostgresMemoryStore(MemoryStoreBase):
                 """,
                 doc_id,
             )
-        
+
         if not row:
             return None
-        
+
         return {
             "id": row["id"],
             "text": row["content"],
@@ -88,17 +88,15 @@ class PostgresMemoryStore(MemoryStoreBase):
         filters: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
         """Search for similar documents using TF-IDF similarity.
-        
+
         Filters support:
         - pattern_type: Filter by pattern type
         """
         async with self.db_pool.acquire() as conn:
-            rows = await conn.fetch(
-                """
+            rows = await conn.fetch("""
                 SELECT id, content, metadata, pattern_type
                 FROM memory_patterns
-                """
-            )
+                """)
 
         records = [dict(row) for row in rows]
         if not records:
@@ -149,19 +147,19 @@ class PostgresMemoryStore(MemoryStoreBase):
         existing = await self.retrieve(doc_id)
         if not existing:
             return False
-        
+
         # Prepare updates
         if text is None:
             text = existing["text"]
-        
+
         if metadata is None:
             new_metadata = existing["metadata"]
         else:
             # Merge metadata
             new_metadata = {**existing["metadata"], **metadata}
-        
+
         pattern_type = new_metadata.get("pattern_type", self.pattern_type_default)
-        
+
         async with self.db_pool.acquire() as conn:
             await conn.execute(
                 """
@@ -177,7 +175,7 @@ class PostgresMemoryStore(MemoryStoreBase):
                 json.dumps(new_metadata),
                 pattern_type,
             )
-        
+
         return True
 
     async def delete(
@@ -193,7 +191,7 @@ class PostgresMemoryStore(MemoryStoreBase):
                 """,
                 doc_id,
             )
-        
+
         # result is like "DELETE 1" or "DELETE 0"
         deleted = int(result.split()[-1]) if result else 0
         return deleted > 0
@@ -204,7 +202,7 @@ class PostgresMemoryStore(MemoryStoreBase):
     ) -> int:
         """Count documents matching optional filters."""
         pattern_type = filters.get("pattern_type") if filters else None
-        
+
         async with self.db_pool.acquire() as conn:
             if pattern_type:
                 count = await conn.fetchval(
@@ -213,7 +211,7 @@ class PostgresMemoryStore(MemoryStoreBase):
                 )
             else:
                 count = await conn.fetchval("SELECT COUNT(1) FROM memory_patterns")
-        
+
         return int(count or 0)
 
     async def health(self) -> Dict[str, Any]:
@@ -239,7 +237,7 @@ class PostgresMemoryStore(MemoryStoreBase):
     async def clear(self, filters: Optional[Dict[str, Any]] = None) -> int:
         """Clear documents matching optional filters."""
         pattern_type = filters.get("pattern_type") if filters else None
-        
+
         async with self.db_pool.acquire() as conn:
             if pattern_type:
                 result = await conn.execute(
@@ -248,7 +246,7 @@ class PostgresMemoryStore(MemoryStoreBase):
                 )
             else:
                 result = await conn.execute("DELETE FROM memory_patterns")
-        
+
         deleted = int(result.split()[-1]) if result else 0
         return deleted
 
@@ -266,10 +264,7 @@ class PostgresMemoryStore(MemoryStoreBase):
         for tokens in docs_tokens_list:
             for token in set(tokens):
                 df[token] = df.get(token, 0) + 1
-        idf = {
-            token: math.log((1 + doc_count) / (1 + freq)) + 1.0
-            for token, freq in df.items()
-        }
+        idf = {token: math.log((1 + doc_count) / (1 + freq)) + 1.0 for token, freq in df.items()}
         return idf
 
     def _tfidf(self, tokens: List[str], idf: Dict[str, float]) -> Dict[str, float]:

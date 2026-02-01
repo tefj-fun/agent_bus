@@ -102,6 +102,7 @@ class BaseAgent(ABC):
 
         if provider == "openai":
             from ..infrastructure.openai_client import openai_chat_complete
+
             # model parameter maps to OPENAI_MODEL for openai provider
             text = await openai_chat_complete(
                 prompt=prompt,
@@ -164,11 +165,7 @@ class BaseAgent(ABC):
 
         return "\n".join(text_parts)
 
-    async def load_skill(
-        self,
-        skill_name: str,
-        enforce_permissions: bool = True
-    ) -> Optional[Any]:
+    async def load_skill(self, skill_name: str, enforce_permissions: bool = True) -> Optional[Any]:
         """
         Load a Claude Skill with permission enforcement.
 
@@ -178,14 +175,12 @@ class BaseAgent(ABC):
 
         Returns:
             Loaded skill or None
-            
+
         Raises:
             SkillPermissionError: If agent lacks permission to use skill
         """
         return await self.context.skills_manager.load_skill(
-            skill_name,
-            agent_id=self.agent_id,
-            enforce_permissions=enforce_permissions
+            skill_name, agent_id=self.agent_id, enforce_permissions=enforce_permissions
         )
 
     async def execute_with_skill(
@@ -193,7 +188,7 @@ class BaseAgent(ABC):
         skill_name: str,
         prompt: str,
         context_data: Dict[str, Any],
-        enforce_permissions: bool = True
+        enforce_permissions: bool = True,
     ) -> str:
         """
         Execute a task using a specific skill.
@@ -206,7 +201,7 @@ class BaseAgent(ABC):
 
         Returns:
             Response from Claude using the skill
-            
+
         Raises:
             SkillPermissionError: If agent lacks permission to use skill
         """
@@ -222,42 +217,36 @@ class BaseAgent(ABC):
         system_prompt = f"You are an AI agent specialized in {skill_name}."
 
         return await self.query_llm(
-            prompt=combined_prompt,
-            system=system_prompt,
-            thinking_budget=2048
+            prompt=combined_prompt, system=system_prompt, thinking_budget=2048
         )
-    
+
     async def find_skills_by_capability(self, capability: str) -> list[str]:
         """
         Find skills that provide a specific capability.
-        
+
         This respects the agent's skill allowlist.
-        
+
         Args:
             capability: Capability name (e.g., 'ui-design', 'testing')
-            
+
         Returns:
             List of skill names that this agent can use
         """
         return await self.context.skills_manager.find_skills_for_capability(
-            capability,
-            agent_id=self.agent_id
+            capability, agent_id=self.agent_id
         )
-    
+
     async def get_allowed_skills(self) -> list[str]:
         """
         Get list of skills this agent is allowed to use.
-        
+
         Returns:
             List of allowed skill names (empty if no restrictions)
         """
         return await self.context.skills_manager.get_allowed_skills(self.agent_id)
 
     async def save_artifact(
-        self,
-        artifact_type: str,
-        content: str,
-        metadata: Optional[Dict] = None
+        self, artifact_type: str, content: str, metadata: Optional[Dict] = None
     ) -> str:
         """
         Save agent output as artifact.
@@ -286,7 +275,7 @@ class BaseAgent(ABC):
                 self.context.job_id,
                 artifact_type,
                 content,
-                json.dumps(metadata or {})
+                json.dumps(metadata or {}),
             )
 
         return artifact_id
@@ -308,7 +297,7 @@ class BaseAgent(ABC):
                 FROM artifacts
                 WHERE id = $1
                 """,
-                artifact_id
+                artifact_id,
             )
 
             if row:
@@ -323,22 +312,15 @@ class BaseAgent(ABC):
             result: Result of the task execution
         """
         import json
+
         payload = json.dumps(result.__dict__)
 
-        await self.context.redis_client.publish(
-            "agent_bus:events:task_completed",
-            payload
-        )
+        await self.context.redis_client.publish("agent_bus:events:task_completed", payload)
 
         # Note: the worker process is responsible for writing the authoritative
         # agent_bus:results:{task_id} payload (typically result.output) for the master agent.
 
-    async def log_event(
-        self,
-        event_type: str,
-        message: str,
-        data: Optional[Dict] = None
-    ) -> None:
+    async def log_event(self, event_type: str, message: str, data: Optional[Dict] = None) -> None:
         """
         Log an agent event.
 
@@ -353,13 +335,12 @@ class BaseAgent(ABC):
             "event_type": event_type,
             "message": message,
             "data": data or {},
-            "timestamp": "NOW()"
+            "timestamp": "NOW()",
         }
 
         import json
 
         # Write to Postgres agent_events for durability/search
-        import json
         async with self.context.db_pool.acquire() as conn:
             await conn.execute(
                 """
@@ -370,13 +351,12 @@ class BaseAgent(ABC):
                 self.context.job_id,
                 event_type,
                 message,
-                json.dumps(data or {})
+                json.dumps(data or {}),
             )
 
         # Also keep a lightweight Redis log stream
         await self.context.redis_client.lpush(
-            f"agent_bus:logs:{self.context.job_id}",
-            json.dumps(event)
+            f"agent_bus:logs:{self.context.job_id}", json.dumps(event)
         )
 
         print(f"[{self.agent_id}] {event_type.upper()}: {message}")

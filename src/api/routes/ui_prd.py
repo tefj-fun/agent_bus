@@ -9,11 +9,7 @@ router = APIRouter()
 
 
 def _escape(s: str) -> str:
-    return (
-        s.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-    )
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 @router.get("/prd/{job_id}", response_class=HTMLResponse)
@@ -58,7 +54,9 @@ async def prd_view(job_id: str):
     if isinstance(hits, list):
         for h in hits:
             if isinstance(h, dict):
-                items.append(f"<li><code>{_escape(str(h.get('id')))}</code> score={_escape(str(h.get('score')))}</li>")
+                items.append(
+                    f"<li><code>{_escape(str(h.get('id')))}</code> score={_escape(str(h.get('score')))}</li>"
+                )
             else:
                 items.append(f"<li>{_escape(str(h))}</li>")
     hits_html = "\n".join(items) if items else "<li>(none)</li>"

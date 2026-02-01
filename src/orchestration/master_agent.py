@@ -2,7 +2,7 @@
 
 import asyncio
 import uuid
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 from datetime import datetime
 
 from .workflow import WorkflowStateMachine, WorkflowStage
@@ -10,8 +10,6 @@ from ..infrastructure.redis_client import RedisClient
 from ..infrastructure.postgres_client import PostgresClient
 from ..infrastructure.anthropic_client import anthropic_client
 from ..skills.manager import SkillsManager
-from ..agents.base import AgentContext
-from ..config import settings
 
 
 class MasterAgent:
@@ -25,7 +23,7 @@ class MasterAgent:
         self,
         redis_client: RedisClient,
         postgres_client: PostgresClient,
-        skills_manager: SkillsManager
+        skills_manager: SkillsManager,
     ):
         self.redis = redis_client
         self.postgres = postgres_client
@@ -38,7 +36,7 @@ class MasterAgent:
         project_id: str,
         requirements: str,
         job_id: Optional[str] = None,
-        create_job: bool = True
+        create_job: bool = True,
     ) -> Dict:
         """
         Main orchestration loop for a project.
@@ -58,7 +56,7 @@ class MasterAgent:
                 job_id=job_id,
                 project_id=project_id,
                 status="queued",
-                workflow_stage=WorkflowStage.INITIALIZATION.value
+                workflow_stage=WorkflowStage.INITIALIZATION.value,
             )
 
         print(f"[MasterAgent] Starting job {job_id} for project {project_id}")
@@ -69,13 +67,13 @@ class MasterAgent:
                 job_id=job_id,
                 project_id=project_id,
                 stage=WorkflowStage.PRD_GENERATION,
-                inputs={"requirements": requirements}
+                inputs={"requirements": requirements},
             )
 
             await self.postgres.update_job_status(
                 job_id=job_id,
                 status="waiting_for_approval",
-                workflow_stage=WorkflowStage.WAITING_FOR_APPROVAL.value
+                workflow_stage=WorkflowStage.WAITING_FOR_APPROVAL.value,
             )
 
             print(f"[MasterAgent] Job {job_id} ready for approval after PRD generation")
@@ -83,23 +81,17 @@ class MasterAgent:
             return {
                 "job_id": job_id,
                 "status": "waiting_for_approval",
-                "results": {"prd": prd_result}
+                "results": {"prd": prd_result},
             }
 
         except Exception as e:
             print(f"[MasterAgent] Job {job_id} failed: {str(e)}")
 
             await self.postgres.update_job_status(
-                job_id=job_id,
-                status="failed",
-                workflow_stage=WorkflowStage.FAILED.value
+                job_id=job_id, status="failed", workflow_stage=WorkflowStage.FAILED.value
             )
 
-            return {
-                "job_id": job_id,
-                "status": "failed",
-                "error": str(e)
-            }
+            return {"job_id": job_id, "status": "failed", "error": str(e)}
 
     async def continue_after_approval(self, job_id: str) -> Dict:
         """
@@ -122,7 +114,7 @@ class MasterAgent:
             job_id=job_id,
             project_id=project_id,
             stage=WorkflowStage.PLAN_GENERATION,
-            inputs={"prd": prd_content}
+            inputs={"prd": prd_content},
         )
 
         # Execute architecture design
@@ -131,7 +123,7 @@ class MasterAgent:
             job_id=job_id,
             project_id=project_id,
             stage=WorkflowStage.ARCHITECTURE_DESIGN,
-            inputs={"prd": prd_content, "plan": plan_content or ""}
+            inputs={"prd": prd_content, "plan": plan_content or ""},
         )
 
         # Execute UI/UX design
@@ -140,7 +132,7 @@ class MasterAgent:
             job_id=job_id,
             project_id=project_id,
             stage=WorkflowStage.UIUX_DESIGN,
-            inputs={"architecture": architecture_content or "", "prd": prd_content}
+            inputs={"architecture": architecture_content or "", "prd": prd_content},
         )
 
         # Execute Development stage
@@ -152,8 +144,8 @@ class MasterAgent:
             inputs={
                 "architecture": architecture_content or "",
                 "ui_ux": uiux_content or "",
-                "prd": prd_content
-            }
+                "prd": prd_content,
+            },
         )
 
         # Execute QA Testing stage
@@ -165,8 +157,8 @@ class MasterAgent:
             inputs={
                 "development": development_content or "",
                 "architecture": architecture_content or "",
-                "prd": prd_content
-            }
+                "prd": prd_content,
+            },
         )
 
         # Execute Security Review stage
@@ -179,13 +171,13 @@ class MasterAgent:
                 "development": development_content or "",
                 "architecture": architecture_content or "",
                 "qa": qa_content or "",
-                "prd": prd_content
-            }
+                "prd": prd_content,
+            },
         )
 
         # Execute Documentation and Support stages in parallel after Security
         security_content = await self._fetch_artifact_content(job_id, "security")
-        
+
         # Run documentation and support in parallel (gather awaits the coroutines)
         documentation_result, support_result = await asyncio.gather(
             self._execute_stage(
@@ -197,8 +189,8 @@ class MasterAgent:
                     "architecture": architecture_content or "",
                     "qa": qa_content or "",
                     "security": security_content or "",
-                    "prd": prd_content
-                }
+                    "prd": prd_content,
+                },
             ),
             self._execute_stage(
                 job_id=job_id,
@@ -209,9 +201,9 @@ class MasterAgent:
                     "architecture": architecture_content or "",
                     "qa": qa_content or "",
                     "security": security_content or "",
-                    "prd": prd_content
-                }
-            )
+                    "prd": prd_content,
+                },
+            ),
         )
 
         # Execute PM Review stage
@@ -228,8 +220,8 @@ class MasterAgent:
                 "security": security_content or "",
                 "documentation": documentation_content or "",
                 "support": support_content or "",
-                "prd": prd_content
-            }
+                "prd": prd_content,
+            },
         )
 
         # Execute Delivery stage
@@ -249,16 +241,14 @@ class MasterAgent:
                     "qa": qa_content or "",
                     "security": security_content or "",
                     "documentation": documentation_content or "",
-                    "support": support_content or ""
-                }
-            }
+                    "support": support_content or "",
+                },
+            },
         )
 
         # Transition to COMPLETED state
         await self.postgres.update_job_status(
-            job_id=job_id,
-            status="completed",
-            workflow_stage=WorkflowStage.COMPLETED.value
+            job_id=job_id, status="completed", workflow_stage=WorkflowStage.COMPLETED.value
         )
 
         return {
@@ -274,18 +264,15 @@ class MasterAgent:
                 "documentation": documentation_result,
                 "support": support_result,
                 "pm_review": pm_review_result,
-                "delivery": delivery_result
-            }
+                "delivery": delivery_result,
+            },
         }
 
     async def _fetch_project_and_prd(self, job_id: str) -> tuple[Optional[str], Optional[str]]:
         """Fetch project_id and latest PRD content for a job."""
         pool = await self.postgres.get_pool()
         async with pool.acquire() as conn:
-            job_row = await conn.fetchrow(
-                "SELECT project_id FROM jobs WHERE id = $1",
-                job_id
-            )
+            job_row = await conn.fetchrow("SELECT project_id FROM jobs WHERE id = $1", job_id)
             project_id = job_row["project_id"] if job_row else None
 
             artifact_row = await conn.fetchrow(
@@ -296,7 +283,7 @@ class MasterAgent:
                 ORDER BY updated_at DESC, created_at DESC
                 LIMIT 1
                 """,
-                job_id
+                job_id,
             )
             if artifact_row and artifact_row.get("content"):
                 return project_id, artifact_row["content"]
@@ -310,7 +297,7 @@ class MasterAgent:
                 LIMIT 1
                 """,
                 job_id,
-                WorkflowStage.PRD_GENERATION.value
+                WorkflowStage.PRD_GENERATION.value,
             )
             prd_content = task_row["prd_content"] if task_row else None
 
@@ -329,16 +316,12 @@ class MasterAgent:
                 LIMIT 1
                 """,
                 job_id,
-                artifact_type
+                artifact_type,
             )
             return artifact_row["content"] if artifact_row else None
 
     async def _execute_stage(
-        self,
-        job_id: str,
-        project_id: str,
-        stage: WorkflowStage,
-        inputs: Dict
+        self, job_id: str, project_id: str, stage: WorkflowStage, inputs: Dict
     ) -> Dict:
         """
         Execute a workflow stage by dispatching to the appropriate agent.
@@ -358,9 +341,7 @@ class MasterAgent:
 
         # Update job status
         await self.postgres.update_job_status(
-            job_id=job_id,
-            status="in_progress",
-            workflow_stage=stage.value
+            job_id=job_id, status="in_progress", workflow_stage=stage.value
         )
 
         # Create task
@@ -371,7 +352,7 @@ class MasterAgent:
             "agent_type": agent_id,
             "stage": stage.value,
             "inputs": inputs,
-            "priority": 5
+            "priority": 5,
         }
 
         # Detect ML/CV workload and route appropriately
@@ -379,7 +360,7 @@ class MasterAgent:
             task_data["resource_requirements"] = {
                 "gpu": True,
                 "gpu_type": "nvidia-tesla-v100",
-                "memory": "32Gi"
+                "memory": "32Gi",
             }
             queue_name = "agent_bus:tasks:gpu"
         else:
@@ -391,7 +372,7 @@ class MasterAgent:
             job_id=job_id,
             agent_id=agent_id,
             task_type=stage.value,
-            input_data=inputs
+            input_data=inputs,
         )
 
         # Enqueue task to Redis
@@ -419,9 +400,17 @@ class MasterAgent:
             True if ML/CV workload detected
         """
         ml_keywords = [
-            "machine learning", "neural network", "deep learning",
-            "computer vision", "image processing", "model training",
-            "tensorflow", "pytorch", "cv", "ml pipeline", "ai model"
+            "machine learning",
+            "neural network",
+            "deep learning",
+            "computer vision",
+            "image processing",
+            "model training",
+            "tensorflow",
+            "pytorch",
+            "cv",
+            "ml pipeline",
+            "ai model",
         ]
 
         text = str(inputs).lower()
@@ -446,6 +435,7 @@ class MasterAgent:
             result = await self.redis.get(result_key)
             if result:
                 import json
+
                 return json.loads(result)
 
             await asyncio.sleep(1)

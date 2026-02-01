@@ -3,18 +3,15 @@
 
 import asyncio
 import sys
-from pathlib import Path
 from typing import Optional
 import argparse
 import logging
 
 from .skills import SkillsManager, SkillRegistryError, SkillNotFoundError
 
-
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -26,11 +23,7 @@ class SkillsCLI:
         self.skills_dir = skills_dir
         self.manager = SkillsManager(skills_dir)
 
-    async def install(
-        self,
-        git_url: str,
-        skill_name: Optional[str] = None
-    ) -> int:
+    async def install(self, git_url: str, skill_name: Optional[str] = None) -> int:
         """
         Install a skill from a git repository.
 
@@ -53,7 +46,7 @@ class SkillsCLI:
 
             if success:
                 logger.info(f"✓ Successfully installed skill '{skill_name}'")
-                
+
                 # Show skill info
                 info = self.manager.get_skill_info(skill_name)
                 if info:
@@ -65,7 +58,7 @@ class SkillsCLI:
                         print(f"Capabilities: {', '.join(info.capabilities)}")
                     if info.tags:
                         print(f"Tags: {', '.join(info.tags)}")
-                
+
                 return 0
             else:
                 logger.error(f"✗ Failed to install skill '{skill_name}'")
@@ -163,32 +156,32 @@ class SkillsCLI:
         print(f"Description: {info.description}")
         print(f"Author: {info.author}")
         print(f"Path: {info.path}")
-        
+
         if info.entry_point:
             print(f"Entry Point: {info.entry_point}")
-        
+
         if info.repository:
             print(f"Repository: {info.repository}")
-        
+
         if info.license:
             print(f"License: {info.license}")
-        
+
         if info.capabilities:
             print(f"Capabilities: {', '.join(info.capabilities)}")
-        
+
         if info.required_tools:
             print(f"Required Tools: {', '.join(info.required_tools)}")
-        
+
         if info.tags:
             print(f"Tags: {', '.join(info.tags)}")
-        
+
         if info.dependencies:
-            print(f"Dependencies:")
+            print("Dependencies:")
             for dep in info.dependencies:
-                version_str = f" ({dep.get('version')})" if dep.get('version') else ""
-                optional_str = " [optional]" if dep.get('optional') else ""
+                version_str = f" ({dep.get('version')})" if dep.get("version") else ""
+                optional_str = " [optional]" if dep.get("optional") else ""
                 print(f"  - {dep.get('name')}{version_str}{optional_str}")
-        
+
         if info.min_python_version:
             print(f"Min Python Version: {info.min_python_version}")
 
@@ -205,102 +198,75 @@ class SkillsCLI:
             Skill name (last part of URL without .git)
         """
         # Remove trailing .git if present
-        url = git_url.rstrip('/')
-        if url.endswith('.git'):
+        url = git_url.rstrip("/")
+        if url.endswith(".git"):
             url = url[:-4]
-        
+
         # Get last part of path
-        name = url.split('/')[-1]
-        
+        name = url.split("/")[-1]
+
         # Clean up name
-        name = name.lower().replace('_', '-')
-        
+        name = name.lower().replace("_", "-")
+
         return name
 
 
 def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
-        description="Agent Bus Skills Manager",
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        description="Agent Bus Skills Manager", formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    
+
     parser.add_argument(
-        '--skills-dir',
-        default='./skills',
-        help='Skills directory path (default: ./skills)'
+        "--skills-dir", default="./skills", help="Skills directory path (default: ./skills)"
     )
-    
-    subparsers = parser.add_subparsers(dest='command', help='Command to run')
-    
+
+    subparsers = parser.add_subparsers(dest="command", help="Command to run")
+
     # Install command
-    install_parser = subparsers.add_parser(
-        'install',
-        help='Install a skill from a git repository'
-    )
+    install_parser = subparsers.add_parser("install", help="Install a skill from a git repository")
     install_parser.add_argument(
-        'git_url',
-        help='Git repository URL (e.g., https://github.com/user/skill)'
+        "git_url", help="Git repository URL (e.g., https://github.com/user/skill)"
     )
-    install_parser.add_argument(
-        '--name',
-        help='Custom name for the skill (defaults to repo name)'
-    )
-    
+    install_parser.add_argument("--name", help="Custom name for the skill (defaults to repo name)")
+
     # Update command
-    update_parser = subparsers.add_parser(
-        'update',
-        help='Update a skill from its git repository'
-    )
-    update_parser.add_argument(
-        'skill_name',
-        help='Name of the skill to update'
-    )
-    
+    update_parser = subparsers.add_parser("update", help="Update a skill from its git repository")
+    update_parser.add_argument("skill_name", help="Name of the skill to update")
+
     # List command
-    list_parser = subparsers.add_parser(
-        'list',
-        help='List all installed skills'
-    )
+    list_parser = subparsers.add_parser("list", help="List all installed skills")
     list_parser.add_argument(
-        '-v', '--verbose',
-        action='store_true',
-        help='Show detailed information'
+        "-v", "--verbose", action="store_true", help="Show detailed information"
     )
-    
+
     # Info command
-    info_parser = subparsers.add_parser(
-        'info',
-        help='Show detailed information about a skill'
-    )
-    info_parser.add_argument(
-        'skill_name',
-        help='Name of the skill'
-    )
-    
+    info_parser = subparsers.add_parser("info", help="Show detailed information about a skill")
+    info_parser.add_argument("skill_name", help="Name of the skill")
+
     args = parser.parse_args()
-    
+
     if not args.command:
         parser.print_help()
         return 0
-    
+
     cli = SkillsCLI(args.skills_dir)
-    
+
     # Execute command
-    if args.command == 'install':
+    if args.command == "install":
         exit_code = asyncio.run(cli.install(args.git_url, args.name))
-    elif args.command == 'update':
+    elif args.command == "update":
         exit_code = asyncio.run(cli.update(args.skill_name))
-    elif args.command == 'list':
+    elif args.command == "list":
         exit_code = cli.list(args.verbose)
-    elif args.command == 'info':
+    elif args.command == "info":
         exit_code = cli.info(args.skill_name)
     else:
         parser.print_help()
         exit_code = 1
-    
+
     return exit_code
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

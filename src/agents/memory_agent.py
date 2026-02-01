@@ -41,7 +41,9 @@ class MemoryAgent(BaseAgent):
                     raise ValueError("Memory store requires 'text' or 'document' field")
                 doc_id = task.input_data.get("id") or f"mem_{uuid.uuid4().hex[:12]}"
                 metadata = task.input_data.get("metadata") or {}
-                stored_id = await self.store.upsert_document(doc_id=doc_id, text=text, metadata=metadata)
+                stored_id = await self.store.upsert_document(
+                    doc_id=doc_id, text=text, metadata=metadata
+                )
                 output = {
                     "action": "store",
                     "doc_id": stored_id,

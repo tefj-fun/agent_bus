@@ -2,18 +2,17 @@
 
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
-from ...infrastructure.postgres_client import get_db_pool
 from ...memory.chroma_store import ChromaDBStore
 from ...config import settings
-
 
 router = APIRouter(prefix="/api/patterns", tags=["patterns"])
 
 
 class StorePatternRequest(BaseModel):
     """Request to store a pattern."""
+
     text: str = Field(..., description="Pattern content")
     pattern_type: str = Field("general", description="Pattern type (prd, architecture, code, etc.)")
     metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
@@ -23,6 +22,7 @@ class StorePatternRequest(BaseModel):
 
 class QueryPatternsRequest(BaseModel):
     """Request to query patterns."""
+
     query: str = Field(..., description="Search query")
     top_k: int = Field(5, gt=0, le=20, description="Number of results")
     pattern_type: Optional[str] = Field(None, description="Filter by pattern type")
@@ -30,6 +30,7 @@ class QueryPatternsRequest(BaseModel):
 
 class SuggestTemplatesRequest(BaseModel):
     """Request for template suggestions."""
+
     requirements: str = Field(..., description="Project requirements")
     top_k: int = Field(3, gt=0, le=10, description="Number of suggestions")
     min_score: float = Field(0.5, ge=0.0, le=1.0, description="Minimum combined score")
@@ -62,16 +63,19 @@ async def store_pattern(
     try:
         # Prepare metadata
         metadata = request.metadata or {}
-        metadata.update({
-            "pattern_type": request.pattern_type,
-            "success_score": str(request.success_score),
-            "usage_count": metadata.get("usage_count", "0"),
-        })
+        metadata.update(
+            {
+                "pattern_type": request.pattern_type,
+                "success_score": str(request.success_score),
+                "usage_count": metadata.get("usage_count", "0"),
+            }
+        )
 
         # Generate ID if not provided
         pattern_id = request.pattern_id
         if not pattern_id:
             import uuid
+
             pattern_id = f"pattern_{uuid.uuid4().hex[:12]}"
 
         # Store pattern
@@ -155,19 +159,21 @@ async def suggest_templates(
             combined_score = similarity_score * 0.7 + success_score * 0.3
 
             if combined_score >= request.min_score:
-                suggestions.append({
-                    "pattern_id": candidate.get("id"),
-                    "text": candidate.get("text", "")[:500],  # Truncate
-                    "similarity_score": round(similarity_score, 3),
-                    "success_score": round(success_score, 3),
-                    "usage_count": usage_count,
-                    "combined_score": round(combined_score, 3),
-                    "metadata": metadata,
-                })
+                suggestions.append(
+                    {
+                        "pattern_id": candidate.get("id"),
+                        "text": candidate.get("text", "")[:500],  # Truncate
+                        "similarity_score": round(similarity_score, 3),
+                        "success_score": round(success_score, 3),
+                        "usage_count": usage_count,
+                        "combined_score": round(combined_score, 3),
+                        "metadata": metadata,
+                    }
+                )
 
         # Sort by combined score
         suggestions.sort(key=lambda x: x["combined_score"], reverse=True)
-        suggestions = suggestions[:request.top_k]
+        suggestions = suggestions[: request.top_k]
 
         return {
             "status": "success",
@@ -193,7 +199,7 @@ async def list_pattern_types(store: ChromaDBStore = Depends(get_chroma_store)):
         # Note: ChromaDB doesn't have a direct "list all" API, so we query with empty embedding
         # This is a simplified implementation
         health = await store.health()
-        
+
         # Return common pattern types (would need full scan to get actual counts)
         common_types = [
             "prd",

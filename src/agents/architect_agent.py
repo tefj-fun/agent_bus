@@ -19,7 +19,7 @@ class ArchitectAgent(BaseAgent):
             "can_design_architecture": True,
             "can_parse_prd": True,
             "can_parse_plan": True,
-            "output_formats": ["json", "markdown"]
+            "output_formats": ["json", "markdown"],
         }
 
     async def execute(self, task: AgentTask) -> AgentResult:
@@ -55,11 +55,12 @@ class ArchitectAgent(BaseAgent):
             user_prompt = self._build_architecture_user_prompt(prd_content, plan_content)
 
             from ..config import settings
-            if settings.llm_mode == 'mock':
+
+            if settings.llm_mode == "mock":
                 architecture_payload = {
                     "system_overview": {
                         "description": "Mock architecture for CI/testing",
-                        "architecture_type": "microservices"
+                        "architecture_type": "microservices",
                     },
                     "components": [
                         {
@@ -67,42 +68,32 @@ class ArchitectAgent(BaseAgent):
                             "name": "API Gateway",
                             "type": "service",
                             "responsibilities": ["Request routing", "Authentication"],
-                            "technology": "FastAPI"
+                            "technology": "FastAPI",
                         },
                         {
                             "id": "comp_2",
                             "name": "Database",
                             "type": "datastore",
                             "responsibilities": ["Data persistence"],
-                            "technology": "PostgreSQL"
-                        }
+                            "technology": "PostgreSQL",
+                        },
                     ],
                     "data_flows": [
-                        {
-                            "from": "comp_1",
-                            "to": "comp_2",
-                            "description": "API writes to database"
-                        }
+                        {"from": "comp_1", "to": "comp_2", "description": "API writes to database"}
                     ],
                     "technology_stack": {
                         "backend": "Python/FastAPI",
                         "database": "PostgreSQL",
-                        "cache": "Redis"
+                        "cache": "Redis",
                     },
-                    "deployment": {
-                        "strategy": "containerized",
-                        "platform": "docker-compose"
-                    }
+                    "deployment": {"strategy": "containerized", "platform": "docker-compose"},
                 }
                 architecture_content = json.dumps(architecture_payload, indent=2)
             else:
                 response_text = await self.query_llm(
-                    prompt=user_prompt,
-                    system=system_prompt,
-                    thinking_budget=2048,
-                    max_tokens=8192
+                    prompt=user_prompt, system=system_prompt, thinking_budget=2048, max_tokens=8192
                 )
-                
+
                 # Try to parse as JSON, fallback to raw text
                 try:
                     architecture_payload = json.loads(response_text)
@@ -120,7 +111,7 @@ class ArchitectAgent(BaseAgent):
                     "prd_length": len(prd_content),
                     "plan_length": len(plan_content),
                     "parseable_json": "raw_architecture" not in architecture_payload,
-                }
+                },
             )
 
             await self.log_event("info", f"Architecture generated successfully: {artifact_id}")
@@ -139,7 +130,7 @@ class ArchitectAgent(BaseAgent):
                 metadata={
                     "component_count": len(architecture_payload.get("components", [])),
                     "parseable_json": "raw_architecture" not in architecture_payload,
-                }
+                },
             )
 
             await self.notify_completion(result)
@@ -157,7 +148,7 @@ class ArchitectAgent(BaseAgent):
                 success=False,
                 output={},
                 artifacts=[],
-                error=str(e)
+                error=str(e),
             )
 
             await self.notify_completion(result)
@@ -243,7 +234,7 @@ Your role is to transform PRDs and project plans into detailed technical archite
 
 {prd_content}
 """
-        
+
         if plan_content.strip():
             prompt += f"""
 

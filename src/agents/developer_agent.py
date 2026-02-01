@@ -20,7 +20,7 @@ class DeveloperAgent(BaseAgent):
             "can_parse_architecture": True,
             "can_parse_uiux": True,
             "can_create_tdd_strategy": True,
-            "output_formats": ["json", "markdown"]
+            "output_formats": ["json", "markdown"],
         }
 
     async def execute(self, task: AgentTask) -> AgentResult:
@@ -59,13 +59,14 @@ class DeveloperAgent(BaseAgent):
             )
 
             from ..config import settings
-            if settings.llm_mode == 'mock':
+
+            if settings.llm_mode == "mock":
                 development_payload = {
                     "tdd_strategy": {
                         "approach": "test-first development",
                         "test_framework": "pytest",
                         "coverage_target": "80%",
-                        "test_types": ["unit", "integration", "e2e"]
+                        "test_types": ["unit", "integration", "e2e"],
                     },
                     "development_phases": [
                         {
@@ -77,8 +78,8 @@ class DeveloperAgent(BaseAgent):
                                 "Implement models",
                                 "Write business logic tests",
                                 "Implement business logic",
-                                "Refactor"
-                            ]
+                                "Refactor",
+                            ],
                         },
                         {
                             "phase": 2,
@@ -88,8 +89,8 @@ class DeveloperAgent(BaseAgent):
                                 "Write API endpoint tests",
                                 "Implement endpoints",
                                 "Write integration tests",
-                                "Refactor"
-                            ]
+                                "Refactor",
+                            ],
                         },
                         {
                             "phase": 3,
@@ -99,9 +100,9 @@ class DeveloperAgent(BaseAgent):
                                 "Write component tests",
                                 "Implement components",
                                 "Write interaction tests",
-                                "Refactor"
-                            ]
-                        }
+                                "Refactor",
+                            ],
+                        },
                     ],
                     "code_structure": {
                         "backend": {
@@ -113,14 +114,14 @@ class DeveloperAgent(BaseAgent):
                                     "services/": ["user_service.py", "product_service.py"],
                                     "api/": ["routes.py", "dependencies.py"],
                                     "config.py": "Configuration management",
-                                    "main.py": "Application entry point"
+                                    "main.py": "Application entry point",
                                 },
                                 "tests/": {
                                     "unit/": ["test_models.py", "test_services.py"],
                                     "integration/": ["test_api.py"],
-                                    "conftest.py": "Pytest fixtures"
-                                }
-                            }
+                                    "conftest.py": "Pytest fixtures",
+                                },
+                            },
                         },
                         "frontend": {
                             "framework": "React",
@@ -129,31 +130,31 @@ class DeveloperAgent(BaseAgent):
                                     "components/": ["Button.tsx", "Input.tsx", "Card.tsx"],
                                     "pages/": ["Dashboard.tsx", "Login.tsx"],
                                     "services/": ["api.ts"],
-                                    "App.tsx": "Main app component"
+                                    "App.tsx": "Main app component",
                                 },
                                 "tests/": {
                                     "components/": ["Button.test.tsx"],
-                                    "integration/": ["user-flow.test.tsx"]
-                                }
-                            }
-                        }
+                                    "integration/": ["user-flow.test.tsx"],
+                                },
+                            },
+                        },
                     },
                     "testing_strategy": {
                         "unit_tests": {
                             "coverage": "All business logic, models, services",
                             "tools": ["pytest", "pytest-cov", "jest"],
-                            "mocking": "Use mocks for external dependencies"
+                            "mocking": "Use mocks for external dependencies",
                         },
                         "integration_tests": {
                             "coverage": "API endpoints, database interactions",
                             "tools": ["pytest-asyncio", "httpx", "testing-library"],
-                            "setup": "Use test database and fixtures"
+                            "setup": "Use test database and fixtures",
                         },
                         "e2e_tests": {
                             "coverage": "Critical user flows",
                             "tools": ["playwright", "cypress"],
-                            "setup": "Full stack with test data"
-                        }
+                            "setup": "Full stack with test data",
+                        },
                     },
                     "quality_gates": {
                         "pre_commit": ["linting", "type checking", "fast unit tests"],
@@ -161,8 +162,8 @@ class DeveloperAgent(BaseAgent):
                             "all tests",
                             "coverage report (min 80%)",
                             "security scan",
-                            "build verification"
-                        ]
+                            "build verification",
+                        ],
                     },
                     "dependencies": {
                         "backend": [
@@ -171,14 +172,14 @@ class DeveloperAgent(BaseAgent):
                             "sqlalchemy>=2.0.0",
                             "pytest>=7.4.0",
                             "pytest-asyncio>=0.21.0",
-                            "pytest-cov>=4.1.0"
+                            "pytest-cov>=4.1.0",
                         ],
                         "frontend": [
                             "react>=18.0.0",
                             "typescript>=5.0.0",
                             "jest>=29.0.0",
-                            "@testing-library/react>=14.0.0"
-                        ]
+                            "@testing-library/react>=14.0.0",
+                        ],
                     },
                     "development_workflow": {
                         "steps": [
@@ -187,21 +188,18 @@ class DeveloperAgent(BaseAgent):
                             "3. Run all tests to ensure no regression",
                             "4. Refactor code while keeping tests green",
                             "5. Commit with descriptive message",
-                            "6. Push and create PR"
+                            "6. Push and create PR",
                         ],
                         "branch_strategy": "feature branches with PR reviews",
-                        "code_review": "Required before merge"
-                    }
+                        "code_review": "Required before merge",
+                    },
                 }
                 development_content = json.dumps(development_payload, indent=2)
             else:
                 response_text = await self.query_llm(
-                    prompt=user_prompt,
-                    system=system_prompt,
-                    thinking_budget=2048,
-                    max_tokens=8192
+                    prompt=user_prompt, system=system_prompt, thinking_budget=2048, max_tokens=8192
                 )
-                
+
                 # Try to parse as JSON, fallback to raw text
                 try:
                     development_payload = json.loads(response_text)
@@ -220,7 +218,7 @@ class DeveloperAgent(BaseAgent):
                     "uiux_length": len(uiux_content),
                     "prd_length": len(prd_content),
                     "parseable_json": "raw_development" not in development_payload,
-                }
+                },
             )
 
             await self.log_event("info", f"Development plan generated successfully: {artifact_id}")
@@ -239,7 +237,7 @@ class DeveloperAgent(BaseAgent):
                 metadata={
                     "phases_count": len(development_payload.get("development_phases", [])),
                     "parseable_json": "raw_development" not in development_payload,
-                }
+                },
             )
 
             await self.notify_completion(result)
@@ -257,7 +255,7 @@ class DeveloperAgent(BaseAgent):
                 success=False,
                 output={},
                 artifacts=[],
-                error=str(e)
+                error=str(e),
             )
 
             await self.notify_completion(result)
@@ -367,7 +365,7 @@ Your role is to transform architecture and UI/UX designs into implementable code
 
 {architecture_content}
 """
-        
+
         if uiux_content.strip():
             prompt += f"""
 

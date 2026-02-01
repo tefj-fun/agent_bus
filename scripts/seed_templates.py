@@ -11,7 +11,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.memory.chroma_store import ChromaDBStore
 from src.config import settings
 
-
 # Template definitions
 SEED_TEMPLATES = [
     {
@@ -263,21 +262,23 @@ async def seed_templates():
     )
 
     print(f"Seeding {len(SEED_TEMPLATES)} templates...\n")
-    
+
     for i, template in enumerate(SEED_TEMPLATES, 1):
         # Prepare metadata
         metadata = template.get("metadata", {})
-        metadata.update({
-            "pattern_type": template["pattern_type"],
-            "success_score": str(template["success_score"]),
-            "usage_count": "0",
-            "is_seed": "true",
-        })
+        metadata.update(
+            {
+                "pattern_type": template["pattern_type"],
+                "success_score": str(template["success_score"]),
+                "usage_count": "0",
+                "is_seed": "true",
+            }
+        )
 
         # Store template
         doc_id = template["id"]
         await store.upsert_document(doc_id, template["content"], metadata)
-        
+
         print(f"[{i}/{len(SEED_TEMPLATES)}] Seeded template: {doc_id}")
         print(f"    Category: {metadata.get('category', 'N/A')}")
         print(f"    Success Score: {template['success_score']}")
@@ -285,7 +286,7 @@ async def seed_templates():
 
     # Verify
     health = await store.health()
-    print(f"✓ Seeding complete!")
+    print("✓ Seeding complete!")
     print(f"  Total patterns in store: {health.get('count', 0)}")
     print(f"  Backend: {health.get('backend')}")
     print(f"  Mode: {health.get('mode')}")

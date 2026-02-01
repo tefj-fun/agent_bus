@@ -9,7 +9,6 @@ from pydantic import BaseModel
 from ...infrastructure.postgres_client import postgres_client
 from ...memory import MemoryStore
 
-
 router = APIRouter()
 
 

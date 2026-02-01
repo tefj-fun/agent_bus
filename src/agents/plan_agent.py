@@ -1,7 +1,7 @@
 """Plan Agent - Generates project plans from PRDs."""
 
 import json
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from .base import BaseAgent, AgentTask, AgentResult
 
@@ -15,11 +15,7 @@ class PlanAgent(BaseAgent):
 
     def define_capabilities(self) -> Dict[str, Any]:
         """Define agent capabilities."""
-        return {
-            "can_generate_plan": True,
-            "can_parse_prd": True,
-            "output_formats": ["json"]
-        }
+        return {"can_generate_plan": True, "can_parse_prd": True, "output_formats": ["json"]}
 
     async def execute(self, task: AgentTask) -> AgentResult:
         """
@@ -76,7 +72,8 @@ class PlanAgent(BaseAgent):
 
         # Generate plan (real LLM or mock)
         from ..config import settings
-        if settings.llm_mode == 'mock':
+
+        if settings.llm_mode == "mock":
             plan_payload = {
                 "milestones": [
                     {
