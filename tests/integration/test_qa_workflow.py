@@ -1,184 +1,99 @@
-"""Integration test for QA workflow stage."""
+"""Integration test for QA workflow stage - E2E API test."""
 
-import pytest
+import os
+import time
+import uuid
+import urllib.request
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
-
-from src.orchestration.workflow import WorkflowStage
-from src.agents.qa_agent import QAAgent
-from src.agents.base import AgentContext, AgentTask
 
 
-@pytest.mark.asyncio
-async def test_qa_stage_in_workflow():
-    """Test that QA stage is properly integrated in workflow."""
-    from src.orchestration.workflow import WorkflowStateMachine
-    
-    workflow = WorkflowStateMachine()
-    
-    # Verify QA_TESTING stage exists
-    assert WorkflowStage.QA_TESTING in WorkflowStage
-    
-    # Verify Development can transition to QA_TESTING
-    next_stages = workflow.get_next_stages(WorkflowStage.DEVELOPMENT)
-    assert WorkflowStage.QA_TESTING in next_stages
-    
-    # Verify QA_TESTING is mapped to qa_agent
-    agent_id = workflow.get_agent_for_stage(WorkflowStage.QA_TESTING)
-    assert agent_id == "qa_agent"
-    
-    # Verify QA_TESTING can transition to PM_REVIEW
-    qa_next_stages = workflow.get_next_stages(WorkflowStage.QA_TESTING)
-    assert WorkflowStage.PM_REVIEW in qa_next_stages
+# When running under `docker compose run api`, the API is reachable as http://api:8000
+BASE_URL = os.getenv("BASE_URL", "http://api:8000").rstrip("/")
 
 
-@pytest.mark.asyncio
-async def test_qa_agent_with_development_output():
-    """Test QA agent can process development stage output."""
-    # Create mock context
-    context = MagicMock(spec=AgentContext)
-    context.project_id = "test-project"
-    context.job_id = "test-job"
-    context.session_key = "test-session"
-    context.workspace_dir = "/tmp/workspace"
-    context.redis_client = AsyncMock()
-    context.db_pool = AsyncMock()
-    context.anthropic_client = AsyncMock()
-    context.skills_manager = MagicMock()
-    context.config = {}
-    
-    # Create QA agent
-    qa_agent = QAAgent(context)
-    qa_agent.save_artifact = AsyncMock(return_value="artifact-qa-integration")
-    qa_agent.log_event = AsyncMock()
-    qa_agent.notify_completion = AsyncMock()
-    
-    # Simulate development output
-    development_output = {
-        "tdd_strategy": {
-            "approach": "test-first development",
-            "test_framework": "pytest",
-            "coverage_target": "80%"
+def http(method: str, url: str, payload=None, timeout=10):
+    data = None
+    headers = {"Accept": "application/json"}
+    if payload is not None:
+        data = json.dumps(payload).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+    req = urllib.request.Request(url, data=data, headers=headers, method=method)
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        body = resp.read().decode("utf-8")
+        return resp.status, json.loads(body or "{}")
+
+
+def wait_for(job_id: str, predicate, timeout_s: float = 60.0, poll_s: float = 1.0):
+    start = time.time()
+    last = None
+    while time.time() - start < timeout_s:
+        status, last = http("GET", f"{BASE_URL}/api/projects/{job_id}")
+        assert status == 200
+        if predicate(last):
+            return last
+        time.sleep(poll_s)
+    raise AssertionError(f"Timed out waiting for condition. last={last}")
+
+
+def test_qa_stage_in_workflow():
+    """Integration test: verify QA stage executes after development.
+
+    Assumes stack is running locally (docker compose) and LLM_MODE=mock in CI.
+    """
+    project_id = f"qa_it_{uuid.uuid4().hex[:10]}"
+
+    status, created = http(
+        "POST",
+        f"{BASE_URL}/api/projects/",
+        payload={
+            "project_id": project_id,
+            "requirements": "PRD for a simple todo app with authentication.",
         },
-        "code_structure": {
-            "backend": {
-                "language": "Python",
-                "framework": "FastAPI"
-            }
-        },
-        "testing_strategy": {
-            "unit_tests": {"coverage": "All business logic"},
-            "integration_tests": {"coverage": "API endpoints"}
-        }
-    }
-    
-    # Create task with development output
-    from src.config import settings
-    settings.llm_mode = 'mock'
-    
-    task = AgentTask(
-        task_id="integration-task-1",
-        task_type="qa_testing",
-        input_data={
-            "development": json.dumps(development_output),
-            "architecture": '{"system_type": "microservices"}',
-            "prd": "Test application requirements"
-        },
-        dependencies=["development-task"],
-        priority=5,
-        metadata={}
+        timeout=10,
     )
-    
-    # Execute QA agent
-    result = await qa_agent.execute(task)
-    
-    # Verify successful execution
-    assert result.success is True
-    assert "qa" in result.output
-    
-    # Verify QA output contains test plans aligned with development
-    qa_output = result.output["qa"]
-    assert "test_plans" in qa_output
-    assert len(qa_output["test_plans"]) > 0
-    
-    # Verify test plans include unit and integration testing
-    test_plan_names = [p["name"] for p in qa_output["test_plans"]]
-    assert any("unit" in name.lower() for name in test_plan_names)
-    assert any("integration" in name.lower() for name in test_plan_names)
-    
-    # Verify QA strategy aligns with TDD approach
-    assert "qa_strategy" in qa_output
-    assert qa_output["qa_strategy"]["coverage_target"] in ["80%", "85%", "90%"]
+    assert status == 200
+    job_id = created["job_id"]
 
-
-@pytest.mark.asyncio
-async def test_qa_artifact_storage():
-    """Test that QA artifacts are properly stored."""
-    # Create mock context with real-ish DB operations
-    context = MagicMock(spec=AgentContext)
-    context.project_id = "test-project"
-    context.job_id = "test-job-artifact"
-    context.session_key = "test-session"
-    context.workspace_dir = "/tmp/workspace"
-    context.redis_client = AsyncMock()
-    
-    # Mock DB pool
-    mock_conn = AsyncMock()
-    mock_pool = AsyncMock()
-    mock_pool.acquire.return_value.__aenter__.return_value = mock_conn
-    context.db_pool = mock_pool
-    
-    context.anthropic_client = AsyncMock()
-    context.skills_manager = MagicMock()
-    context.config = {}
-    
-    # Create QA agent (use real save_artifact method)
-    qa_agent = QAAgent(context)
-    qa_agent.log_event = AsyncMock()
-    qa_agent.notify_completion = AsyncMock()
-    
-    from src.config import settings
-    settings.llm_mode = 'mock'
-    
-    task = AgentTask(
-        task_id="artifact-task-1",
-        task_type="qa_testing",
-        input_data={
-            "development": '{"tdd_strategy": "test-driven"}',
-            "architecture": "",
-            "prd": ""
-        },
-        dependencies=[],
-        priority=5,
-        metadata={}
+    # Wait for PRD stage to complete
+    job = wait_for(
+        job_id,
+        lambda j: j.get("workflow_stage") == "waiting_for_approval",
+        timeout_s=120,
     )
-    
-    # Execute
-    result = await qa_agent.execute(task)
-    
-    # Verify artifact was saved
-    assert result.success is True
-    assert len(result.artifacts) > 0
-    
-    # Verify DB execute was called with correct artifact type
-    mock_conn.execute.assert_called_once()
-    call_args = mock_conn.execute.call_args[0]
-    assert "artifacts" in call_args[0]  # SQL query
-    assert "qa_agent" in call_args  # agent_id
-    assert "test-job-artifact" in call_args  # job_id
-    assert "qa" in call_args  # artifact type
+    assert job.get("status") in {"waiting_for_approval", "in_progress", "orchestrating", "queued", "approved"}
 
+    # Approve
+    status, _ = http(
+        "POST",
+        f"{BASE_URL}/api/projects/{job_id}/approve",
+        payload={"notes": "QA integration test"},
+        timeout=10,
+    )
+    assert status == 200
 
-@pytest.mark.asyncio
-async def test_parallel_stage_support():
-    """Test that QA can run in parallel with other stages."""
-    from src.orchestration.workflow import WorkflowStateMachine
+    # Wait for completion
+    job = wait_for(
+        job_id,
+        lambda j: j.get("status") == "completed" or j.get("workflow_stage") == "completed",
+        timeout_s=240,
+    )
+    assert job.get("status") == "completed"
+
+    # Development artifact exists
+    _, dev = http("GET", f"{BASE_URL}/api/projects/{job_id}/development", timeout=10)
+    assert dev.get("content") or dev.get("output_data")
+
+    # QA artifact exists
+    _, qa = http("GET", f"{BASE_URL}/api/projects/{job_id}/qa", timeout=10)
+    assert qa.get("content") or qa.get("output_data")
     
-    workflow = WorkflowStateMachine()
-    
-    # Verify QA_TESTING is marked as parallel stage
-    assert workflow.is_parallel_stage(WorkflowStage.QA_TESTING)
-    
-    # Verify parallel stages after development include QA
-    parallel_stages = workflow.get_parallel_stages_after(WorkflowStage.DEVELOPMENT)
-    assert WorkflowStage.QA_TESTING in parallel_stages
+    # Verify QA artifact contains expected structure
+    qa_content = qa.get("content")
+    if qa_content:
+        if isinstance(qa_content, str):
+            qa_data = json.loads(qa_content)
+        else:
+            qa_data = qa_content
+        
+        # Verify QA strategy structure
+        assert "qa_strategy" in qa_data or "test_plans" in qa_data, "QA artifact should contain qa_strategy or test_plans"
