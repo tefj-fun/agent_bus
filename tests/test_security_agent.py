@@ -115,7 +115,8 @@ async def test_security_agent_missing_development_content(mock_context, monkeypa
     
     agent = SecurityAgent(mock_context)
     
-    # Mock the notify_completion method
+    # Mock the log_event and notify_completion methods
+    agent.log_event = AsyncMock()
     agent.notify_completion = AsyncMock()
     
     task = AgentTask(
