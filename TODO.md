@@ -6,7 +6,7 @@ References:
 - `PLAN.md` — phase ordering + high-level architecture (see **Phase 5 Status (Next)** and **Full app roadmap (beyond Phase 5)** sections)
 - `TODO_JIRA.md` — Jira epic/task mapping used here
 
-Last refresh: 2026-02-01
+Last refresh: 2026-02-01 (updated after KAN-48 completion)
 
 ## Done (recent)
 - ✅ KAN-25 Phase 5 (integration & QA) tasks are effectively done in Jira (at least KAN-26/27/28 are Done; no remaining children were found under KAN-25).
@@ -17,6 +17,11 @@ Last refresh: 2026-02-01
   - KAN-45 HITL approval actions
   - KAN-46 Plan viewer
   - KAN-47 UX polish + basic error states
+- ✅ KAN-48 Workflow: add Architecture stage + agent stub
+  - Created ArchitectAgent following existing patterns
+  - Updated orchestration to run architecture stage after plan approval
+  - Added API endpoints for plan and architecture artifacts
+  - Added unit + integration tests (all passing)
 
 ## Now (PLAN order)
 
@@ -26,7 +31,7 @@ Source: `PLAN.md` + `TODO_JIRA.md` + Jira statuses.
 **Status:** In Progress (epic)
 
 Do these in order:
-- [ ] KAN-48 Workflow: add Architecture stage + agent stub
+- [x] KAN-48 Workflow: add Architecture stage + agent stub ✅
 - [ ] KAN-49 Workflow: add UI/UX stage + agent stub
 - [ ] KAN-50 Workflow: add Dev stage (TDD loop) + agent stub
 - [ ] KAN-51 Workflow: add QA stage + agent stub
