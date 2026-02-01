@@ -67,6 +67,34 @@ services:
     # Note: avoid --reload in compose (it can kill in-process background tasks during long-running jobs)
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000
 
+  # Orchestrator (runs MasterAgent loop outside the API process)
+  orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agent_bus_orchestrator
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LLM_MODE=${LLM_MODE:-real}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=agent_bus
+      - POSTGRES_USER=agent_bus
+      - POSTGRES_PASSWORD=agent_bus_dev_password
+    volumes:
+      - ./src:/app/src
+      - ./skills:/app/skills
+      - worker_workspace:/workspace
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: python -m src.orchestration.orchestrator
+
   # Worker for CPU tasks
   worker:
     build:

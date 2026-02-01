@@ -55,8 +55,10 @@ Result: **PASS** (local Docker) — verifies:
 - Added `.github/workflows/ci.yml`
 - Gates:
   - `pytest -q` (docker compose)
-  - `./scripts/phase4_smoke.sh` (required; requires `ANTHROPIC_API_KEY` secret)
-Result: **PASS** (after wiring ANTHROPIC_API_KEY into compose env)
+  - `./scripts/phase4_smoke.sh` (required) in **mock LLM** mode (0 tokens)
+- Added `.github/workflows/nightly-real-smoke.yml`:
+  - scheduled/manual **real-Claude** smoke (requires `ANTHROPIC_API_KEY` secret)
+Result: **PASS**
 
 ### 2026-01-31 — Smoke test (PRD-only)
 ```bash

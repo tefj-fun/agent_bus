@@ -4,7 +4,12 @@ Source: PLAN.md Phase 5 (integration & end-to-end stability) + CI follow-ups.
 
 ## Now (next PRs)
 
-(Jira: KAN-25 epic + tasks KAN-26..KAN-30)
+(Jira: KAN-25 epic + tasks KAN-26..KAN-30; KAN-80 done)
+
+### Current focus
+- [ ] KAN-28 Orchestration resiliency (survive API restarts) — IN PROGRESS
+- [ ] KAN-27 Integration tests for async + HITL flow
+- [ ] KAN-26 Fix memory_hits API contract (return JSON list)
 
 ### 1) API contract: memory_hits should be proper JSON
 - [ ] Change `/api/projects/{job_id}/memory_hits` to return `memory_hits` as a JSON array (not a JSON-encoded string)

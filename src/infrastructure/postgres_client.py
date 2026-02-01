@@ -101,6 +101,33 @@ class PostgresClient:
                 json.dumps(metadata)
             )
 
+    async def claim_next_job(self, from_status: str = 'queued', to_status: str = 'orchestrating') -> Optional[dict]:
+        """Atomically claim the next job of a given status.
+
+        Returns:
+            Job row as dict, or None if no jobs.
+        """
+        pool = await self.get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                f"""
+                WITH next_job AS (
+                  SELECT id
+                  FROM jobs
+                  WHERE status = '{from_status}'
+                  ORDER BY created_at ASC
+                  FOR UPDATE SKIP LOCKED
+                  LIMIT 1
+                )
+                UPDATE jobs j
+                SET status = '{to_status}', updated_at = NOW()
+                FROM next_job
+                WHERE j.id = next_job.id
+                RETURNING j.id, j.project_id, j.status, j.workflow_stage, j.metadata
+                """
+            )
+            return dict(row) if row else None
+
     async def create_task(
         self,
         task_id: str,
