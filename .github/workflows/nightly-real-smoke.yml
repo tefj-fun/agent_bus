@@ -1,23 +1,28 @@
-name: CI
+name: Nightly Real-Claude Smoke
 
 on:
-  push:
-    branches: ["main"]
-  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 9 * * *"  # 09:17 UTC daily
 
 jobs:
-  test:
+  smoke:
     runs-on: ubuntu-latest
     env:
-      # Required CI runs in mock mode (0 tokens)
-      LLM_MODE: mock
+      LLM_MODE: real
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Require ANTHROPIC_API_KEY
+        shell: bash
+        run: |
+          if [ -z "${{ secrets.ANTHROPIC_API_KEY }}" ]; then
+            echo "ANTHROPIC_API_KEY secret missing; cannot run real-Claude smoke." >&2
+            exit 1
+          fi
 
       - name: Build + start services
         run: |
@@ -38,16 +43,11 @@ jobs:
           docker compose logs --tail=200 worker || true
           exit 1
 
-      - name: Pytest
-        run: |
-          docker compose run --rm api pytest -q
-
-      - name: Phase 4 smoke (required, mock LLM)
+      - name: Phase 4 smoke (real Claude)
         env:
-          LLM_MODE: mock
           BASE_URL: http://localhost:8000
-          PROJECT_ID: gha_phase4_smoke
-          TIMEOUT_SECS: "420"
+          PROJECT_ID: nightly_phase4_smoke
+          TIMEOUT_SECS: "600"
         run: |
           ./scripts/phase4_smoke.sh
 

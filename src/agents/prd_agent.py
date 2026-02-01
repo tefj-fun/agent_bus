@@ -49,15 +49,31 @@ class PRDAgent(BaseAgent):
             # Build comprehensive system prompt
             system_prompt = self._build_prd_system_prompt()
 
-            # Generate PRD using Claude with extended thinking
+            # Generate PRD (real LLM or mock)
             user_prompt = self._build_prd_user_prompt(sales_requirements, similar_prds)
 
-            prd_content = await self.query_llm(
-                prompt=user_prompt,
-                system=system_prompt,
-                thinking_budget=2048,
-                max_tokens=8192
-            )
+            from ..config import settings
+            if settings.llm_mode == 'mock':
+                prd_content = (
+                    "# Product Requirements Document: Mock PRD\n\n"
+                    "## Executive Summary\n"
+                    "This is a deterministic mock PRD generated for CI/testing.\n\n"
+                    "## Input Requirements\n"
+                    f"{sales_requirements}\n\n"
+                    "## Functional Requirements\n"
+                    "- FR-1: The system shall accept requirement submissions.\n"
+                    "- FR-2: The system shall generate and store a PRD artifact.\n"
+                    "- FR-3: The system shall support HITL approval.\n\n"
+                    "## Non-Functional Requirements\n"
+                    "- NFR-1: Deterministic outputs in mock mode.\n"
+                )
+            else:
+                prd_content = await self.query_llm(
+                    prompt=user_prompt,
+                    system=system_prompt,
+                    thinking_budget=2048,
+                    max_tokens=8192
+                )
 
             # Save PRD as artifact
             artifact_id = await self.save_artifact(

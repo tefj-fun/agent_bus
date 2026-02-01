@@ -18,8 +18,11 @@ class Settings(BaseSettings):
     api_host: str = Field(default="0.0.0.0", env="API_HOST")
     api_port: int = Field(default=8000, env="API_PORT")
 
-    # Anthropic Claude
-    anthropic_api_key: str = Field(..., env="ANTHROPIC_API_KEY")
+    # LLM
+    llm_mode: str = Field(default="real", env="LLM_MODE")  # real|mock
+
+    # Anthropic Claude (only required when LLM_MODE=real)
+    anthropic_api_key: str = Field(default="", env="ANTHROPIC_API_KEY")
     anthropic_model: str = Field(default="claude-sonnet-4-5-20250929", env="ANTHROPIC_MODEL")
     anthropic_max_tokens: int = Field(default=8192, env="ANTHROPIC_MAX_TOKENS")
 

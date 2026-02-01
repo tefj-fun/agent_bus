@@ -74,12 +74,45 @@ class PlanAgent(BaseAgent):
             f"{prd_content}"
         )
 
-        response_text = await self.query_llm(
-            prompt=user_prompt,
-            system=system_prompt,
-            thinking_budget=1536,
-            max_tokens=4096,
-        )
+        # Generate plan (real LLM or mock)
+        from ..config import settings
+        if settings.llm_mode == 'mock':
+            plan_payload = {
+                "milestones": [
+                    {
+                        "id": "ms_1",
+                        "name": "Mock milestone",
+                        "description": "Deterministic plan output for CI/testing",
+                        "tasks": ["task_1", "task_2"],
+                    }
+                ],
+                "tasks": [
+                    {
+                        "id": "task_1",
+                        "title": "Mock task 1",
+                        "description": "Do the first thing",
+                        "owner": "engineering",
+                        "dependencies": [],
+                    },
+                    {
+                        "id": "task_2",
+                        "title": "Mock task 2",
+                        "description": "Do the second thing",
+                        "owner": "engineering",
+                        "dependencies": ["task_1"],
+                    },
+                ],
+                "assumptions": ["Mock mode: no external LLM calls"],
+                "risks": ["Mock plan may diverge from real plan format"],
+            }
+            response_text = json.dumps(plan_payload)
+        else:
+            response_text = await self.query_llm(
+                prompt=user_prompt,
+                system=system_prompt,
+                thinking_budget=1536,
+                max_tokens=4096,
+            )
 
         plan_payload: Dict[str, Any]
         try:
