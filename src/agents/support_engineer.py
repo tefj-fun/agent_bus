@@ -25,15 +25,38 @@ class SupportEngineer(BaseAgent):
             await self.log_event("info", "Starting support documentation generation")
 
             input_payload = json.dumps(task.input_data or {}, indent=2, sort_keys=True)
-            system_prompt = self._build_system_prompt()
-            user_prompt = self._build_user_prompt(input_payload)
-
-            support_content = await self.query_llm(
-                prompt=user_prompt,
-                system=system_prompt,
-                thinking_budget=1536,
-                max_tokens=4096,
-            )
+            
+            # Mock mode for CI/testing
+            from ..config import settings
+            if settings.llm_mode == 'mock':
+                support_content = (
+                    "# Support Documentation: Mock Support Docs\n\n"
+                    "## FAQ\n"
+                    "**Q: How do I get started?**\n"
+                    "A: Follow the setup guide in the technical documentation.\n\n"
+                    "**Q: What if something goes wrong?**\n"
+                    "A: Check the troubleshooting section below.\n\n"
+                    "## Common Issues\n"
+                    "- Issue 1: Connection timeout → Verify network settings\n"
+                    "- Issue 2: Authentication failed → Check credentials\n\n"
+                    "## Escalation Steps\n"
+                    "1. Check logs and error messages\n"
+                    "2. Search knowledge base\n"
+                    "3. Contact tier-2 support if unresolved\n\n"
+                    "## Operational Runbook\n"
+                    "- Daily health checks\n"
+                    "- Monitoring alerts setup\n"
+                    "- Backup procedures\n"
+                )
+            else:
+                system_prompt = self._build_system_prompt()
+                user_prompt = self._build_user_prompt(input_payload)
+                support_content = await self.query_llm(
+                    prompt=user_prompt,
+                    system=system_prompt,
+                    thinking_budget=1536,
+                    max_tokens=4096,
+                )
 
             artifact_id = await self.save_artifact(
                 artifact_type="support_docs",

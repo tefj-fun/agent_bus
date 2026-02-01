@@ -25,15 +25,34 @@ class TechnicalWriter(BaseAgent):
             await self.log_event("info", "Starting technical documentation generation")
 
             input_payload = json.dumps(task.input_data or {}, indent=2, sort_keys=True)
-            system_prompt = self._build_system_prompt()
-            user_prompt = self._build_user_prompt(input_payload)
-
-            doc_content = await self.query_llm(
-                prompt=user_prompt,
-                system=system_prompt,
-                thinking_budget=1536,
-                max_tokens=4096,
-            )
+            
+            # Mock mode for CI/testing
+            from ..config import settings
+            if settings.llm_mode == 'mock':
+                doc_content = (
+                    "# Technical Documentation: Mock Documentation\n\n"
+                    "## Overview\n"
+                    "This is a deterministic mock technical documentation generated for CI/testing.\n\n"
+                    "## Setup\n"
+                    "1. Install dependencies\n"
+                    "2. Configure environment\n"
+                    "3. Run the application\n\n"
+                    "## Key Workflows\n"
+                    "- Workflow 1: User authentication\n"
+                    "- Workflow 2: Data processing\n\n"
+                    "## Troubleshooting\n"
+                    "- Issue 1: Check logs\n"
+                    "- Issue 2: Verify configuration\n"
+                )
+            else:
+                system_prompt = self._build_system_prompt()
+                user_prompt = self._build_user_prompt(input_payload)
+                doc_content = await self.query_llm(
+                    prompt=user_prompt,
+                    system=system_prompt,
+                    thinking_budget=1536,
+                    max_tokens=4096,
+                )
 
             artifact_id = await self.save_artifact(
                 artifact_type="documentation",
