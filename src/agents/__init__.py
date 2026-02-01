@@ -10,6 +10,7 @@ from .memory_agent import MemoryAgent
 from .plan_agent import PlanAgent
 from .architect_agent import ArchitectAgent
 from .uiux_agent import UIUXAgent
+from .developer_agent import DeveloperAgent
 
 __all__ = [
     "BaseAgent",
@@ -25,4 +26,5 @@ __all__ = [
     "PlanAgent",
     "ArchitectAgent",
     "UIUXAgent",
+    "DeveloperAgent",
 ]

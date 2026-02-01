@@ -6,6 +6,7 @@ from src.agents.support_engineer import SupportEngineer
 from src.agents.product_manager import ProductManager
 from src.agents.project_manager import ProjectManager
 from src.agents.memory_agent import MemoryAgent
+from src.agents.developer_agent import DeveloperAgent
 from src.memory import MemoryStore
 from src.skills.manager import SkillsManager
 from src.workers.worker import AgentWorker
@@ -76,6 +77,7 @@ def _make_context(tmp_path):
         (ProductManager, "product_manager"),
         (ProjectManager, "project_manager"),
         (MemoryAgent, "memory_agent"),
+        (DeveloperAgent, "developer_agent"),
     ],
 )
 @pytest.mark.asyncio
@@ -94,6 +96,7 @@ def test_worker_registry_includes_phase2_agents():
         "product_manager",
         "project_manager",
         "memory_agent",
+        "developer_agent",
     ]:
         assert agent_id in registry
 
