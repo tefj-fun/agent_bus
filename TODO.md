@@ -6,7 +6,7 @@ References:
 - `PLAN.md` — phase ordering + high-level architecture (see **Phase 5 Status (Next)** and **Full app roadmap (beyond Phase 5)** sections)
 - `TODO_JIRA.md` — Jira epic/task mapping used here
 
-Last refresh: 2026-02-01 (updated after KAN-48 completion)
+Last refresh: 2026-02-01 (updated after KAN-50 completion)
 
 ## Done (recent)
 - ✅ KAN-25 Phase 5 (integration & QA) tasks are effectively done in Jira (at least KAN-26/27/28 are Done; no remaining children were found under KAN-25).
@@ -29,6 +29,14 @@ Last refresh: 2026-02-01 (updated after KAN-48 completion)
   - Added unit tests (7 tests, all passing)
   - Updated integration test to verify UI/UX artifact
   - PR #15 merged successfully
+- ✅ KAN-50 Workflow: add Dev stage (TDD loop) + agent stub
+  - Created DeveloperAgent with comprehensive TDD workflow strategy
+  - Updated orchestration to invoke DeveloperAgent after UIUXAgent
+  - Added development artifact storage (code structure, TDD approach)
+  - Added API endpoint GET /api/projects/{job_id}/development
+  - Added unit tests (5 tests, all passing)
+  - Updated integration tests to include DeveloperAgent
+  - PR #16 merged successfully
 
 ## Now (PLAN order)
 
@@ -40,7 +48,7 @@ Source: `PLAN.md` + `TODO_JIRA.md` + Jira statuses.
 Do these in order:
 - [x] KAN-48 Workflow: add Architecture stage + agent stub ✅
 - [x] KAN-49 Workflow: add UI/UX stage + agent stub ✅
-- [ ] KAN-50 Workflow: add Dev stage (TDD loop) + agent stub
+- [x] KAN-50 Workflow: add Dev stage (TDD loop) + agent stub ✅
 - [ ] KAN-51 Workflow: add QA stage + agent stub
 - [ ] KAN-52 Workflow: add Security review stage + agent stub
 - [ ] KAN-53 Workflow: add Docs + Support stages + agent stubs
