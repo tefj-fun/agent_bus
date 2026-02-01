@@ -1,0 +1,17 @@
+apiVersion: v2
+name: agent-bus
+description: Multi-agent SWE engineering system with distributed compute
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - ai
+  - agents
+  - llm
+  - kubernetes
+  - distributed-systems
+maintainers:
+  - name: Agent Bus Team
+    email: hello@tefj.fun
+sources:
+  - https://github.com/tefj-fun/agent_bus

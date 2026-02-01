@@ -1,0 +1,237 @@
+# Default values for agent-bus
+# This is a YAML-formatted file.
+
+# Global configuration
+global:
+  imagePullSecrets: []
+  storageClass: standard
+
+# Image configuration
+image:
+  repository: agent_bus
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# Namespace
+namespace: agent-bus
+
+# API deployment
+api:
+  enabled: true
+  replicaCount: 2
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "1000m"
+    limits:
+      memory: "2Gi"
+      cpu: "2000m"
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  service:
+    type: ClusterIP
+    port: 8000
+  healthCheck:
+    liveness:
+      path: /health
+      initialDelaySeconds: 40
+      periodSeconds: 30
+      timeoutSeconds: 10
+    readiness:
+      path: /health
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 5
+
+# Worker deployment
+worker:
+  enabled: true
+  replicaCount: 3
+  workerType: cpu
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "1000m"
+    limits:
+      memory: "2Gi"
+      cpu: "2000m"
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 75
+    targetMemoryUtilizationPercentage: 85
+  persistence:
+    enabled: true
+    size: 20Gi
+    storageClass: ""  # Uses global.storageClass if empty
+
+# Orchestrator deployment
+orchestrator:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: ""
+
+# PostgreSQL
+postgresql:
+  enabled: true
+  image:
+    repository: postgres
+    tag: 15-alpine
+  replicaCount: 1
+  auth:
+    database: agent_bus
+    username: agent_bus
+    # Password should be set via secrets, not here
+    existingSecret: postgres-secret
+    secretKeys:
+      adminPasswordKey: POSTGRES_PASSWORD
+      userPasswordKey: POSTGRES_PASSWORD
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: ""
+  # Use external managed database in production
+  external:
+    enabled: false
+    host: ""
+    port: 5432
+    database: agent_bus
+    username: agent_bus
+    existingSecret: ""
+    secretKey: ""
+
+# Redis
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: 7-alpine
+  replicaCount: 1
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: ""
+  config:
+    maxmemory: "512mb"
+    maxmemoryPolicy: "allkeys-lru"
+  # Use external managed Redis in production
+  external:
+    enabled: false
+    host: ""
+    port: 6379
+    existingSecret: ""
+    secretKey: ""
+
+# Application configuration
+config:
+  environment: production
+  debug: false
+  llm:
+    mode: real
+    provider: anthropic
+  pythonUnbuffered: true
+  pythonDontWriteBytecode: true
+
+# Secrets (use external secrets in production)
+secrets:
+  # Anthropic API key
+  anthropic:
+    existingSecret: ""
+    secretKey: ANTHROPIC_API_KEY
+    value: ""  # Only for development
+  # OpenAI API key (optional)
+  openai:
+    existingSecret: ""
+    secretKey: OPENAI_API_KEY
+    value: ""
+  # PostgreSQL password
+  postgres:
+    existingSecret: ""
+    secretKey: POSTGRES_PASSWORD
+    value: ""
+
+# Ingress
+ingress:
+  enabled: false
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: agent-bus.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: agent-bus-tls
+      hosts:
+        - agent-bus.example.com
+
+# Service Monitor (for Prometheus)
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  scrapeTimeout: 10s
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  api:
+    minAvailable: 1
+  worker:
+    minAvailable: 2
+
+# Network Policy
+networkPolicy:
+  enabled: false
+  policyTypes:
+    - Ingress
+    - Egress
+
+# Security Context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+# Pod Security Standard
+podSecurityStandard: restricted
+
+# Node selectors
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity: {}

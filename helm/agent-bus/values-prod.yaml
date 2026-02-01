@@ -1,0 +1,96 @@
+# Production environment values
+# Override base values.yaml for production
+
+config:
+  environment: production
+  debug: false
+
+api:
+  replicaCount: 3
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 15
+
+worker:
+  replicaCount: 5
+  autoscaling:
+    enabled: true
+    minReplicas: 5
+    maxReplicas: 30
+
+# Use managed PostgreSQL in production
+postgresql:
+  enabled: false
+  external:
+    enabled: true
+    host: "your-rds-endpoint.amazonaws.com"
+    port: 5432
+    database: agent_bus
+    username: agent_bus
+    existingSecret: "rds-credentials"
+    secretKey: "password"
+
+# Use managed Redis in production
+redis:
+  enabled: false
+  external:
+    enabled: true
+    host: "your-elasticache-endpoint.amazonaws.com"
+    port: 6379
+    existingSecret: "redis-credentials"
+    secretKey: "password"
+
+# Use external secrets operator or sealed secrets
+secrets:
+  anthropic:
+    existingSecret: "anthropic-api-key"
+    secretKey: "api-key"
+    value: ""  # Not used when existingSecret is set
+  postgres:
+    existingSecret: "rds-credentials"
+    secretKey: "password"
+    value: ""
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: api.agent-bus.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: agent-bus-tls
+      hosts:
+        - api.agent-bus.example.com
+
+podDisruptionBudget:
+  enabled: true
+  api:
+    minAvailable: 2
+  worker:
+    minAvailable: 3
+
+# Enable monitoring
+serviceMonitor:
+  enabled: true
+  interval: 30s
+
+# Network policies for security
+networkPolicy:
+  enabled: true
+
+# Node affinity for production workloads
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchExpressions:
+          - key: app.kubernetes.io/name
+            operator: In
+            values:
+            - agent-bus
+        topologyKey: kubernetes.io/hostname
