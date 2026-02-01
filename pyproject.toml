@@ -6,6 +6,9 @@ authors = ["agent_bus team"]
 readme = "README.md"
 python = "^3.10"
 
+[tool.poetry.scripts]
+agent-bus-skills = "src.cli:main"
+
 [tool.poetry.dependencies]
 python = "^3.10"
 fastapi = "^0.109.0"
