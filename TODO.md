@@ -145,7 +145,14 @@ All stages implemented and tested:
   - PR ready (pending merge)
 
 ### 3) KAN-35 — Memory system v2 (vector DB + patterns)
-- [ ] (Break down into child tickets in Jira if not already)
+**Status:** Complete ✅ (epic)
+
+All subtasks implemented and merged:
+- [x] KAN-81 ChromaDB integration and schema ✅ (PR #28)
+- [x] KAN-82 Vector embeddings with sentence-transformers ✅ (PR #29)
+- [x] KAN-83 Pattern storage and retrieval ✅ (PR #30)
+- [x] KAN-84 Template suggestion system ✅ (PR #31)
+- [x] KAN-85 Seed templates and documentation ✅ (PR #31)
 
 ### 4) KAN-36 — Deployment & scaling (Docker/K8s)
 - [ ] (Break down into child tickets in Jira if not already)
