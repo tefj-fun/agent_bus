@@ -6,7 +6,7 @@ References:
 - `PLAN.md` — phase ordering + high-level architecture (see **Phase 5 Status (Next)** and **Full app roadmap (beyond Phase 5)** sections)
 - `TODO_JIRA.md` — Jira epic/task mapping used here
 
-Last refresh: 2026-02-01 (updated after KAN-51 completion)
+Last refresh: 2026-02-01 (updated after KAN-52 completion)
 
 ## Done (recent)
 - ✅ KAN-25 Phase 5 (integration & QA) tasks are effectively done in Jira (at least KAN-26/27/28 are Done; no remaining children were found under KAN-25).
@@ -46,6 +46,16 @@ Last refresh: 2026-02-01 (updated after KAN-51 completion)
   - Added integration test to verify QA workflow execution
   - Registered QAAgent in worker agent registry
   - PR #17 merged successfully
+- ✅ KAN-52 Workflow: add Security review stage + agent stub
+  - Created SecurityAgent with comprehensive security audit generator
+  - Updated orchestration to invoke SecurityAgent after QAAgent
+  - Added security artifact storage (vulnerabilities, recommendations, compliance)
+  - Added API endpoint GET /api/projects/{job_id}/security
+  - Added unit tests (8 tests, all passing)
+  - Added integration test to verify security workflow execution
+  - Registered SecurityAgent in worker agent registry
+  - Updated workflow transitions (QA -> Security -> PM Review)
+  - PR #18 merged successfully
 
 ## Now (PLAN order)
 
@@ -59,7 +69,7 @@ Do these in order:
 - [x] KAN-49 Workflow: add UI/UX stage + agent stub ✅
 - [x] KAN-50 Workflow: add Dev stage (TDD loop) + agent stub ✅
 - [x] KAN-51 Workflow: add QA stage + agent stub ✅
-- [ ] KAN-52 Workflow: add Security review stage + agent stub
+- [x] KAN-52 Workflow: add Security review stage + agent stub ✅
 - [ ] KAN-53 Workflow: add Docs + Support stages + agent stubs
 - [ ] KAN-54 Workflow: finalize end-to-end stage graph + transitions
 
