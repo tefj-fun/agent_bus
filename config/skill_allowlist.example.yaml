@@ -1,0 +1,119 @@
+# Skill Allowlist Configuration
+# This file defines which agents can use which skills.
+#
+# Format:
+# agent_allowlists:
+#   <agent_id>:
+#     - skill: <skill_name>
+#       allowed: true|false
+#       notes: Optional notes
+#
+# capability_mappings:
+#   <capability_name>:
+#     - skill: <skill_name>
+#       priority: <number>  # Lower = higher priority
+#       metadata:
+#         key: value
+#
+# Special values:
+#   skill: "*" = wildcard (all skills)
+#   allowed: true = permit, false = deny
+#
+# Behavior:
+#   - If no entry exists for an agent, all skills are allowed (backward compatibility)
+#   - Wildcard entry ("*") applies to all skills not explicitly listed
+#   - Explicit entries override wildcard
+
+agent_allowlists:
+  # Developer agent can use development-related skills
+  developer_agent:
+    - skill: "*"
+      allowed: true
+      notes: "Developer has access to all skills"
+  
+  # UI/UX agent restricted to design skills only
+  uiux_agent:
+    - skill: "ui-ux-pro-max"
+      allowed: true
+      notes: "Primary design skill"
+    - skill: "figma-export"
+      allowed: true
+      notes: "Export designs from Figma"
+    - skill: "*"
+      allowed: false
+      notes: "Deny all other skills by default"
+  
+  # Security agent has limited skill access
+  security_agent:
+    - skill: "security-audit"
+      allowed: true
+    - skill: "vulnerability-scan"
+      allowed: true
+    - skill: "code-analysis"
+      allowed: true
+    - skill: "*"
+      allowed: false
+      notes: "Security isolation - only security-related skills"
+  
+  # QA agent can use testing skills
+  qa_agent:
+    - skill: "pytest-generator"
+      allowed: true
+    - skill: "test-coverage"
+      allowed: true
+    - skill: "e2e-testing"
+      allowed: true
+    - skill: "*"
+      allowed: false
+
+# Capability to skill mappings
+# Agents request capabilities, system returns matching skills
+capability_mappings:
+  # UI/UX design capability
+  ui-design:
+    - skill: "ui-ux-pro-max"
+      priority: 1
+      metadata:
+        description: "Professional UI/UX design system"
+        version: "1.0.0"
+    - skill: "simple-ui-designer"
+      priority: 10
+      metadata:
+        description: "Basic UI design for simple projects"
+  
+  # Testing capabilities
+  testing:
+    - skill: "pytest-generator"
+      priority: 1
+      metadata:
+        framework: "pytest"
+    - skill: "jest-generator"
+      priority: 2
+      metadata:
+        framework: "jest"
+    - skill: "cypress-e2e"
+      priority: 5
+      metadata:
+        framework: "cypress"
+        type: "e2e"
+  
+  # Security auditing
+  security:
+    - skill: "security-audit"
+      priority: 1
+    - skill: "vulnerability-scan"
+      priority: 2
+  
+  # Code analysis
+  code-analysis:
+    - skill: "code-analysis"
+      priority: 1
+    - skill: "static-analyzer"
+      priority: 5
+  
+  # Documentation
+  documentation:
+    - skill: "technical-writer"
+      priority: 1
+    - skill: "api-doc-generator"
+      priority: 5

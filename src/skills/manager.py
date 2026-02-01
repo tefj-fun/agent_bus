@@ -2,9 +2,10 @@
 
 import os
 import subprocess
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, List
 from pathlib import Path
 import logging
+import asyncpg
 
 from .registry import (
     SkillRegistry,
@@ -13,6 +14,7 @@ from .registry import (
     SkillValidationError,
     SkillNotFoundError,
 )
+from .allowlist import SkillAllowlistManager, SkillPermissionError
 
 logger = logging.getLogger(__name__)
 
@@ -49,20 +51,35 @@ class SkillsManager:
     - Lazy loading of skill content
     - Content caching
     - Git-based skill installation
+    - Per-agent skill permission enforcement
+    - Capability-based skill discovery
     - Comprehensive error handling
     """
 
-    def __init__(self, skills_dir: str = "./skills"):
+    def __init__(
+        self,
+        skills_dir: str = "./skills",
+        db_pool: Optional[asyncpg.Pool] = None
+    ):
         self.skills_dir = Path(skills_dir)
         self.loaded_skills: Dict[str, Skill] = {}
         self.registry = SkillRegistry(str(skills_dir))
+        self.db_pool = db_pool
+        self.allowlist_manager = SkillAllowlistManager(db_pool) if db_pool else None
 
-    async def load_skill(self, skill_name: str) -> Optional[Skill]:
+    async def load_skill(
+        self,
+        skill_name: str,
+        agent_id: Optional[str] = None,
+        enforce_permissions: bool = True
+    ) -> Optional[Skill]:
         """
-        Load a skill from the local directory.
+        Load a skill from the local directory with optional permission check.
 
         Args:
             skill_name: Name of the skill to load
+            agent_id: Agent requesting the skill (for permission check)
+            enforce_permissions: Whether to enforce permission checks
 
         Returns:
             Loaded Skill object or None if not found
@@ -70,7 +87,12 @@ class SkillsManager:
         Raises:
             SkillNotFoundError: If skill is not in registry
             SkillLoadError: If skill content cannot be loaded
+            SkillPermissionError: If agent lacks permission to use skill
         """
+        # Check permissions if agent_id provided and allowlist available
+        if enforce_permissions and agent_id and self.allowlist_manager:
+            await self.allowlist_manager.enforce_permission(agent_id, skill_name)
+        
         # Check cache first
         if skill_name in self.loaded_skills:
             logger.debug(f"Returning cached skill: {skill_name}")
@@ -344,3 +366,70 @@ class SkillsManager:
             List of matching skills
         """
         return self.registry.get_skills_by_tag(tag)
+    
+    async def find_skills_for_capability(
+        self,
+        capability: str,
+        agent_id: Optional[str] = None
+    ) -> List[str]:
+        """
+        Find skills that provide a capability, filtered by agent permissions.
+        
+        This uses the capability mapping table and agent allowlist.
+        
+        Args:
+            capability: Capability name (e.g., 'ui-design')
+            agent_id: Optional agent ID to filter by permissions
+            
+        Returns:
+            List of skill names, ordered by priority
+        """
+        if not self.allowlist_manager:
+            # Fallback to registry-based capability search
+            logger.warning(
+                "Allowlist manager not available, using registry-only capability search"
+            )
+            skills = self.registry.get_skills_by_capability(capability)
+            return [s.name for s in skills]
+        
+        return await self.allowlist_manager.get_skills_by_capability(
+            capability,
+            agent_id=agent_id
+        )
+    
+    async def get_allowed_skills(self, agent_id: str) -> List[str]:
+        """
+        Get list of skills explicitly allowed for an agent.
+        
+        Args:
+            agent_id: Agent identifier
+            
+        Returns:
+            List of allowed skill names (empty if using default allow-all)
+        """
+        if not self.allowlist_manager:
+            logger.warning("Allowlist manager not available")
+            return []
+        
+        return await self.allowlist_manager.get_agent_allowed_skills(agent_id)
+    
+    async def check_skill_permission(
+        self,
+        agent_id: str,
+        skill_name: str
+    ) -> bool:
+        """
+        Check if an agent has permission to use a skill.
+        
+        Args:
+            agent_id: Agent identifier
+            skill_name: Skill name
+            
+        Returns:
+            True if permitted, False otherwise (or if allowlist not available)
+        """
+        if not self.allowlist_manager:
+            # Backward compatibility: allow all if no allowlist
+            return True
+        
+        return await self.allowlist_manager.check_permission(agent_id, skill_name)

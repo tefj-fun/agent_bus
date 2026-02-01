@@ -164,23 +164,36 @@ class BaseAgent(ABC):
 
         return "\n".join(text_parts)
 
-    async def load_skill(self, skill_name: str) -> Optional[Any]:
+    async def load_skill(
+        self,
+        skill_name: str,
+        enforce_permissions: bool = True
+    ) -> Optional[Any]:
         """
-        Load a Claude Skill.
+        Load a Claude Skill with permission enforcement.
 
         Args:
             skill_name: Name of the skill to load
+            enforce_permissions: Whether to enforce allowlist permissions
 
         Returns:
             Loaded skill or None
+            
+        Raises:
+            SkillPermissionError: If agent lacks permission to use skill
         """
-        return await self.context.skills_manager.load_skill(skill_name)
+        return await self.context.skills_manager.load_skill(
+            skill_name,
+            agent_id=self.agent_id,
+            enforce_permissions=enforce_permissions
+        )
 
     async def execute_with_skill(
         self,
         skill_name: str,
         prompt: str,
-        context_data: Dict[str, Any]
+        context_data: Dict[str, Any],
+        enforce_permissions: bool = True
     ) -> str:
         """
         Execute a task using a specific skill.
@@ -189,11 +202,15 @@ class BaseAgent(ABC):
             skill_name: Name of the skill to use
             prompt: Main task prompt
             context_data: Additional context for the skill
+            enforce_permissions: Whether to enforce allowlist permissions
 
         Returns:
             Response from Claude using the skill
+            
+        Raises:
+            SkillPermissionError: If agent lacks permission to use skill
         """
-        skill = await self.load_skill(skill_name)
+        skill = await self.load_skill(skill_name, enforce_permissions=enforce_permissions)
         if not skill:
             raise ValueError(f"Skill '{skill_name}' not found")
 
@@ -209,6 +226,32 @@ class BaseAgent(ABC):
             system=system_prompt,
             thinking_budget=2048
         )
+    
+    async def find_skills_by_capability(self, capability: str) -> list[str]:
+        """
+        Find skills that provide a specific capability.
+        
+        This respects the agent's skill allowlist.
+        
+        Args:
+            capability: Capability name (e.g., 'ui-design', 'testing')
+            
+        Returns:
+            List of skill names that this agent can use
+        """
+        return await self.context.skills_manager.find_skills_for_capability(
+            capability,
+            agent_id=self.agent_id
+        )
+    
+    async def get_allowed_skills(self) -> list[str]:
+        """
+        Get list of skills this agent is allowed to use.
+        
+        Returns:
+            List of allowed skill names (empty if no restrictions)
+        """
+        return await self.context.skills_manager.get_allowed_skills(self.agent_id)
 
     async def save_artifact(
         self,
