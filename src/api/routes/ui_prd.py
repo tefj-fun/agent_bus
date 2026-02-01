@@ -83,6 +83,7 @@ async def prd_view(job_id: str):
     <div class=\"row\">
       <h2 style=\"margin:0\">PRD Viewer</h2>
       <a href=\"/ui/jobs\">Jobs</a>
+      <a href=\"/ui/plan/{job_id}\">Plan</a>
       <a href=\"/ui/\">Create</a>
       <a href=\"/api/projects/{job_id}\">API status</a>
     </div>

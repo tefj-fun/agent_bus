@@ -10,6 +10,7 @@ from .api.routes import projects, memory
 from .api.routes import ui, ui_jobs
 from .api.routes import ui_prd
 from .api.routes import ui_prd_actions
+from .api.routes import ui_plan
 from .config import settings
 
 
@@ -55,6 +56,7 @@ app.include_router(ui.router, prefix="/ui", tags=["ui"])
 app.include_router(ui_jobs.router, prefix="/ui", tags=["ui"])
 app.include_router(ui_prd.router, prefix="/ui", tags=["ui"])
 app.include_router(ui_prd_actions.router, prefix="/ui", tags=["ui"])
+app.include_router(ui_plan.router, prefix="/ui", tags=["ui"])
 
 
 @app.get("/")
