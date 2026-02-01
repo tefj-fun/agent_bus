@@ -6,7 +6,7 @@ References:
 - `PLAN.md` — phase ordering + high-level architecture (see **Phase 5 Status (Next)** and **Full app roadmap (beyond Phase 5)** sections)
 - `TODO_JIRA.md` — Jira epic/task mapping used here
 
-Last refresh: 2026-02-01 (updated after KAN-55 completion)
+Last refresh: 2026-02-01 (updated after KAN-56 completion)
 
 ## Done (recent)
 - ✅ KAN-25 Phase 5 (integration & QA) tasks are effectively done in Jira (at least KAN-26/27/28 are Done; no remaining children were found under KAN-25).
@@ -81,6 +81,23 @@ Last refresh: 2026-02-01 (updated after KAN-55 completion)
   - Updated README.md with skills system overview
   - Added example skill.json for ui-ux-pro-max
   - PR #21 merged (force merge due to CI timeout, core functionality complete)
+- ✅ KAN-56 Skills: install command (git clone + register)
+  - Created CLI command for skill installation (src/cli.py)
+    - Commands: install, update, list, info
+    - Auto-extracts skill name from repository URL
+    - Supports custom names via --name flag
+  - Created REST API endpoints (src/api/routes/skills.py)
+    - POST /api/skills/install - Install from git
+    - POST /api/skills/{name}/update - Update skill
+    - GET /api/skills - List all (with filtering)
+    - GET /api/skills/{name} - Get details
+    - POST /api/skills/reload - Reload registry
+  - Added CLI entry point to pyproject.toml (agent-bus-skills command)
+  - Added comprehensive tests (32 CLI + API tests, 78 total, all passing)
+  - Updated documentation
+    - docs/SKILLS_SYSTEM.md - Added CLI/API usage sections
+    - docs/SKILLS_INSTALL.md - Complete installation guide
+  - PR #22 merged (CI pending, all local tests pass)
 
 ## Now (PLAN order)
 
@@ -100,7 +117,7 @@ All stages implemented and tested:
 
 ### 2) KAN-34 — Skills system (install/registry/runtime load)
 - [x] KAN-55 Skills: registry format + loader hardening ✅
-- [ ] KAN-56 Skills: install command (git clone + register)
+- [x] KAN-56 Skills: install command (git clone + register) ✅
 - [ ] KAN-57 Skills: per-agent allowlist + capability mapping
 - [ ] KAN-58 Skills: add example skill + tests
 
