@@ -22,6 +22,13 @@ Last refresh: 2026-02-01 (updated after KAN-48 completion)
   - Updated orchestration to run architecture stage after plan approval
   - Added API endpoints for plan and architecture artifacts
   - Added unit + integration tests (all passing)
+- ✅ KAN-49 Workflow: add UI/UX stage + agent stub
+  - Created UIUXAgent with placeholder design system generator
+  - Updated orchestration to run UI/UX stage after architecture
+  - Added API endpoint GET /api/projects/{job_id}/ui_ux
+  - Added unit tests (7 tests, all passing)
+  - Updated integration test to verify UI/UX artifact
+  - PR #15 merged successfully
 
 ## Now (PLAN order)
 
@@ -32,7 +39,7 @@ Source: `PLAN.md` + `TODO_JIRA.md` + Jira statuses.
 
 Do these in order:
 - [x] KAN-48 Workflow: add Architecture stage + agent stub ✅
-- [ ] KAN-49 Workflow: add UI/UX stage + agent stub
+- [x] KAN-49 Workflow: add UI/UX stage + agent stub ✅
 - [ ] KAN-50 Workflow: add Dev stage (TDD loop) + agent stub
 - [ ] KAN-51 Workflow: add QA stage + agent stub
 - [ ] KAN-52 Workflow: add Security review stage + agent stub
