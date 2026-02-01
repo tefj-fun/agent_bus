@@ -92,7 +92,7 @@ class WorkflowStateMachine:
     STAGE_AGENTS: Dict[WorkflowStage, str] = {
         WorkflowStage.PRD_GENERATION: "prd_agent",
         WorkflowStage.PLAN_GENERATION: "plan_agent",
-        WorkflowStage.ARCHITECTURE_DESIGN: "solution_architect",
+        WorkflowStage.ARCHITECTURE_DESIGN: "architect_agent",
         WorkflowStage.UIUX_DESIGN: "uiux_designer",
         WorkflowStage.DEVELOPMENT: "developer_agent",
         WorkflowStage.QA_TESTING: "qa_engineer",
