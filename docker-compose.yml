@@ -45,6 +45,7 @@ services:
       - PYTHONUNBUFFERED=1
       - DEBUG=true
       - ENVIRONMENT=development
+      - LLM_MODE=${LLM_MODE:-real}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -75,6 +76,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - WORKER_TYPE=cpu
+      - LLM_MODE=${LLM_MODE:-real}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
