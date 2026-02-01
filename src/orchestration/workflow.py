@@ -100,6 +100,7 @@ class WorkflowStateMachine:
         WorkflowStage.DOCUMENTATION: "tech_writer",
         WorkflowStage.SUPPORT_DOCS: "support_engineer",
         WorkflowStage.PM_REVIEW: "product_manager",
+        WorkflowStage.DELIVERY: "delivery_agent",
     }
 
     # Stages that can run in parallel
