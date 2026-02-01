@@ -90,6 +90,24 @@ async def prd_view(job_id: str):
     <p><strong>job_id:</strong> <code>{job_id}</code></p>
 
     <div class=\"card\">
+      <h3>Actions</h3>
+      <form method=\"post\" action=\"/ui/prd/{job_id}/approve\">
+        <label>Approval notes</label><br/>
+        <textarea name=\"notes\" style=\"width:100%;min-height:80px\" placeholder=\"Optional notes\"></textarea>
+        <div style=\"margin-top:10px;display:flex;gap:10px\">
+          <button type=\"submit\" style=\"padding:10px 14px;border:0;border-radius:8px;background:#16a34a;color:white;cursor:pointer\">Approve</button>
+        </div>
+      </form>
+      <form method=\"post\" action=\"/ui/prd/{job_id}/request_changes\" style=\"margin-top:10px\">
+        <label>Change request notes</label><br/>
+        <textarea name=\"notes\" style=\"width:100%;min-height:80px\" placeholder=\"What needs to change?\"></textarea>
+        <div style=\"margin-top:10px;display:flex;gap:10px\">
+          <button type=\"submit\" style=\"padding:10px 14px;border:0;border-radius:8px;background:#b45309;color:white;cursor:pointer\">Request changes</button>
+        </div>
+      </form>
+    </div>
+
+    <div class=\"card\" style=\"margin-top:12px\">
       <h3>Memory hits</h3>
       <ul>
         {hits_html}
