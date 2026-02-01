@@ -4,8 +4,22 @@ import os
 import subprocess
 from typing import Dict, Optional, Any
 from pathlib import Path
+import logging
 
-from .registry import SkillRegistry, SkillMetadata
+from .registry import (
+    SkillRegistry,
+    SkillMetadata,
+    SkillRegistryError,
+    SkillValidationError,
+    SkillNotFoundError,
+)
+
+logger = logging.getLogger(__name__)
+
+
+class SkillLoadError(Exception):
+    """Failed to load skill content."""
+    pass
 
 
 class Skill:
@@ -27,12 +41,21 @@ class Skill:
 
 
 class SkillsManager:
-    """Manages loading and execution of Claude Skills."""
+    """
+    Manages loading and execution of Claude Skills.
+    
+    Features:
+    - Skill discovery and validation via SkillRegistry
+    - Lazy loading of skill content
+    - Content caching
+    - Git-based skill installation
+    - Comprehensive error handling
+    """
 
     def __init__(self, skills_dir: str = "./skills"):
-        self.skills_dir = skills_dir
+        self.skills_dir = Path(skills_dir)
         self.loaded_skills: Dict[str, Skill] = {}
-        self.registry = SkillRegistry(skills_dir)
+        self.registry = SkillRegistry(str(skills_dir))
 
     async def load_skill(self, skill_name: str) -> Optional[Skill]:
         """
@@ -43,40 +66,88 @@ class SkillsManager:
 
         Returns:
             Loaded Skill object or None if not found
+            
+        Raises:
+            SkillNotFoundError: If skill is not in registry
+            SkillLoadError: If skill content cannot be loaded
         """
         # Check cache first
         if skill_name in self.loaded_skills:
+            logger.debug(f"Returning cached skill: {skill_name}")
             return self.loaded_skills[skill_name]
 
         # Get metadata from registry
         metadata = self.registry.get_skill(skill_name)
         if not metadata:
-            print(f"Skill '{skill_name}' not found in registry")
-            return None
+            logger.error(f"Skill '{skill_name}' not found in registry")
+            raise SkillNotFoundError(f"Skill '{skill_name}' not found in registry")
 
         # Load skill content
-        skill_path = Path(metadata.path)
-
-        # Look for skill.md or README.md as the main prompt
-        prompt_files = ["skill.md", "README.md", "prompt.md"]
-        content = None
-
-        for prompt_file in prompt_files:
-            prompt_path = skill_path / prompt_file
-            if prompt_path.exists():
-                with open(prompt_path, "r", encoding="utf-8") as f:
-                    content = f.read()
-                break
-
-        if content is None:
-            print(f"No prompt content found for skill '{skill_name}'")
-            return None
+        try:
+            content = self._load_skill_content(metadata)
+        except Exception as e:
+            logger.error(f"Failed to load content for skill '{skill_name}': {e}")
+            raise SkillLoadError(f"Cannot load skill content: {e}")
 
         # Create and cache skill
         skill = Skill(metadata, content)
         self.loaded_skills[skill_name] = skill
+        logger.info(f"Loaded skill: {skill_name} v{metadata.version}")
 
         return skill
+
+    def _load_skill_content(self, metadata: SkillMetadata) -> str:
+        """
+        Load skill prompt content from filesystem.
+        
+        Args:
+            metadata: SkillMetadata containing path and entry_point
+            
+        Returns:
+            Skill prompt content as string
+            
+        Raises:
+            SkillLoadError: If content cannot be loaded
+        """
+        skill_path = Path(metadata.path)
+
+        # Determine entry point file
+        if metadata.entry_point:
+            prompt_files = [metadata.entry_point]
+        else:
+            # Default priority order
+            prompt_files = ["skill.md", "README.md", "prompt.md"]
+
+        # Try each potential entry point
+        for prompt_file in prompt_files:
+            prompt_path = skill_path / prompt_file
+            if prompt_path.exists():
+                try:
+                    with open(prompt_path, "r", encoding="utf-8") as f:
+                        content = f.read()
+                    
+                    if not content.strip():
+                        logger.warning(
+                            f"Empty content in {prompt_file} for skill '{metadata.name}'"
+                        )
+                        continue
+                    
+                    logger.debug(
+                        f"Loaded content from {prompt_file} for skill '{metadata.name}'"
+                    )
+                    return content
+                    
+                except Exception as e:
+                    logger.error(
+                        f"Failed to read {prompt_file} for skill '{metadata.name}': {e}"
+                    )
+                    continue
+
+        # No valid content found
+        raise SkillLoadError(
+            f"No readable prompt content found for skill '{metadata.name}'. "
+            f"Tried: {', '.join(prompt_files)}"
+        )
 
     async def install_skill(self, git_url: str, skill_name: str) -> bool:
         """
@@ -88,27 +159,55 @@ class SkillsManager:
 
         Returns:
             True if successful, False otherwise
+            
+        Raises:
+            SkillRegistryError: If installation fails
         """
-        target_path = os.path.join(self.skills_dir, skill_name)
+        target_path = self.skills_dir / skill_name
 
-        if os.path.exists(target_path):
-            print(f"Skill directory '{skill_name}' already exists")
-            return False
+        if target_path.exists():
+            logger.error(f"Skill directory '{skill_name}' already exists")
+            raise SkillRegistryError(f"Skill directory '{skill_name}' already exists")
 
         try:
-            subprocess.run(
-                ["git", "clone", git_url, target_path],
+            logger.info(f"Installing skill '{skill_name}' from {git_url}")
+            
+            result = subprocess.run(
+                ["git", "clone", git_url, str(target_path)],
                 check=True,
                 capture_output=True,
-                text=True
+                text=True,
+                timeout=60
             )
+            
+            logger.debug(f"Git clone output: {result.stdout}")
+            
+            # Validate the cloned skill
+            is_valid, error = self.registry.validate_skill_directory(target_path)
+            if not is_valid:
+                logger.error(f"Cloned skill is invalid: {error}")
+                # Clean up invalid clone
+                subprocess.run(["rm", "-rf", str(target_path)], check=False)
+                raise SkillRegistryError(f"Invalid skill: {error}")
+            
             # Reload registry to pick up new skill
             self.registry.reload()
-            print(f"Successfully installed skill '{skill_name}'")
+            
+            # Save updated registry
+            self.registry.save_registry()
+            
+            logger.info(f"Successfully installed skill '{skill_name}'")
             return True
+            
+        except subprocess.TimeoutExpired:
+            logger.error(f"Git clone timed out for {git_url}")
+            raise SkillRegistryError("Git clone operation timed out")
         except subprocess.CalledProcessError as e:
-            print(f"Failed to install skill: {e.stderr}")
-            return False
+            logger.error(f"Git clone failed: {e.stderr}")
+            raise SkillRegistryError(f"Git clone failed: {e.stderr}")
+        except Exception as e:
+            logger.error(f"Unexpected error installing skill: {e}")
+            raise SkillRegistryError(f"Installation failed: {e}")
 
     async def update_skill(self, skill_name: str) -> bool:
         """
@@ -118,37 +217,72 @@ class SkillsManager:
             skill_name: Name of the skill to update
 
         Returns:
-            True if successful, False otherwise
+            True if successful
+            
+        Raises:
+            SkillNotFoundError: If skill is not found
+            SkillRegistryError: If update fails
         """
         skill_path = self.registry.get_skill_path(skill_name)
         if not skill_path:
-            print(f"Skill '{skill_name}' not found")
-            return False
+            logger.error(f"Skill '{skill_name}' not found")
+            raise SkillNotFoundError(f"Skill '{skill_name}' not found")
 
         try:
-            subprocess.run(
+            logger.info(f"Updating skill '{skill_name}'")
+            
+            result = subprocess.run(
                 ["git", "-C", skill_path, "pull"],
                 check=True,
                 capture_output=True,
-                text=True
+                text=True,
+                timeout=30
             )
+            
+            logger.debug(f"Git pull output: {result.stdout}")
+            
             # Clear cache for this skill
             if skill_name in self.loaded_skills:
                 del self.loaded_skills[skill_name]
+            
             # Reload registry
             self.registry.reload()
-            print(f"Successfully updated skill '{skill_name}'")
+            
+            # Save updated registry
+            self.registry.save_registry()
+            
+            logger.info(f"Successfully updated skill '{skill_name}'")
             return True
+            
+        except subprocess.TimeoutExpired:
+            logger.error(f"Git pull timed out for '{skill_name}'")
+            raise SkillRegistryError("Git pull operation timed out")
         except subprocess.CalledProcessError as e:
-            print(f"Failed to update skill: {e.stderr}")
-            return False
+            logger.error(f"Git pull failed for '{skill_name}': {e.stderr}")
+            raise SkillRegistryError(f"Git pull failed: {e.stderr}")
+        except Exception as e:
+            logger.error(f"Unexpected error updating skill '{skill_name}': {e}")
+            raise SkillRegistryError(f"Update failed: {e}")
 
     def list_skills(self) -> list[SkillMetadata]:
-        """List all available skills."""
+        """
+        List all available skills.
+        
+        Returns:
+            List of SkillMetadata objects
+        """
         return self.registry.list_skills()
 
     def get_skill_info(self, skill_name: str) -> Optional[SkillMetadata]:
-        """Get information about a skill."""
+        """
+        Get information about a skill.
+        
+        Args:
+            skill_name: Name of the skill
+            
+        Returns:
+            SkillMetadata or None if not found
+        """
         return self.registry.get_skill(skill_name)
 
     async def execute_skill(
@@ -167,12 +301,46 @@ class SkillsManager:
             context: Context data for the skill
 
         Returns:
-            Skill prompt with context or None if skill not found
+            Skill prompt with context
+            
+        Raises:
+            SkillNotFoundError: If skill is not found
+            SkillLoadError: If skill cannot be loaded
         """
         skill = await self.load_skill(skill_name)
-        if not skill:
-            return None
-
+        
         # For now, return the skill prompt
         # The agent will use this prompt when calling Claude
+        # Future: could apply context templating here
         return skill.get_prompt()
+
+    def reload_registry(self) -> None:
+        """Reload the skills registry from disk."""
+        logger.info("Reloading skills registry")
+        self.registry.reload()
+        # Clear cache since skills may have changed
+        self.loaded_skills.clear()
+
+    def get_skills_by_capability(self, capability: str) -> list[SkillMetadata]:
+        """
+        Find skills that provide a specific capability.
+        
+        Args:
+            capability: Capability name to search for
+            
+        Returns:
+            List of matching skills
+        """
+        return self.registry.get_skills_by_capability(capability)
+
+    def get_skills_by_tag(self, tag: str) -> list[SkillMetadata]:
+        """
+        Find skills with a specific tag.
+        
+        Args:
+            tag: Tag to search for
+            
+        Returns:
+            List of matching skills
+        """
+        return self.registry.get_skills_by_tag(tag)

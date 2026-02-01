@@ -162,25 +162,51 @@ pytest tests/
 
 ## Claude Skills
 
+Agent Bus includes a robust skills system with JSON schema validation, automatic discovery, and git-based installation.
+
 ### Installed Skills
 
 - **UI/UX Pro Max** (`skills/ui-ux-pro-max/`) - Design system generation
 
-Note: `skills/ui-ux-pro-max` is currently tracked as a **git submodule**. After cloning, run:
-```bash
-git submodule update --init --recursive
-```
+### Skills System Features
 
-More skills can be added from:
-  - [ComposioHQ/awesome-claude-skills](https://github.com/ComposioHQ/awesome-claude-skills)
-  - [karanb192/awesome-claude-skills](https://github.com/karanb192/awesome-claude-skills)
+- **JSON Schema Validation**: All skills validated against Pydantic schema
+- **Automatic Discovery**: Skills auto-discovered from `skills/` directory
+- **Hardened Loader**: Comprehensive error handling and validation
+- **Version Checks**: Semver validation and compatibility checks
+- **Git Integration**: Install/update skills from GitHub repositories
 
 ### Installing New Skills
 
 ```bash
+# Using the SkillsManager API
+from src.skills import SkillsManager
+
+manager = SkillsManager("./skills")
+await manager.install_skill(
+    "https://github.com/user/skill-name",
+    "skill-name"
+)
+
+# Or manually
 cd skills
 git clone https://github.com/user/skill-name skill-name
 ```
+
+### Documentation
+
+See [docs/SKILLS_SYSTEM.md](docs/SKILLS_SYSTEM.md) for:
+- Skill metadata format (skill.json schema)
+- Creating custom skills
+- API usage and examples
+- Error handling
+- Testing
+
+### Skill Repositories
+
+More skills available at:
+- [ComposioHQ/awesome-claude-skills](https://github.com/ComposioHQ/awesome-claude-skills)
+- [karanb192/awesome-claude-skills](https://github.com/karanb192/awesome-claude-skills)
 
 ## Deployment
 
