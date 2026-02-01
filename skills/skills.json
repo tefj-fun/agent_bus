@@ -1,0 +1,22 @@
+{
+  "skills": {
+    "test-skill": {
+      "author": "Test",
+      "capabilities": [],
+      "dependencies": [],
+      "description": "Test",
+      "entry_point": null,
+      "license": null,
+      "metadata": {},
+      "min_python_version": null,
+      "name": "test-skill",
+      "path": "/tmp/tmpycztyotx/test-skill",
+      "repository": null,
+      "required_tools": [],
+      "tags": [],
+      "version": "1.0.0"
+    }
+  },
+  "updated_at": "2026-02-01T22:21:03.938219Z",
+  "version": "1.0.0"
+}

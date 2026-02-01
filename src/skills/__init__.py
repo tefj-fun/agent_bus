@@ -16,6 +16,13 @@ from .schema import (
     SkillDependency,
     EXAMPLE_SKILL_METADATA,
 )
+from .allowlist import (
+    SkillAllowlistManager,
+    SkillPermissionError,
+    AllowlistEntry,
+    CapabilityMapping,
+)
+from .config_loader import AllowlistConfigLoader
 
 __all__ = [
     # Manager
@@ -35,4 +42,10 @@ __all__ = [
     "SkillTool",
     "SkillDependency",
     "EXAMPLE_SKILL_METADATA",
+    # Allowlist
+    "SkillAllowlistManager",
+    "SkillPermissionError",
+    "AllowlistEntry",
+    "CapabilityMapping",
+    "AllowlistConfigLoader",
 ]

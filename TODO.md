@@ -6,7 +6,7 @@ References:
 - `PLAN.md` — phase ordering + high-level architecture (see **Phase 5 Status (Next)** and **Full app roadmap (beyond Phase 5)** sections)
 - `TODO_JIRA.md` — Jira epic/task mapping used here
 
-Last refresh: 2026-02-01 (updated after KAN-56 completion)
+Last refresh: 2026-02-01 (updated after KAN-57 completion)
 
 ## Done (recent)
 - ✅ KAN-25 Phase 5 (integration & QA) tasks are effectively done in Jira (at least KAN-26/27/28 are Done; no remaining children were found under KAN-25).
@@ -118,7 +118,20 @@ All stages implemented and tested:
 ### 2) KAN-34 — Skills system (install/registry/runtime load)
 - [x] KAN-55 Skills: registry format + loader hardening ✅
 - [x] KAN-56 Skills: install command (git clone + register) ✅
-- [ ] KAN-57 Skills: per-agent allowlist + capability mapping
+- [x] KAN-57 Skills: per-agent allowlist + capability mapping ✅
+  - Added per-agent skill permission allowlists (database-backed)
+  - Implemented capability-based skill discovery with priority ordering
+  - Added wildcard support (* = all skills)
+  - Backward compatible (agents without allowlist have full access)
+  - Created YAML import/export for configuration
+  - Added comprehensive caching for performance
+  - Permission enforcement in SkillsManager and BaseAgent
+  - Database schema: agent_skill_allowlist + capability_skill_mapping tables
+  - Migration: scripts/migrations/001_add_skill_allowlists.sql
+  - Components: SkillAllowlistManager, AllowlistConfigLoader
+  - Tests: test_skill_allowlist.py, test_allowlist_config_loader.py, test_agent_skill_permissions.py
+  - Documentation: docs/SKILL_ALLOWLIST.md
+  - PR #24 (pending CI)
 - [ ] KAN-58 Skills: add example skill + tests
 
 ### 3) KAN-35 — Memory system v2 (vector DB + patterns)
