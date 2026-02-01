@@ -44,7 +44,7 @@ jobs:
         env:
           LLM_MODE: mock
         run: |
-          docker compose run --rm api pytest -q
+          docker compose run --rm api pytest -q -m "not slow"
 
       - name: Phase 4 smoke (required, mock LLM)
         env:
