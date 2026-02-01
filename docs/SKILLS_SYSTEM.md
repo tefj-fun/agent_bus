@@ -1,5 +1,22 @@
 # Skills System Documentation
 
+## Quick Start: Example Skill
+
+See `skills/weather-toolkit/` for a complete reference implementation demonstrating:
+- ✅ Complete skill.json metadata with all fields
+- ✅ Comprehensive documentation (skill.md)
+- ✅ Capability definitions and tool requirements
+- ✅ Python dependency specifications
+- ✅ Integration tests with allowlist and capability mapping
+- ✅ Best practices and patterns
+
+**New to skills?** Start by reviewing the weather-toolkit example:
+```bash
+cat skills/weather-toolkit/skill.json
+cat skills/weather-toolkit/README.md
+pytest tests/test_example_skill_integration.py -v
+```
+
 ## Overview
 
 The Agent Bus Skills System provides a robust, pluggable framework for managing and executing Claude Skills. It includes:

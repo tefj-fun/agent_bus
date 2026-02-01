@@ -132,7 +132,17 @@ All stages implemented and tested:
   - Tests: test_skill_allowlist.py, test_allowlist_config_loader.py, test_agent_skill_permissions.py
   - Documentation: docs/SKILL_ALLOWLIST.md
   - PR #24 (pending CI)
-- [ ] KAN-58 Skills: add example skill + tests
+- [x] KAN-58 Skills: add example skill + tests ✅
+  - Created weather-toolkit as complete reference implementation
+  - skill.json with all metadata fields (capabilities, tools, dependencies)
+  - Comprehensive documentation (skill.md, README.md, TESTING.md)
+  - Demonstrates capability mapping, tool requirements, dependencies
+  - Added 20 integration tests covering all skills system features
+  - Tests verify: loading, validation, capability mapping, permissions, end-to-end workflow
+  - Updated docs/SKILLS_SYSTEM.md and README.md with example references
+  - Files: skills/weather-toolkit/*, tests/test_example_skill_integration.py
+  - All tests pass syntax validation
+  - PR ready (pending merge)
 
 ### 3) KAN-35 — Memory system v2 (vector DB + patterns)
 - [ ] (Break down into child tickets in Jira if not already)

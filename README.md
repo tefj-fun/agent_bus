@@ -164,9 +164,20 @@ pytest tests/
 
 Agent Bus includes a robust skills system with JSON schema validation, automatic discovery, and git-based installation.
 
-### Installed Skills
+### Example Skills
 
-- **UI/UX Pro Max** (`skills/ui-ux-pro-max/`) - Design system generation
+- **Weather Toolkit** (`skills/weather-toolkit/`) - Complete reference implementation demonstrating:
+  - Full skill.json metadata with capabilities, tools, and dependencies
+  - Comprehensive documentation and usage examples
+  - Integration with allowlist and capability mapping
+  - Best practices for creating production skills
+- **UI/UX Pro Max** (`skills/ui-ux-pro-max/`) - Design system generation (placeholder)
+
+**New to skills?** Start with the weather-toolkit example to learn the system:
+```bash
+cat skills/weather-toolkit/README.md
+pytest tests/test_example_skill_integration.py -v
+```
 
 ### Skills System Features
 
