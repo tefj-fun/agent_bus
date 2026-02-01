@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agent-bus-config
+  namespace: agent-bus
+data:
+  # Application configuration
+  ENVIRONMENT: "production"
+  DEBUG: "false"
+  
+  # LLM configuration
+  LLM_MODE: "real"
+  LLM_PROVIDER: "anthropic"
+  
+  # Redis configuration
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  
+  # PostgreSQL configuration
+  POSTGRES_HOST: "postgres-service"
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: "agent_bus"
+  POSTGRES_USER: "agent_bus"
+  
+  # Worker configuration
+  WORKER_TYPE: "cpu"
+  
+  # Python configuration
+  PYTHONUNBUFFERED: "1"
+  PYTHONDONTWRITEBYTECODE: "1"
