@@ -1,4 +1,5 @@
 """Integration test for QA workflow stage - E2E API test."""
+import pytest
 
 import os
 import time
@@ -35,6 +36,7 @@ def wait_for(job_id: str, predicate, timeout_s: float = 60.0, poll_s: float = 1.
     raise AssertionError(f"Timed out waiting for condition. last={last}")
 
 
+@pytest.mark.slow
 def test_qa_stage_in_workflow():
     """Integration test: verify QA stage executes after development.
 

@@ -4,6 +4,7 @@ import uuid
 
 import urllib.request
 import json
+import pytest
 
 
 # When running under `docker compose run api`, the API is reachable as http://api:8000
@@ -34,6 +35,7 @@ def wait_for(job_id: str, predicate, timeout_s: float = 60.0, poll_s: float = 1.
     raise AssertionError(f"Timed out waiting for condition. last={last}")
 
 
+@pytest.mark.slow
 def test_async_hitl_flow_end_to_end():
     """Integration test: create -> waiting_for_approval -> approve -> completed.
 

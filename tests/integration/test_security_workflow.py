@@ -1,4 +1,5 @@
 """Integration test for Security workflow stage - E2E API test."""
+import pytest
 
 import os
 import time
@@ -35,6 +36,7 @@ def wait_for(job_id: str, predicate, timeout_s: float = 60.0, poll_s: float = 1.
     raise AssertionError(f"Timed out waiting for condition. last={last}")
 
 
+@pytest.mark.slow
 def test_security_stage_in_workflow():
     """Integration test: verify Security stage executes after QA.
 
@@ -111,6 +113,7 @@ def test_security_stage_in_workflow():
             assert "recommendation" in vuln
 
 
+@pytest.mark.slow
 def test_security_api_endpoint():
     """Test the security endpoint returns 404 for non-existent job."""
     fake_job_id = f"fake_job_{uuid.uuid4().hex[:10]}"
