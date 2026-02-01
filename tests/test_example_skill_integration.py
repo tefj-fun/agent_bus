@@ -1,5 +1,6 @@
 """Integration tests for example skill (weather-toolkit) demonstrating skills system features."""
 
+import os
 import pytest
 import asyncpg
 import json
@@ -13,6 +14,10 @@ from src.skills import (
     SkillLoadError,
 )
 from src.agents.base import BaseAgent, AgentContext, AgentTask, AgentResult
+
+# Skip DB-dependent tests in CI (same pattern as other test files)
+SKIP_DB_TESTS = os.getenv("CI") == "true"
+skip_in_ci = pytest.mark.skipif(SKIP_DB_TESTS, reason="Requires database setup, skipped in CI")
 
 
 # Mock agent for testing skill integration
@@ -270,6 +275,7 @@ class TestExampleSkillLoading:
         assert "weather-query" in prompt or "weather" in prompt.lower()
 
 
+@skip_in_ci
 class TestCapabilityMapping:
     """Test capability-to-skill mapping with example skill."""
     
@@ -346,6 +352,7 @@ class TestCapabilityMapping:
         assert "alternate-weather" in skills
 
 
+@skip_in_ci
 class TestPermissionEnforcement:
     """Test permission enforcement with example skill."""
     
@@ -424,6 +431,7 @@ class TestPermissionEnforcement:
         assert allowed is False
 
 
+@skip_in_ci
 class TestSkillsManagerIntegration:
     """Test SkillsManager integration with permissions."""
     
@@ -483,6 +491,7 @@ class TestSkillsManagerIntegration:
         assert skill is not None
 
 
+@skip_in_ci
 class TestEndToEndWorkflow:
     """End-to-end test demonstrating complete skills system workflow."""
     
