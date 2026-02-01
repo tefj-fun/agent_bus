@@ -8,6 +8,7 @@ python = "^3.10"
 
 [tool.poetry.scripts]
 agent-bus-skills = "src.cli:main"
+agent-bus-memory = "src.cli_memory:main"
 
 [tool.poetry.dependencies]
 python = "^3.10"
