@@ -2,6 +2,10 @@
 
 This file is a human-readable mirror of Jira. **Jira is the source of truth**.
 
+References:
+- `PLAN.md` — phase ordering + high-level architecture (see **Phase 5 Status (Next)** and **Full app roadmap (beyond Phase 5)** sections)
+- `TODO_JIRA.md` — Jira epic/task mapping used here
+
 Last refresh: 2026-02-01
 
 ## Done (recent)
@@ -15,6 +19,8 @@ Last refresh: 2026-02-01
   - KAN-47 UX polish + basic error states
 
 ## Now (PLAN order)
+
+Source: `PLAN.md` + `TODO_JIRA.md` + Jira statuses.
 
 ### 1) KAN-33 — Workflow expansion beyond Plan (architecture → build → QA → docs)
 **Status:** In Progress (epic)
