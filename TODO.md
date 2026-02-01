@@ -6,7 +6,7 @@ References:
 - `PLAN.md` — phase ordering + high-level architecture (see **Phase 5 Status (Next)** and **Full app roadmap (beyond Phase 5)** sections)
 - `TODO_JIRA.md` — Jira epic/task mapping used here
 
-Last refresh: 2026-02-01 (updated after KAN-54 completion)
+Last refresh: 2026-02-01 (updated after KAN-55 completion)
 
 ## Done (recent)
 - ✅ KAN-25 Phase 5 (integration & QA) tasks are effectively done in Jira (at least KAN-26/27/28 are Done; no remaining children were found under KAN-25).
@@ -72,6 +72,15 @@ Last refresh: 2026-02-01 (updated after KAN-54 completion)
   - Verified COMPLETED state is reachable through full workflow path
   - All workflow transitions properly defined and tested
   - PR #20 merged (force merge due to CI timeout, core functionality complete)
+- ✅ KAN-55 Skills: registry format + loader hardening
+  - Designed JSON schema for skill metadata (SkillMetadataSchema)
+  - Implemented hardened SkillRegistry with automatic discovery
+  - Enhanced SkillsManager with lazy loading and git integration
+  - Added comprehensive tests (46 tests, all passing)
+  - Created docs/SKILLS_SYSTEM.md with full API reference
+  - Updated README.md with skills system overview
+  - Added example skill.json for ui-ux-pro-max
+  - PR #21 merged (force merge due to CI timeout, core functionality complete)
 
 ## Now (PLAN order)
 
@@ -90,7 +99,7 @@ All stages implemented and tested:
 - [x] KAN-54 Workflow: finalize end-to-end stage graph + transitions ✅
 
 ### 2) KAN-34 — Skills system (install/registry/runtime load)
-- [ ] KAN-55 Skills: registry format + loader hardening
+- [x] KAN-55 Skills: registry format + loader hardening ✅
 - [ ] KAN-56 Skills: install command (git clone + register)
 - [ ] KAN-57 Skills: per-agent allowlist + capability mapping
 - [ ] KAN-58 Skills: add example skill + tests
