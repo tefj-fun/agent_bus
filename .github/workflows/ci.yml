@@ -20,6 +20,8 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build + start services
+        env:
+          LLM_MODE: mock
         run: |
           docker compose up -d --build
 
@@ -39,6 +41,8 @@ jobs:
           exit 1
 
       - name: Pytest
+        env:
+          LLM_MODE: mock
         run: |
           docker compose run --rm api pytest -q
 
@@ -56,6 +60,7 @@ jobs:
         run: |
           docker compose ps
           docker compose logs --tail=300 api || true
+          docker compose logs --tail=300 orchestrator || true
           docker compose logs --tail=300 worker || true
 
       - name: Teardown
