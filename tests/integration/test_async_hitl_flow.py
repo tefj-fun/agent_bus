@@ -89,3 +89,7 @@ def test_async_hitl_flow_end_to_end():
     # Architecture exists
     _, arch = http("GET", f"{BASE_URL}/api/projects/{job_id}/architecture", timeout=10)
     assert arch.get("content") or arch.get("output_data")
+
+    # UI/UX design exists
+    _, ui_ux = http("GET", f"{BASE_URL}/api/projects/{job_id}/ui_ux", timeout=10)
+    assert ui_ux.get("content") or ui_ux.get("output_data")

@@ -134,6 +134,15 @@ class MasterAgent:
             inputs={"prd": prd_content, "plan": plan_content or ""}
         )
 
+        # Execute UI/UX design
+        architecture_content = await self._fetch_artifact_content(job_id, "architecture")
+        uiux_result = await self._execute_stage(
+            job_id=job_id,
+            project_id=project_id,
+            stage=WorkflowStage.UIUX_DESIGN,
+            inputs={"architecture": architecture_content or "", "prd": prd_content}
+        )
+
         await self.postgres.update_job_status(
             job_id=job_id,
             status="completed",
@@ -145,7 +154,8 @@ class MasterAgent:
             "status": "completed",
             "results": {
                 "plan": plan_result,
-                "architecture": architecture_result
+                "architecture": architecture_result,
+                "ui_ux": uiux_result
             }
         }
 

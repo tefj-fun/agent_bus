@@ -13,8 +13,8 @@ from ..agents.project_manager import ProjectManager
 from ..agents.memory_agent import MemoryAgent
 from ..agents.plan_agent import PlanAgent
 from ..agents.architect_agent import ArchitectAgent
+from ..agents.uiux_agent import UIUXAgent
 # TODO: Import other specialized agents as they are implemented
-# from ..agents.uiux_designer import UIUXDesigner
 # etc.
 
 from ..infrastructure.redis_client import RedisClient, redis_client
@@ -46,8 +46,8 @@ class AgentWorker:
             "memory_agent": MemoryAgent,
             "plan_agent": PlanAgent,
             "architect_agent": ArchitectAgent,
+            "uiux_agent": UIUXAgent,
             # TODO: Register other agents
-            # "uiux_designer": UIUXDesigner,
             # "developer_agent": DeveloperAgent,
             # "qa_engineer": QAEngineer,
             # "security_engineer": SecurityEngineer,
