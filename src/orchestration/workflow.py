@@ -93,7 +93,7 @@ class WorkflowStateMachine:
         WorkflowStage.PRD_GENERATION: "prd_agent",
         WorkflowStage.PLAN_GENERATION: "plan_agent",
         WorkflowStage.ARCHITECTURE_DESIGN: "architect_agent",
-        WorkflowStage.UIUX_DESIGN: "uiux_designer",
+        WorkflowStage.UIUX_DESIGN: "uiux_agent",
         WorkflowStage.DEVELOPMENT: "developer_agent",
         WorkflowStage.QA_TESTING: "qa_engineer",
         WorkflowStage.SECURITY_REVIEW: "security_engineer",
