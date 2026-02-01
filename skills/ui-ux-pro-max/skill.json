@@ -1,0 +1,32 @@
+{
+  "name": "ui-ux-pro-max",
+  "version": "1.0.0",
+  "description": "Professional UI/UX design system generator for comprehensive design workflows",
+  "author": "ComposioHQ",
+  "capabilities": [
+    {
+      "name": "ui-design",
+      "description": "Generate comprehensive UI/UX designs"
+    },
+    {
+      "name": "design-systems",
+      "description": "Create design systems and component libraries"
+    }
+  ],
+  "required_tools": [
+    {
+      "name": "browser",
+      "required": true
+    }
+  ],
+  "dependencies": [],
+  "entry_point": "README.md",
+  "min_python_version": "3.10",
+  "repository": "https://github.com/ComposioHQ/awesome-claude-skills",
+  "license": "MIT",
+  "tags": ["design", "ui", "ux", "frontend", "prototyping"],
+  "metadata": {
+    "placeholder": true,
+    "note": "This is currently a placeholder skill. Install the real skill from the repository."
+  }
+}
