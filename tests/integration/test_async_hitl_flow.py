@@ -6,7 +6,8 @@ import urllib.request
 import json
 
 
-BASE_URL = os.getenv("BASE_URL", "http://localhost:8000").rstrip("/")
+# When running under `docker compose run api`, the API is reachable as http://api:8000
+BASE_URL = os.getenv("BASE_URL", "http://api:8000").rstrip("/")
 
 
 def http(method: str, url: str, payload=None, timeout=10):
