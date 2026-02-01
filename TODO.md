@@ -145,7 +145,16 @@ All stages implemented and tested:
   - PR ready (pending merge)
 
 ### 3) KAN-35 — Memory system v2 (vector DB + patterns)
-- [ ] (Break down into child tickets in Jira if not already)
+- [x] KAN-59 Memory: unify store interface + backends ✅
+  - Implemented via KAN-81/82/83 (ChromaDB integration, vector embeddings, pattern storage)
+  - Created unified MemoryStoreBase interface (src/memory/base.py)
+  - Implemented backends: PostgresMemoryStore, ChromaDBMemoryStore, InMemoryStore
+  - Added factory/registry for backend selection (MemoryStoreRegistry)
+  - All operations supported: store, retrieve, search, update, delete, count, health, clear
+  - Comprehensive tests (22 tests for interface + backends, all passing)
+  - Documentation: docs/MEMORY_STORE.md
+  - Backward compatible with existing MemoryStore usage
+  - PRs: #28 (KAN-81), #29 (KAN-82), #30 (KAN-83)
 
 ### 4) KAN-36 — Deployment & scaling (Docker/K8s)
 - [ ] (Break down into child tickets in Jira if not already)
