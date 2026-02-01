@@ -214,6 +214,47 @@ class MasterAgent:
             )
         )
 
+        # Execute PM Review stage
+        documentation_content = await self._fetch_artifact_content(job_id, "documentation")
+        support_content = await self._fetch_artifact_content(job_id, "support")
+        pm_review_result = await self._execute_stage(
+            job_id=job_id,
+            project_id=project_id,
+            stage=WorkflowStage.PM_REVIEW,
+            inputs={
+                "development": development_content or "",
+                "architecture": architecture_content or "",
+                "qa": qa_content or "",
+                "security": security_content or "",
+                "documentation": documentation_content or "",
+                "support": support_content or "",
+                "prd": prd_content
+            }
+        )
+
+        # Execute Delivery stage
+        pm_review_content = await self._fetch_artifact_content(job_id, "pm_review")
+        delivery_result = await self._execute_stage(
+            job_id=job_id,
+            project_id=project_id,
+            stage=WorkflowStage.DELIVERY,
+            inputs={
+                "pm_review": pm_review_content or "",
+                "all_artifacts": {
+                    "prd": prd_content,
+                    "plan": plan_content or "",
+                    "architecture": architecture_content or "",
+                    "ui_ux": uiux_content or "",
+                    "development": development_content or "",
+                    "qa": qa_content or "",
+                    "security": security_content or "",
+                    "documentation": documentation_content or "",
+                    "support": support_content or ""
+                }
+            }
+        )
+
+        # Transition to COMPLETED state
         await self.postgres.update_job_status(
             job_id=job_id,
             status="completed",
@@ -231,7 +272,9 @@ class MasterAgent:
                 "qa": qa_result,
                 "security": security_result,
                 "documentation": documentation_result,
-                "support": support_result
+                "support": support_result,
+                "pm_review": pm_review_result,
+                "delivery": delivery_result
             }
         }
 
