@@ -22,12 +22,6 @@ def mock_context():
     context.skills_manager = MagicMock()
     context.config = {}
     
-    # Mock database pool acquire
-    mock_conn = AsyncMock()
-    mock_conn.execute = AsyncMock()
-    mock_conn.fetchval = AsyncMock(return_value="artifact-id-123")
-    context.db_pool.acquire = AsyncMock(return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock()))
-    
     return context
 
 
@@ -62,6 +56,11 @@ async def test_security_agent_execute_success(mock_context, monkeypatch):
     monkeypatch.setattr("src.config.settings", MockSettings())
     
     agent = SecurityAgent(mock_context)
+    
+    # Mock the save_artifact, log_event, notify_completion methods
+    agent.save_artifact = AsyncMock(return_value="artifact-sec-123")
+    agent.log_event = AsyncMock()
+    agent.notify_completion = AsyncMock()
     
     task = AgentTask(
         task_id="task-123",
@@ -116,6 +115,9 @@ async def test_security_agent_missing_development_content(mock_context, monkeypa
     
     agent = SecurityAgent(mock_context)
     
+    # Mock the notify_completion method
+    agent.notify_completion = AsyncMock()
+    
     task = AgentTask(
         task_id="task-456",
         task_type="security_review",
@@ -144,6 +146,11 @@ async def test_security_agent_metadata(mock_context, monkeypatch):
     monkeypatch.setattr("src.config.settings", MockSettings())
     
     agent = SecurityAgent(mock_context)
+    
+    # Mock the save_artifact, log_event, notify_completion methods
+    agent.save_artifact = AsyncMock(return_value="artifact-sec-456")
+    agent.log_event = AsyncMock()
+    agent.notify_completion = AsyncMock()
     
     task = AgentTask(
         task_id="task-789",
@@ -177,6 +184,11 @@ async def test_security_agent_vulnerability_categories(mock_context, monkeypatch
     monkeypatch.setattr("src.config.settings", MockSettings())
     
     agent = SecurityAgent(mock_context)
+    
+    # Mock the save_artifact, log_event, notify_completion methods
+    agent.save_artifact = AsyncMock(return_value="artifact-sec-789")
+    agent.log_event = AsyncMock()
+    agent.notify_completion = AsyncMock()
     
     task = AgentTask(
         task_id="task-999",
@@ -215,6 +227,11 @@ async def test_security_agent_compliance_assessment(mock_context, monkeypatch):
     monkeypatch.setattr("src.config.settings", MockSettings())
     
     agent = SecurityAgent(mock_context)
+    
+    # Mock the save_artifact, log_event, notify_completion methods
+    agent.save_artifact = AsyncMock(return_value="artifact-sec-comp")
+    agent.log_event = AsyncMock()
+    agent.notify_completion = AsyncMock()
     
     task = AgentTask(
         task_id="task-comp",
