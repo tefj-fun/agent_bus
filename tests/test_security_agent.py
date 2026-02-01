@@ -59,7 +59,7 @@ async def test_security_agent_execute_success(mock_context, monkeypatch):
     class MockSettings:
         llm_mode = 'mock'
     
-    monkeypatch.setattr("src.agents.security_agent.settings", MockSettings())
+    monkeypatch.setattr("src.config.settings", MockSettings())
     
     agent = SecurityAgent(mock_context)
     
@@ -112,7 +112,7 @@ async def test_security_agent_missing_development_content(mock_context, monkeypa
     class MockSettings:
         llm_mode = 'mock'
     
-    monkeypatch.setattr("src.agents.security_agent.settings", MockSettings())
+    monkeypatch.setattr("src.config.settings", MockSettings())
     
     agent = SecurityAgent(mock_context)
     
@@ -141,7 +141,7 @@ async def test_security_agent_metadata(mock_context, monkeypatch):
     class MockSettings:
         llm_mode = 'mock'
     
-    monkeypatch.setattr("src.agents.security_agent.settings", MockSettings())
+    monkeypatch.setattr("src.config.settings", MockSettings())
     
     agent = SecurityAgent(mock_context)
     
@@ -174,7 +174,7 @@ async def test_security_agent_vulnerability_categories(mock_context, monkeypatch
     class MockSettings:
         llm_mode = 'mock'
     
-    monkeypatch.setattr("src.agents.security_agent.settings", MockSettings())
+    monkeypatch.setattr("src.config.settings", MockSettings())
     
     agent = SecurityAgent(mock_context)
     
@@ -212,7 +212,7 @@ async def test_security_agent_compliance_assessment(mock_context, monkeypatch):
     class MockSettings:
         llm_mode = 'mock'
     
-    monkeypatch.setattr("src.agents.security_agent.settings", MockSettings())
+    monkeypatch.setattr("src.config.settings", MockSettings())
     
     agent = SecurityAgent(mock_context)
     
