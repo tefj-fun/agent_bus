@@ -12,7 +12,7 @@ Agent Bus is a comprehensive multi-agent system where sales inputs requirements,
 - **Claude Skills Integration**: UI/UX Pro Max, Webapp Testing, TDD, Pypict, Systematic Debugging
 - **Distributed Compute**: Kubernetes-based CPU/GPU worker orchestration
 - **ML/CV Pipeline**: Auto-detection and GPU routing for ML workloads
-- **Memory System**: Postgres-backed TF-IDF memory for deterministic pattern reuse (no external embeddings)
+- **Memory System v2**: ChromaDB vector database with sentence-transformers for semantic pattern search and template suggestions
 - **Full Workflow**: From sales requirements to delivery
 
 ## Quick Start
@@ -98,31 +98,79 @@ curl -X POST http://localhost:8000/api/projects/ \
 curl http://localhost:8000/api/projects/{job_id}
 ```
 
-### Memory Endpoints
+### Memory System v2 - Pattern Storage & Templates
+
+The memory system uses ChromaDB with vector embeddings for semantic pattern search.
+
+#### Seed Initial Templates
 
 ```bash
-curl http://localhost:8000/api/memory/health
+python scripts/seed_templates.py
 ```
 
+#### Query Patterns via API
+
 ```bash
-curl -X POST http://localhost:8000/api/memory/upsert \
+# Store a pattern
+curl -X POST http://localhost:8000/api/patterns/store \
   -H "Content-Type: application/json" \
   -d '{
-    "doc_id": "prd_001",
-    "text": "Sample PRD content",
-    "metadata": {"pattern_type":"prd","project_id":"proj_001"}
+    "text": "Sample PRD content...",
+    "pattern_type": "prd",
+    "success_score": 0.9,
+    "metadata": {"project_id": "proj_001"}
   }'
-```
 
-```bash
-curl -X POST http://localhost:8000/api/memory/query \
+# Search for similar patterns
+curl -X POST http://localhost:8000/api/patterns/query \
   -H "Content-Type: application/json" \
   -d '{
     "query": "analytics dashboard",
     "top_k": 3,
     "pattern_type": "prd"
   }'
+
+# Get template suggestions
+curl -X POST http://localhost:8000/api/patterns/suggest \
+  -H "Content-Type: application/json" \
+  -d '{
+    "requirements": "Build a SaaS web application",
+    "top_k": 3,
+    "min_score": 0.5
+  }'
 ```
+
+#### Memory CLI
+
+```bash
+# Search patterns
+agent-bus-memory query "web application" --top-k 5
+
+# List all patterns
+agent-bus-memory list
+
+# Get specific pattern
+agent-bus-memory get template_web_app_saas
+
+# Add new pattern
+agent-bus-memory add my_pattern "content..." --pattern-type prd --success-score 0.8
+
+# Suggest templates
+agent-bus-memory suggest "mobile app backend" --top-k 3
+
+# Check health
+agent-bus-memory health
+```
+
+#### Pattern Types
+
+- `prd` - Product Requirements Documents
+- `architecture` - System architecture designs
+- `code` - Code snippets and implementations
+- `test` - Test cases and strategies
+- `documentation` - Technical documentation
+- `template` - Reusable project templates
+- `general` - General patterns
 
 ## Development
 
