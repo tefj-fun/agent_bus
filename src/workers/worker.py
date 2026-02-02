@@ -23,6 +23,7 @@ from ..infrastructure.redis_client import redis_client
 from ..infrastructure.postgres_client import postgres_client
 from ..infrastructure.anthropic_client import anthropic_client
 from ..skills.manager import SkillsManager
+from ..storage.artifact_store import init_artifact_store
 from ..config import settings
 
 
@@ -63,6 +64,11 @@ class AgentWorker:
         # Connect to infrastructure
         await self.redis.connect()
         await self.postgres.connect()
+
+        # Initialize artifact store for file-based output storage
+        if settings.artifact_storage_backend == "file":
+            init_artifact_store(settings.artifact_output_dir)
+            print(f"Artifact store initialized at {settings.artifact_output_dir}")
 
         while True:
             try:

@@ -11,6 +11,7 @@ import asyncpg
 
 from ..skills.manager import SkillsManager
 from ..config import settings
+from ..storage.artifact_store import get_artifact_store, ArtifactStore
 
 
 @dataclass
@@ -251,6 +252,9 @@ class BaseAgent(ABC):
         """
         Save agent output as artifact.
 
+        Uses file-based storage for portability, with optional PostgreSQL
+        metadata for querying. Configure via ARTIFACT_STORAGE_BACKEND env var.
+
         Args:
             artifact_type: Type of artifact (prd, code, test, etc.)
             content: Artifact content
@@ -261,7 +265,45 @@ class BaseAgent(ABC):
         """
         artifact_id = f"{self.agent_id}_{artifact_type}_{self.context.job_id}"
 
-        # Save to PostgreSQL
+        # Use file-based artifact store if configured
+        if settings.artifact_storage_backend == "file":
+            try:
+                store = get_artifact_store()
+                artifact_meta = await store.save(
+                    artifact_id=artifact_id,
+                    agent_id=self.agent_id,
+                    job_id=self.context.job_id,
+                    artifact_type=artifact_type,
+                    content=content,
+                    metadata=metadata,
+                )
+
+                # Also save metadata reference to PostgreSQL for querying
+                async with self.context.db_pool.acquire() as conn:
+                    await conn.execute(
+                        """
+                        INSERT INTO artifacts (id, agent_id, job_id, type, content, metadata, created_at)
+                        VALUES ($1, $2, $3, $4, $5, $6::jsonb, NOW())
+                        ON CONFLICT (id) DO UPDATE
+                        SET content = $5, metadata = $6::jsonb, updated_at = NOW()
+                        """,
+                        artifact_id,
+                        self.agent_id,
+                        self.context.job_id,
+                        artifact_type,
+                        f"[file:{artifact_meta.file_path}]",  # Reference to file
+                        json.dumps({
+                            **(metadata or {}),
+                            "_storage": "file",
+                            "_file_path": artifact_meta.file_path,
+                        }),
+                    )
+                return artifact_id
+            except RuntimeError:
+                # Artifact store not initialized, fall back to PostgreSQL
+                pass
+
+        # Fall back to PostgreSQL storage
         async with self.context.db_pool.acquire() as conn:
             await conn.execute(
                 """
@@ -284,12 +326,25 @@ class BaseAgent(ABC):
         """
         Retrieve an artifact by ID.
 
+        Checks file storage first (if configured), then falls back to PostgreSQL.
+
         Args:
             artifact_id: ID of the artifact
 
         Returns:
             Artifact data or None
         """
+        # Try file storage first if configured
+        if settings.artifact_storage_backend == "file":
+            try:
+                store = get_artifact_store()
+                artifact = await store.get(artifact_id)
+                if artifact:
+                    return artifact
+            except RuntimeError:
+                pass
+
+        # Fall back to PostgreSQL
         async with self.context.db_pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
@@ -301,7 +356,18 @@ class BaseAgent(ABC):
             )
 
             if row:
-                return dict(row)
+                result = dict(row)
+                # Check if content is a file reference
+                if result.get("content", "").startswith("[file:"):
+                    # Try to load from file storage
+                    try:
+                        store = get_artifact_store()
+                        artifact = await store.get(artifact_id)
+                        if artifact:
+                            return artifact
+                    except RuntimeError:
+                        pass
+                return result
             return None
 
     async def notify_completion(self, result: AgentResult) -> None:
