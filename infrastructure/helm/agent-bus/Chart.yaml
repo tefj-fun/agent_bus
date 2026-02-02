@@ -1,0 +1,15 @@
+# KAN-66: Helm chart enhancements
+apiVersion: v2
+name: agent-bus
+description: Multi-agent software engineering platform with GPU support
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - ai
+  - agents
+  - ml
+  - gpu
+maintainers:
+  - name: agent-bus-team
+    email: team@example.com

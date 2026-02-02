@@ -1,0 +1,8 @@
+# KAN-65: K8s manifests (dev)
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: agent-bus-dev
+  labels:
+    environment: development
+    app: agent-bus
