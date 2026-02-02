@@ -40,36 +40,128 @@ Agent Bus is a comprehensive multi-agent system where sales inputs requirements,
 - **Multi-environment**: Dev, staging, production Helm configurations
 - **Health Checks**: Comprehensive health endpoints for all services
 
+## System Architecture
+
+```mermaid
+graph TB
+    User[Sales/User] --> WebUI[Web UI :3000]
+    WebUI --> API[FastAPI Server :8000]
+    
+    API --> Redis[(Redis Queue)]
+    API --> Postgres[(PostgreSQL)]
+    API --> ChromaDB[(ChromaDB Vector Store)]
+    
+    Redis --> Worker1[CPU Worker 1]
+    Redis --> Worker2[CPU Worker 2]
+    Redis --> GPUWorker[GPU Worker]
+    Redis --> Orchestrator[Orchestrator]
+    
+    Worker1 --> Agents[12 Specialized Agents]
+    Worker2 --> Agents
+    GPUWorker --> MLPipeline[ML/CV Pipeline]
+    
+    Agents --> LLM[Anthropic Claude API]
+    Orchestrator --> Agents
+    
+    Agents --> Postgres
+    Agents --> ChromaDB
+    
+    style WebUI fill:#e1f5ff
+    style API fill:#fff4e1
+    style Agents fill:#e8f5e9
+    style MLPipeline fill:#fce4ec
+```
+
+## Workflow Diagram
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant API
+    participant Queue
+    participant Orchestrator
+    participant Agents
+    participant Memory
+    
+    User->>API: Submit Requirements
+    API->>Queue: Create Job
+    API-->>User: Job ID
+    
+    Queue->>Orchestrator: Process Job
+    Orchestrator->>Agents: PRD Agent
+    Agents->>Memory: Query Similar PRDs
+    Memory-->>Agents: Patterns & Templates
+    Agents-->>Orchestrator: PRD Complete
+    
+    Orchestrator-->>User: Approve PRD? (HITL)
+    User->>Orchestrator: Approved ✓
+    
+    Orchestrator->>Agents: Plan Agent
+    Orchestrator->>Agents: Architecture Agent
+    Orchestrator->>Agents: UI/UX Agent
+    Orchestrator->>Agents: Developer Agent
+    
+    par Parallel Tasks
+        Orchestrator->>Agents: QA Agent
+        Orchestrator->>Agents: Security Agent
+        Orchestrator->>Agents: Tech Writer
+        Orchestrator->>Agents: Support Engineer
+    end
+    
+    Orchestrator->>Agents: PM Review
+    Orchestrator-->>User: Project Complete 🎉
+    
+    Agents->>Memory: Store Successful Patterns
+```
+
 ## Quick Start
 
 ### Prerequisites
 
-- Python 3.10+
-- Docker and Docker Compose
-- Anthropic API key
+- **Docker & Docker Compose** (required)
+- **Anthropic API Key** (get from https://console.anthropic.com)
+- Python 3.10+ (optional, for local development without Docker)
 
-### Installation
+### 5-Minute Setup
 
-1. Clone the repository:
+1. **Clone and Configure**
 ```bash
 git clone https://github.com/tefj-fun/agent_bus.git
 cd agent_bus
-```
 
-2. Create `.env` file:
-```bash
+# Create environment file
 cp .env.example .env
-# Edit .env and add your ANTHROPIC_API_KEY
+
+# Add your API key
+echo "ANTHROPIC_API_KEY=sk-ant-..." >> .env
 ```
 
-3. Start services with Docker Compose:
+2. **Start All Services**
 ```bash
 docker-compose up -d
+
+# Wait for services to be ready (~30 seconds)
+docker-compose logs -f api
+# Watch for: "Application startup complete"
 ```
 
-4. Check service health:
+3. **Access the Application**
+
+- **Web UI**: http://localhost:3000 (React dashboard - coming soon)
+- **API Docs**: http://localhost:8000/docs (Swagger UI)
+- **Health Check**: http://localhost:8000/health
+- **Metrics**: http://localhost:8000/api/metrics
+
+4. **Verify Installation**
 ```bash
+# Check all services are running
+docker-compose ps
+
+# Should show: api, worker, orchestrator, redis, postgres all "Up"
+
+# Test the API
 curl http://localhost:8000/health
+# Should return: {"status":"healthy"}
 ```
 
 ## Architecture
@@ -422,4 +514,162 @@ curl -X POST http://localhost:8000/api/auth/login \
 curl -H "Authorization: Bearer $TOKEN" \
   http://localhost:8000/api/projects/
 ```
+
+
+## Using the System
+
+### Web UI (Coming Soon)
+
+The React web UI at `http://localhost:3000` will provide:
+- Requirements submission form
+- Job status dashboard
+- PRD viewer with approval actions
+- Real-time progress tracking
+- Artifact downloads
+
+**Current Status**: API-first. Web UI is under development. Use API endpoints or CLI for now.
+
+### API Usage (Current)
+
+#### 1. Create a New Project
+
+```bash
+curl -X POST http://localhost:8000/api/projects/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "project_id": "my-saas-dashboard",
+    "requirements": "Build a SaaS analytics dashboard with user authentication, real-time charts, and export to PDF. Support 10k concurrent users."
+  }'
+```
+
+Response:
+```json
+{
+  "job_id": "job_abc123",
+  "status": "queued",
+  "created_at": "2024-01-01T12:00:00Z"
+}
+```
+
+#### 2. Check Job Status
+
+```bash
+curl http://localhost:8000/api/projects/job_abc123
+```
+
+Response shows current workflow stage:
+```json
+{
+  "job_id": "job_abc123",
+  "status": "in_progress",
+  "workflow_stage": "prd_generation",
+  "progress": 15,
+  "artifacts": []
+}
+```
+
+#### 3. Get PRD (when ready)
+
+```bash
+curl http://localhost:8000/api/projects/job_abc123/prd
+```
+
+#### 4. Approve PRD (HITL Gate)
+
+```bash
+curl -X POST http://localhost:8000/api/projects/job_abc123/approve \
+  -H "Content-Type: application/json" \
+  -d '{"approved": true, "feedback": "Looks good!"}'
+```
+
+#### 5. Monitor Progress (Real-time)
+
+```bash
+# Subscribe to event stream
+curl -N http://localhost:8000/api/events/stream
+
+# You'll see events like:
+# data: {"type":"task_started","job_id":"job_abc123","stage":"architecture"}
+# data: {"type":"task_completed","job_id":"job_abc123","stage":"architecture"}
+```
+
+#### 6. Download Artifacts
+
+Once complete, download all deliverables:
+```bash
+# Get PRD
+curl http://localhost:8000/api/projects/job_abc123/prd > prd.md
+
+# Get Architecture
+curl http://localhost:8000/api/projects/job_abc123/architecture > architecture.md
+
+# Get Plan
+curl http://localhost:8000/api/projects/job_abc123/plan > plan.json
+```
+
+### Memory System Usage
+
+Query past patterns to improve your projects:
+
+```bash
+# Search for similar PRDs
+curl -X POST http://localhost:8000/api/patterns/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "analytics dashboard with real-time updates",
+    "top_k": 5,
+    "pattern_type": "prd"
+  }'
+
+# Get template suggestions
+curl -X POST http://localhost:8000/api/patterns/suggest \
+  -H "Content-Type: application/json" \
+  -d '{
+    "requirements": "Build a SaaS web application",
+    "top_k": 3
+  }'
+```
+
+### Workflow States
+
+```mermaid
+stateDiagram-v2
+    [*] --> Queued
+    Queued --> PRD_Generation
+    PRD_Generation --> Waiting_Approval
+    Waiting_Approval --> Plan_Generation: Approved
+    Waiting_Approval --> PRD_Generation: Rejected
+    Plan_Generation --> Architecture
+    Architecture --> UI_UX_Design
+    UI_UX_Design --> Development
+    Development --> QA_Testing
+    Development --> Security_Review
+    Development --> Documentation
+    Development --> Support_Docs
+    QA_Testing --> PM_Review
+    Security_Review --> PM_Review
+    Documentation --> PM_Review
+    Support_Docs --> PM_Review
+    PM_Review --> Delivery
+    Delivery --> [*]
+```
+
+### Understanding Stages
+
+| Stage | Agent | Output | Typical Duration |
+|-------|-------|--------|------------------|
+| PRD Generation | PRD Agent | Product Requirements Document | 2-5 min |
+| **HITL Gate** | Human | Approval/Changes | Manual |
+| Plan Generation | Plan Agent | Milestones, tasks, dependencies | 2-3 min |
+| Architecture | Architect Agent | System design, tech stack | 3-5 min |
+| UI/UX Design | UI/UX Agent | Design system, mockups | 3-5 min |
+| Development | Developer Agent | Code structure, TDD plan | 5-8 min |
+| QA Testing | QA Agent | Test plans, test cases | 3-5 min |
+| Security Review | Security Agent | Vulnerabilities, fixes | 3-5 min |
+| Documentation | Tech Writer | User manuals, tutorials | 3-5 min |
+| Support Docs | Support Engineer | FAQ, troubleshooting | 2-3 min |
+| PM Review | Product Manager | Final review, recommendations | 2-3 min |
+| Delivery | System | Package all artifacts | <1 min |
+
+**Total End-to-End**: ~30-45 minutes (excluding HITL wait time)
 
