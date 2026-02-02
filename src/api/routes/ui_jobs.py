@@ -27,15 +27,16 @@ async def jobs_list(limit: int = 50):
         job_id = r["id"]
         trs.append(
             f"<tr>"
-            f'<td><a href="/api/projects/{job_id}">{job_id}</a></td>'
+            f'<td><a href="/ui/prd/{job_id}">{job_id}</a></td>'
             f"<td>{r['project_id']}</td>"
             f"<td>{r['status']}</td>"
             f"<td>{r['workflow_stage']}</td>"
             f"<td>{r['updated_at']}</td>"
+            f'<td><a href="/ui/prd/{job_id}">PRD</a> · <a href="/ui/plan/{job_id}">Plan</a></td>'
             f"</tr>"
         )
 
-    table = "\n".join(trs) if trs else '<tr><td colspan="5">No jobs yet</td></tr>'
+    table = "\n".join(trs) if trs else '<tr><td colspan="6">No jobs yet</td></tr>'
 
     return f"""
 <!doctype html>
@@ -67,6 +68,7 @@ async def jobs_list(limit: int = 50):
           <th>Status</th>
           <th>Stage</th>
           <th>Updated</th>
+          <th>View</th>
         </tr>
       </thead>
       <tbody>

@@ -31,10 +31,16 @@ async def home():
       textarea { min-height: 160px; }
       button { margin-top: 14px; padding: 10px 14px; border: 0; border-radius: 8px; background: #111827; color: white; cursor: pointer; }
       .muted { color: #6b7280; font-size: 13px; margin-top: 6px; }
+      a { color: #2563eb; }
+      .nav { display: flex; gap: 16px; align-items: center; }
     </style>
   </head>
   <body>
-    <h1>agent_bus</h1>
+    <div class="nav">
+      <h1 style="margin: 0">agent_bus</h1>
+      <a href="/ui/jobs">Jobs</a>
+      <a href="/docs">API Docs</a>
+    </div>
     <div class=\"card\">
       <form method=\"post\" action=\"/ui/create\">
         <label>Project ID</label>

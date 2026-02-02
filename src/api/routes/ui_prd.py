@@ -19,6 +19,16 @@ async def prd_view(job_id: str):
     """Render PRD content and memory hits for a job."""
     prd_content = None
     hits = []
+    workflow_stage = None
+
+    # Get job status to determine if actions should be shown
+    pool = await postgres_client.get_pool()
+    async with pool.acquire() as conn:
+        job_row = await conn.fetchrow(
+            "SELECT workflow_stage FROM jobs WHERE id = $1",
+            job_id,
+        )
+        workflow_stage = job_row["workflow_stage"] if job_row else None
 
     # Try file storage first if configured
     if settings.artifact_storage_backend == "file":
@@ -80,6 +90,33 @@ async def prd_view(job_id: str):
                 items.append(f"<li>{_escape(str(h))}</li>")
     hits_html = "\n".join(items) if items else "<li>(none)</li>"
 
+    # Only show actions if job is waiting for approval
+    if workflow_stage == "Waiting_Approval":
+        actions_html = f"""
+    <div class=\"card\" style=\"margin-top:12px\">
+      <h3>Actions</h3>
+      <form method=\"post\" action=\"/ui/prd/{job_id}/approve\">
+        <label>Approval notes</label><br/>
+        <textarea name=\"notes\" style=\"width:100%;min-height:80px\" placeholder=\"Optional notes\"></textarea>
+        <div style=\"margin-top:10px;display:flex;gap:10px\">
+          <button type=\"submit\" style=\"padding:10px 14px;border:0;border-radius:8px;background:#16a34a;color:white;cursor:pointer\">Approve</button>
+        </div>
+      </form>
+      <form method=\"post\" action=\"/ui/prd/{job_id}/request_changes\" style=\"margin-top:10px\">
+        <label>Change request notes</label><br/>
+        <textarea name=\"notes\" style=\"width:100%;min-height:80px\" placeholder=\"What needs to change?\"></textarea>
+        <div style=\"margin-top:10px;display:flex;gap:10px\">
+          <button type=\"submit\" style=\"padding:10px 14px;border:0;border-radius:8px;background:#b45309;color:white;cursor:pointer\">Request changes</button>
+        </div>
+      </form>
+    </div>"""
+    else:
+        stage_display = _escape(workflow_stage or "unknown")
+        actions_html = f"""
+    <div class=\"card\" style=\"margin-top:12px;background:#f9fafb\">
+      <p style=\"margin:0;color:#6b7280\">Actions not available. Current stage: <strong>{stage_display}</strong></p>
+    </div>"""
+
     return f"""
 <!doctype html>
 <html>
@@ -107,23 +144,8 @@ async def prd_view(job_id: str):
 
     <p><strong>job_id:</strong> <code>{job_id}</code></p>
 
-    <div class=\"card\">
-      <h3>Actions</h3>
-      <form method=\"post\" action=\"/ui/prd/{job_id}/approve\">
-        <label>Approval notes</label><br/>
-        <textarea name=\"notes\" style=\"width:100%;min-height:80px\" placeholder=\"Optional notes\"></textarea>
-        <div style=\"margin-top:10px;display:flex;gap:10px\">
-          <button type=\"submit\" style=\"padding:10px 14px;border:0;border-radius:8px;background:#16a34a;color:white;cursor:pointer\">Approve</button>
-        </div>
-      </form>
-      <form method=\"post\" action=\"/ui/prd/{job_id}/request_changes\" style=\"margin-top:10px\">
-        <label>Change request notes</label><br/>
-        <textarea name=\"notes\" style=\"width:100%;min-height:80px\" placeholder=\"What needs to change?\"></textarea>
-        <div style=\"margin-top:10px;display:flex;gap:10px\">
-          <button type=\"submit\" style=\"padding:10px 14px;border:0;border-radius:8px;background:#b45309;color:white;cursor:pointer\">Request changes</button>
-        </div>
-      </form>
-    </div>
+    <h3>PRD content</h3>
+    <pre>{prd_text}</pre>
 
     <div class=\"card\" style=\"margin-top:12px\">
       <h3>Memory hits</h3>
@@ -132,8 +154,7 @@ async def prd_view(job_id: str):
       </ul>
     </div>
 
-    <h3>PRD content</h3>
-    <pre>{prd_text}</pre>
+    {actions_html}
   </body>
 </html>
 """
