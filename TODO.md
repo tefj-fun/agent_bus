@@ -155,7 +155,32 @@ All subtasks implemented and merged:
 - [x] KAN-85 Seed templates and documentation ✅ (PR #31)
 
 ### 4) KAN-36 — Deployment & scaling (Docker/K8s)
-- [ ] (Break down into child tickets in Jira if not already)
+**Status:** In Progress 🚧
+
+- [x] Complete Helm chart (helm/agent-bus/) ✅
+  - All component templates (API, workers, Redis, PostgreSQL)
+  - Development and production value files
+  - HPA, Ingress, ServiceMonitor support
+  - Comprehensive README with deployment examples
+- [x] ML workload detection pipeline ✅
+  - detector.py: Keyword-based ML/CV workload analysis
+  - executor.py: Kubernetes GPU job orchestration
+  - Integration with master_agent
+  - 20+ test cases covering all scenarios
+- [x] Prometheus metrics system ✅
+  - Comprehensive metrics (projects, agents, LLM, system health)
+  - /metrics endpoint in FastAPI
+  - Decorators for automatic tracking
+- [x] Optimized multi-stage Dockerfile ✅
+  - Builder + slim runtime stages
+  - Non-root user, health checks
+  - Layer caching optimization
+- [x] Kubernetes base manifests + overlays ✅
+  - Base manifests in k8s/base/
+  - Dev and production overlays with Kustomize
+- [ ] Grafana dashboards (optional)
+- [ ] Production deployment validation
+- PR #41 created (pending CI)
 
 ### 5) KAN-40 — CI/CD hardening
 - [ ] KAN-79 CD: release tagging + deployment stub
