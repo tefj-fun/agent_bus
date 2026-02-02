@@ -17,9 +17,7 @@ from ..agents.uiux_agent import UIUXAgent
 from ..agents.developer_agent import DeveloperAgent
 from ..agents.qa_agent import QAAgent
 from ..agents.security_agent import SecurityAgent
-
-# TODO: Import other specialized agents as they are implemented
-# etc.
+from ..agents.delivery_agent import DeliveryAgent
 
 from ..infrastructure.redis_client import redis_client
 from ..infrastructure.postgres_client import postgres_client
@@ -54,7 +52,7 @@ class AgentWorker:
             "developer_agent": DeveloperAgent,
             "qa_agent": QAAgent,
             "security_agent": SecurityAgent,
-            # TODO: Register other agents
+            "delivery_agent": DeliveryAgent,
         }
 
     async def run(self):
