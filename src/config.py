@@ -53,6 +53,32 @@ class Settings(BaseSettings):
     worker_type: str = Field(default="cpu", env="WORKER_TYPE")  # cpu or gpu
     max_workers: int = Field(default=4, env="MAX_WORKERS")
 
+    # PostgreSQL Pool Settings
+    postgres_pool_min_size: int = Field(default=2, env="POSTGRES_POOL_MIN_SIZE")
+    postgres_pool_max_size: int = Field(default=10, env="POSTGRES_POOL_MAX_SIZE")
+    postgres_command_timeout: int = Field(default=60, env="POSTGRES_COMMAND_TIMEOUT")
+
+    # Timeout Configuration (in seconds)
+    timeout_task_completion: int = Field(
+        default=3600, env="TIMEOUT_TASK_COMPLETION"
+    )  # Max time to wait for a task
+    timeout_llm_call: int = Field(default=180, env="TIMEOUT_LLM_CALL")  # LLM API call timeout
+    timeout_db_query: int = Field(default=30, env="TIMEOUT_DB_QUERY")  # Database query timeout
+    timeout_redis_operation: int = Field(
+        default=10, env="TIMEOUT_REDIS_OPERATION"
+    )  # Redis operation timeout
+
+    # Circuit Breaker Configuration
+    circuit_breaker_failure_threshold: int = Field(
+        default=5, env="CIRCUIT_BREAKER_FAILURE_THRESHOLD"
+    )  # Failures before opening
+    circuit_breaker_recovery_timeout: int = Field(
+        default=30, env="CIRCUIT_BREAKER_RECOVERY_TIMEOUT"
+    )  # Seconds before trying again
+    circuit_breaker_half_open_requests: int = Field(
+        default=3, env="CIRCUIT_BREAKER_HALF_OPEN_REQUESTS"
+    )  # Requests to test in half-open
+
     # Kubernetes
     k8s_namespace: str = Field(default="agent-bus", env="K8S_NAMESPACE")
     k8s_gpu_node_selector: str = Field(
