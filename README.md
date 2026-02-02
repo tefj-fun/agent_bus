@@ -25,6 +25,35 @@ Agent Bus is a comprehensive multi-agent planning system where 12 specialized AI
 
 > **Note**: This system generates planning documents and specifications (PRDs, architecture designs, development plans, etc.), not actual runnable code. For code generation based on these specifications, see the companion project `agent_bus_code`.
 
+## Why Agent Bus? (vs. Simple Prompting)
+
+You might ask: "Why not just prompt an LLM with 'give me a PRD, architecture, QA plan, security review'?" Here's what Agent Bus provides that simple prompting doesn't:
+
+| Aspect | Simple Prompting | Agent Bus |
+|--------|------------------|-----------|
+| **Document Continuity** | Each document generated independently; can drift or contradict | Architecture receives the *exact* approved PRD; Security reviews the *actual* dev plan |
+| **Human Review** | Can't pause mid-workflow for approval | HITL gates pause execution, wait for human approval, then resume |
+| **Learning** | Every project starts from scratch | ChromaDB stores patterns; project #50 benefits from patterns learned in #1-49 |
+| **Parallelism** | Sequential only | QA, Security, Docs, Support run concurrently via `asyncio.gather()` |
+| **Failure Recovery** | If something fails, start over | Job state persisted in PostgreSQL; resume from exact workflow stage |
+| **Audit Trail** | No record of execution | Full event log of what each agent did, when, with what inputs |
+
+### Concrete Example: How Documents Build on Each Other
+
+```python
+# In master_agent.py - Architecture agent receives prior artifacts
+architecture_result = await self._execute_stage(
+    inputs={"prd": prd_content, "plan": plan_content}  # Exact approved PRD passed
+)
+
+# In architect_agent.py - Agent uses the real PRD, not a reinterpretation
+prd_content = task.input_data.get("prd")
+if not prd_content.strip():
+    return AgentResult(success=False, error="Missing PRD content")
+```
+
+**The bottom line**: Agent Bus is a **workflow orchestration platform** with persistent state, human checkpoints, and organizational memory—not just "prompt 12 LLMs in sequence."
+
 ## Features
 
 ### Core System
