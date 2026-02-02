@@ -138,10 +138,10 @@ echo "ANTHROPIC_API_KEY=sk-ant-..." >> .env
 
 2. **Start All Services**
 ```bash
-docker-compose up -d
+docker compose up -d
 
 # Wait for services to be ready (~30 seconds)
-docker-compose logs -f api
+docker compose logs -f api
 # Watch for: "Application startup complete"
 ```
 
@@ -155,7 +155,7 @@ docker-compose logs -f api
 4. **Verify Installation**
 ```bash
 # Check all services are running
-docker-compose ps
+docker compose ps
 
 # Should show: api, worker, orchestrator, redis, postgres all "Up"
 
@@ -200,7 +200,7 @@ agent_bus/
 ├── scripts/                 # Release, seed templates, smoke tests
 ├── tests/                   # Unit + integration test suites
 ├── docs/                    # Architecture, skills, release, API docs
-└── docker-compose.yml       # Local dev with GPU compose service
+└── docker compose.yml       # Local dev with GPU compose service
 ```
 
 ## API Usage
@@ -307,7 +307,7 @@ pip install -e .
 
 2. Start Redis and PostgreSQL:
 ```bash
-docker-compose up postgres redis
+docker compose up postgres redis
 ```
 
 3. Run API server:
@@ -409,7 +409,7 @@ More skills available at:
 
 **Docker Compose (Development)**:
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 **Kubernetes (Staging/Production)**:
