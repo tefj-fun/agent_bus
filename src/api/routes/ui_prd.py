@@ -4,6 +4,8 @@ from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
 
 from ...infrastructure.postgres_client import postgres_client
+from ...config import settings
+from ...storage.artifact_store import get_artifact_store, FileArtifactStore
 
 router = APIRouter()
 
@@ -15,38 +17,55 @@ def _escape(s: str) -> str:
 @router.get("/prd/{job_id}", response_class=HTMLResponse)
 async def prd_view(job_id: str):
     """Render PRD content and memory hits for a job."""
-    pool = await postgres_client.get_pool()
-    async with pool.acquire() as conn:
-        prd_row = await conn.fetchrow(
-            """
-            SELECT content, metadata
-            FROM artifacts
-            WHERE job_id = $1 AND type = 'prd'
-            ORDER BY updated_at DESC, created_at DESC
-            LIMIT 1
-            """,
-            job_id,
-        )
+    prd_content = None
+    hits = []
 
-        # fallback to tasks output_data
-        if not prd_row:
-            prd_task = await conn.fetchrow(
+    # Try file storage first if configured
+    if settings.artifact_storage_backend == "file":
+        try:
+            store = get_artifact_store()
+            if isinstance(store, FileArtifactStore):
+                artifact = await store.get_latest_by_type(job_id, "prd")
+                if artifact:
+                    prd_content = artifact.get("content")
+                    hits = artifact.get("metadata", {}).get("memory_hits", [])
+        except RuntimeError:
+            pass  # Artifact store not initialized, fall back to DB
+
+    # Fall back to PostgreSQL if no file content found
+    if not prd_content:
+        pool = await postgres_client.get_pool()
+        async with pool.acquire() as conn:
+            prd_row = await conn.fetchrow(
                 """
-                SELECT output_data->>'prd_content' AS prd_content,
-                       output_data->'memory_hits' AS memory_hits
-                FROM tasks
-                WHERE job_id = $1 AND task_type='prd_generation'
-                ORDER BY completed_at DESC, created_at DESC
+                SELECT content, metadata
+                FROM artifacts
+                WHERE job_id = $1 AND type = 'prd'
+                ORDER BY updated_at DESC, created_at DESC
                 LIMIT 1
                 """,
                 job_id,
             )
-            prd_content = (prd_task or {}).get("prd_content") if prd_task else None
-            hits = (prd_task or {}).get("memory_hits") if prd_task else []
-        else:
-            prd_content = prd_row.get("content")
-            meta = prd_row.get("metadata") or {}
-            hits = meta.get("memory_hits") if isinstance(meta, dict) else []
+
+            # fallback to tasks output_data
+            if not prd_row:
+                prd_task = await conn.fetchrow(
+                    """
+                    SELECT output_data->>'prd_content' AS prd_content,
+                           output_data->'memory_hits' AS memory_hits
+                    FROM tasks
+                    WHERE job_id = $1 AND task_type='prd_generation'
+                    ORDER BY completed_at DESC, created_at DESC
+                    LIMIT 1
+                    """,
+                    job_id,
+                )
+                prd_content = (prd_task or {}).get("prd_content") if prd_task else None
+                hits = (prd_task or {}).get("memory_hits") if prd_task else []
+            else:
+                prd_content = prd_row.get("content")
+                meta = prd_row.get("metadata") or {}
+                hits = meta.get("memory_hits") if isinstance(meta, dict) else []
 
     prd_text = _escape(prd_content or "(no PRD found)")
 
