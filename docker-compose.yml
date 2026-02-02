@@ -62,6 +62,7 @@ services:
     volumes:
       - ./src:/app/src
       - ./skills:/app/skills
+      - outputs_data:/app/outputs
     depends_on:
       postgres:
         condition: service_healthy
@@ -94,6 +95,7 @@ services:
       - ./src:/app/src
       - ./skills:/app/skills
       - worker_workspace:/workspace
+      - outputs_data:/app/outputs
     depends_on:
       postgres:
         condition: service_healthy
@@ -126,6 +128,7 @@ services:
       - ./src:/app/src
       - ./skills:/app/skills
       - worker_workspace:/workspace
+      - outputs_data:/app/outputs
     depends_on:
       postgres:
         condition: service_healthy
@@ -137,3 +140,4 @@ volumes:
   postgres_data:
   redis_data:
   worker_workspace:
+  outputs_data:
