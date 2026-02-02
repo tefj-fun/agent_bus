@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     anthropic_model: str = Field(default="claude-sonnet-4-5-20250929", env="ANTHROPIC_MODEL")
     anthropic_max_tokens: int = Field(default=8192, env="ANTHROPIC_MAX_TOKENS")
 
+    # PRD-specific token limit (PRDs tend to be longer documents)
+    prd_max_tokens: int = Field(default=16384, env="PRD_MAX_TOKENS")
+
     # OpenAI (only required when LLM_PROVIDER=openai and LLM_MODE=real)
     openai_api_key: str = Field(default="", env="OPENAI_API_KEY")
     openai_model: str = Field(default="gpt-4o-mini", env="OPENAI_MODEL")

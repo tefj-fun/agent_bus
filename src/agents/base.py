@@ -140,7 +140,7 @@ class BaseAgent(ABC):
             )
 
         # Guard against indefinite hangs (network/provider stalls)
-        timeout_s = 180
+        timeout_s = settings.timeout_llm_call
         try:
             response = await asyncio.wait_for(_call_with_thinking(), timeout=timeout_s)
         except TypeError:

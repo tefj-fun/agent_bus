@@ -3,6 +3,7 @@
 import uuid
 from typing import Dict, Any, List
 from .base import BaseAgent, AgentTask, AgentResult
+from ..config import settings
 from ..memory import MemoryStore
 
 
@@ -52,8 +53,6 @@ class PRDAgent(BaseAgent):
             # Generate PRD (real LLM or mock)
             user_prompt = self._build_prd_user_prompt(sales_requirements, similar_prds)
 
-            from ..config import settings
-
             if settings.llm_mode == "mock":
                 prd_content = (
                     "# Product Requirements Document: Mock PRD\n\n"
@@ -70,7 +69,10 @@ class PRDAgent(BaseAgent):
                 )
             else:
                 prd_content = await self.query_llm(
-                    prompt=user_prompt, system=system_prompt, thinking_budget=2048, max_tokens=8192
+                    prompt=user_prompt,
+                    system=system_prompt,
+                    thinking_budget=2048,
+                    max_tokens=settings.prd_max_tokens,
                 )
 
             # Save PRD as artifact
