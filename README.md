@@ -6,261 +6,72 @@ Multi-agent SWE planning system that generates comprehensive software project sp
 
 ## Documentation
 
-| Document | Description | Audience |
-|----------|-------------|----------|
-| **[User Guide](docs/USER_GUIDE.md)** | How to use Agent Bus, write requirements, understand deliverables | End users, Project managers |
-| [README](README.md) (this file) | Technical overview, setup, API reference | Developers, DevOps |
-| [Architecture](docs/ARCHITECTURE.md) | System design and service topology | Developers |
-| [Skills System](docs/SKILLS_SYSTEM.md) | Creating and managing Claude Skills | Developers |
-| [Memory Store](docs/MEMORY_STORE.md) | Pattern storage and retrieval system | Developers |
-| [API Document Processing](docs/API_DOCUMENT_PROCESSING.md) | External API document ingestion | Developers |
-| [Release Guide](docs/RELEASE.md) | Deployment and release process | DevOps |
+| Document | Description |
+|----------|-------------|
+| **[User Guide](docs/USER_GUIDE.md)** | How to use Agent Bus, write requirements, understand deliverables |
+| [Architecture](docs/ARCHITECTURE.md) | System design, workflow diagrams, service topology |
+| [Skills System](docs/SKILLS_SYSTEM.md) | Creating and managing Claude Skills |
+| [Memory Store](docs/MEMORY_STORE.md) | Pattern storage and retrieval system |
+| [API Document Processing](docs/API_DOCUMENT_PROCESSING.md) | External API document ingestion |
+| [Release Guide](docs/RELEASE.md) | Deployment and release process |
 
-> **New to Agent Bus?** Start with the **[User Guide](docs/USER_GUIDE.md)** for a friendly introduction.
+> **New to Agent Bus?** Start with the **[User Guide](docs/USER_GUIDE.md)**.
 
 ---
 
 ## Overview
 
-Agent Bus is a comprehensive multi-agent planning system where 12 specialized AI agents collaborate to generate complete software project specifications and documentation. The system processes requirements through a full workflow and maintains project memory for pattern reuse.
+Agent Bus orchestrates 12 specialized AI agents to generate complete software project specifications: PRD, architecture, UI/UX design, development plans, QA strategy, security review, and documentation.
 
-> **Note**: This system generates planning documents and specifications (PRDs, architecture designs, development plans, etc.), not actual runnable code. For code generation based on these specifications, see the companion project `agent_bus_code`.
+> **Note**: This system generates planning documents and specifications, not runnable code. For code generation, see the companion project `agent_bus_code`.
 
 ## Why Agent Bus? (vs. Simple Prompting)
 
-You might ask: "Why not just prompt an LLM with 'give me a PRD, architecture, QA plan, security review'?" Here's what Agent Bus provides that simple prompting doesn't:
-
 | Aspect | Simple Prompting | Agent Bus |
 |--------|------------------|-----------|
-| **Document Continuity** | Each document generated independently; can drift or contradict | Architecture receives the *exact* approved PRD; Security reviews the *actual* dev plan |
-| **Human Review** | Can't pause mid-workflow for approval | HITL gates pause execution, wait for human approval, then resume |
-| **Learning** | Every project starts from scratch | ChromaDB stores patterns; project #50 benefits from patterns learned in #1-49 |
-| **Parallelism** | Sequential only | QA, Security, Docs, Support run concurrently via `asyncio.gather()` |
-| **Failure Recovery** | If something fails, start over | Job state persisted in PostgreSQL; resume from exact workflow stage |
-| **Audit Trail** | No record of execution | Full event log of what each agent did, when, with what inputs |
+| **Document Continuity** | Each document generated independently | Architecture receives the *exact* approved PRD |
+| **Human Review** | Can't pause mid-workflow | HITL gates pause for human approval |
+| **Learning** | Every project starts from scratch | ChromaDB stores patterns for reuse |
+| **Parallelism** | Sequential only | QA, Security, Docs run concurrently |
+| **Failure Recovery** | Start over on failure | Resume from exact workflow stage |
+| **Audit Trail** | No record | Full event log of agent actions |
 
-### Concrete Example: How Documents Build on Each Other
-
-```python
-# In master_agent.py - Architecture agent receives prior artifacts
-architecture_result = await self._execute_stage(
-    inputs={"prd": prd_content, "plan": plan_content}  # Exact approved PRD passed
-)
-
-# In architect_agent.py - Agent uses the real PRD, not a reinterpretation
-prd_content = task.input_data.get("prd")
-if not prd_content.strip():
-    return AgentResult(success=False, error="Missing PRD content")
-```
-
-**The bottom line**: Agent Bus is a **workflow orchestration platform** with persistent state, human checkpoints, and organizational memory—not just "prompt 12 LLMs in sequence."
-
-## Features
-
-### Core System
-- **12 Specialized Agents**: PRD, Architecture, UI/UX Design, Development Planning, QA Strategy, Security Review, Documentation, Support, Product Management, Project Management, Memory
-- **Claude Skills Integration**: UI/UX Pro Max, Webapp Testing, TDD, Pypict, Systematic Debugging
-- **Full Workflow**: From requirements to delivery with HITL approval gates
-
-### Memory & Intelligence
-- **Memory System v2**: ChromaDB vector database with sentence-transformers
-- **Pattern Recognition**: Semantic search for similar PRDs, architectures, code patterns
-- **Template Suggestions**: Automatic template matching for new projects
-- **Retention Policies**: Configurable pattern retention and archival
-- **Evaluation Harness**: Quality metrics for memory system performance
-- **API Document Processing**: Ingest external API docs (OpenAPI, Markdown) into long-term memory
-
-### Observability & Security
-- **Structured Logging**: JSON-formatted logs for all services
-- **Metrics Endpoint**: Prometheus-compatible metrics (projects, agents, LLM usage, memory)
-- **Event Streaming**: SSE endpoint for real-time job/task updates
-- **Authentication**: JWT-based auth middleware for API endpoints
-- **RBAC**: Role-based access control for HITL approval actions
-- **Secrets Management**: Secure handling of API keys and credentials
-
-### DevOps
-- **CI/CD Pipeline**: Automated builds, tests, lint checks, Docker caching
-- **Release Automation**: One-command versioning with changelog generation
-- **Health Checks**: Comprehensive health endpoints for all services
-
-## System Architecture
-
-```mermaid
-graph TB
-    User[Sales/User] --> WebUI[Web UI :3000]
-    WebUI --> API[FastAPI Server :8000]
-
-    API --> Postgres[(PostgreSQL)]
-    API --> Redis[(Redis Queue)]
-    API --> ChromaDB[(ChromaDB Vector Store)]
-
-    Postgres -->|polls for jobs| Orchestrator[Orchestrator]
-    Orchestrator -->|runs| MasterAgent[MasterAgent]
-    MasterAgent -->|enqueues tasks| Redis
-
-    Redis -->|dequeue tasks| Workers[Workers]
-
-    subgraph Agents[12 Specialized Agents - run in parallel]
-        PRD[PRD Agent]
-        Arch[Architect]
-        Dev[Developer]
-        QA[QA Agent]
-        Sec[Security]
-        Docs[Tech Writer]
-        More[+ 6 more...]
-    end
-
-    Workers -->|execute| Agents
-
-    Agents --> LLM[Anthropic Claude API]
-    Agents --> Postgres
-    Agents --> ChromaDB
-
-    MasterAgent -.->|polls results| Redis
-
-    style WebUI fill:#e1f5ff
-    style API fill:#fff4e1
-    style Agents fill:#e8f5e9
-    style Orchestrator fill:#ffe8e8
-    style Workers fill:#f3e5f5
-```
-
-## Workflow Diagram
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant API
-    participant Queue
-    participant Orchestrator
-    participant Agents
-    participant Memory
-    
-    User->>API: Submit Requirements
-    API->>Queue: Create Job
-    API-->>User: Job ID
-    
-    Queue->>Orchestrator: Process Job
-    Orchestrator->>Agents: PRD Agent
-    Agents->>Memory: Query Similar PRDs
-    Memory-->>Agents: Patterns & Templates
-    Agents-->>Orchestrator: PRD Complete
-    
-    Orchestrator-->>User: Approve PRD? (HITL)
-    User->>Orchestrator: Approved ✓
-    
-    Orchestrator->>Agents: Plan Agent
-    Orchestrator->>Agents: Architecture Agent
-    Orchestrator->>Agents: UI/UX Agent
-    Orchestrator->>Agents: Developer Agent
-    
-    par Parallel Tasks
-        Orchestrator->>Agents: QA Agent
-        Orchestrator->>Agents: Security Agent
-        Orchestrator->>Agents: Tech Writer
-        Orchestrator->>Agents: Support Engineer
-    end
-    
-    Orchestrator->>Agents: PM Review
-    Orchestrator-->>User: Project Complete 🎉
-    
-    Agents->>Memory: Store Successful Patterns
-```
+---
 
 ## Quick Start
 
 ### Prerequisites
 
-- **Docker & Docker Compose** (required)
-- **Anthropic API Key** (get from https://console.anthropic.com)
-- Python 3.10+ (optional, for local development without Docker)
+- Docker & Docker Compose
+- Anthropic API Key ([console.anthropic.com](https://console.anthropic.com))
 
-### 5-Minute Setup
+### Setup
 
-1. **Clone and Configure**
 ```bash
 git clone https://github.com/tefj-fun/agent_bus.git
 cd agent_bus
-
-# Create environment file
 cp .env.example .env
-
-# Add your API key
 echo "ANTHROPIC_API_KEY=sk-ant-..." >> .env
-```
 
-2. **Start All Services**
-```bash
 docker compose up -d
-
-# Wait for services to be ready (~30 seconds)
-docker compose logs -f api
-# Watch for: "Application startup complete"
 ```
 
-**With live logs** (to see the system performing):
+### Verify
+
 ```bash
-# Option 1: Foreground mode - shows all logs, Ctrl+C stops containers
-docker compose up
-
-# Option 2: Start detached, then tail specific services
-docker compose up -d && docker compose logs -f api worker orchestrator
+docker compose ps                    # All services should be "Up"
+curl http://localhost:8000/health    # Returns {"status":"healthy"}
 ```
 
-3. **Access the Application**
+### Access
 
-- **Web UI**: http://localhost:3000 (React dashboard - coming soon)
-- **API Docs**: http://localhost:8000/docs (Swagger UI)
-- **Health Check**: http://localhost:8000/health
+- **API Docs**: http://localhost:8000/docs
+- **Health**: http://localhost:8000/health
 - **Metrics**: http://localhost:8000/api/metrics
 
-4. **Verify Installation**
-```bash
-# Check all services are running
-docker compose ps
+---
 
-# Should show: api, worker, orchestrator, redis, postgres all "Up"
-
-# Test the API
-curl http://localhost:8000/health
-# Should return: {"status":"healthy"}
-```
-
-## Architecture
-
-```
-Sales Input → PRD Generation → Architecture Design → UI/UX Design
-    ↓
-    → Development (with TDD)
-    ↓
-    → Parallel: [QA Testing + Security Review + Documentation + Support Docs]
-    ↓
-    → PM Review → Delivery
-    ↓
-Memory Agent stores patterns for future reuse
-```
-
-## Project Structure
-
-```
-agent_bus/
-├── src/
-│   ├── agents/              # 12+ specialized agent implementations
-│   ├── orchestration/       # Master agent and workflow state machine
-│   ├── workers/             # Worker processes for task execution
-│   ├── infrastructure/      # Redis, PostgreSQL, LLM clients
-│   ├── memory/              # ChromaDB store, embeddings, retention, evaluation
-│   ├── skills/              # Skills manager, registry, allowlist
-│   └── api/
-│       └── routes/          # Projects, patterns, skills, metrics, events, auth
-├── skills/                  # Local Claude Skills directory
-├── scripts/                 # Release, seed templates, smoke tests
-├── tests/                   # Unit + integration test suites
-├── docs/                    # Architecture, skills, release, API docs
-└── docker-compose.yml       # Local development setup
-```
-
-## API Usage
+## Basic Usage
 
 ### Create a Project
 
@@ -268,224 +79,77 @@ agent_bus/
 curl -X POST http://localhost:8000/api/projects/ \
   -H "Content-Type: application/json" \
   -d '{
-    "project_id": "proj_001",
-    "requirements": "Build a SaaS dashboard for analytics"
+    "project_id": "my-project",
+    "requirements": "Build a SaaS analytics dashboard with user auth and real-time charts"
   }'
 ```
 
-### Check Job Status
+### Check Status
 
 ```bash
 curl http://localhost:8000/api/projects/{job_id}
 ```
 
-### Memory System v2 - Pattern Storage & Templates
-
-The memory system uses ChromaDB with vector embeddings for semantic pattern search.
-
-#### Seed Initial Templates
+### Approve PRD (HITL Gate)
 
 ```bash
-python scripts/seed_templates.py
+curl -X POST http://localhost:8000/api/projects/{job_id}/approve \
+  -H "Content-Type: application/json" \
+  -d '{"approved": true}'
 ```
 
-#### Query Patterns via API
+For detailed API usage, event streaming, and artifact downloads, see the [User Guide](docs/USER_GUIDE.md).
 
-```bash
-# Store a pattern
-curl -X POST http://localhost:8000/api/patterns/store \
-  -H "Content-Type: application/json" \
-  -d '{
-    "text": "Sample PRD content...",
-    "pattern_type": "prd",
-    "success_score": 0.9,
-    "metadata": {"project_id": "proj_001"}
-  }'
+---
 
-# Search for similar patterns
-curl -X POST http://localhost:8000/api/patterns/query \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "analytics dashboard",
-    "top_k": 3,
-    "pattern_type": "prd"
-  }'
+## Project Structure
 
-# Get template suggestions
-curl -X POST http://localhost:8000/api/patterns/suggest \
-  -H "Content-Type: application/json" \
-  -d '{
-    "requirements": "Build a SaaS web application",
-    "top_k": 3,
-    "min_score": 0.5
-  }'
+```
+agent_bus/
+├── src/
+│   ├── agents/           # 12+ specialized agents
+│   ├── orchestration/    # Master agent and workflow
+│   ├── workers/          # Task execution
+│   ├── infrastructure/   # Redis, PostgreSQL, LLM clients
+│   ├── memory/           # ChromaDB vector store
+│   ├── skills/           # Claude Skills system
+│   └── api/              # FastAPI routes
+├── skills/               # Local skills directory
+├── tests/                # Test suites
+└── docker-compose.yml
 ```
 
-#### Memory CLI
-
-```bash
-# Search patterns
-agent-bus-memory query "web application" --top-k 5
-
-# List all patterns
-agent-bus-memory list
-
-# Get specific pattern
-agent-bus-memory get template_web_app_saas
-
-# Add new pattern
-agent-bus-memory add my_pattern "content..." --pattern-type prd --success-score 0.8
-
-# Suggest templates
-agent-bus-memory suggest "mobile app backend" --top-k 3
-
-# Check health
-agent-bus-memory health
-```
-
-#### Pattern Types
-
-- `prd` - Product Requirements Documents
-- `architecture` - System architecture designs
-- `code` - Code snippets and implementations
-- `test` - Test cases and strategies
-- `documentation` - Technical documentation
-- `template` - Reusable project templates
-- `general` - General patterns
+---
 
 ## Development
 
-### Local Setup Without Docker
-
-1. Install dependencies:
 ```bash
-pip install -e .
+# Run tests
+docker compose run --rm api pytest -q
+
+# View logs
+docker compose logs -f api worker orchestrator
+
+# Stop services
+docker compose down -v
 ```
 
-2. Start Redis and PostgreSQL:
-```bash
-docker compose up postgres redis
-```
+See [Architecture](docs/ARCHITECTURE.md) for system design details.
 
-3. Run API server:
-```bash
-uvicorn src.main:app --reload
-```
-
-4. Run worker:
-```bash
-python -m src.workers.worker
-```
-
-### Running Tests
-
-```bash
-pytest tests/
-```
-
-### Memory Smoke Test
-
-```bash
-./scripts/memory_smoke.sh
-```
-
-## Claude Skills
-
-Agent Bus includes a robust skills system with JSON schema validation, automatic discovery, and git-based installation.
-
-### Example Skills
-
-- **Weather Toolkit** (`skills/weather-toolkit/`) - Complete reference implementation demonstrating:
-  - Full skill.json metadata with capabilities, tools, and dependencies
-  - Comprehensive documentation and usage examples
-  - Integration with allowlist and capability mapping
-  - Best practices for creating production skills
-- **UI/UX Pro Max** (`skills/ui-ux-pro-max/`) - Design system generation (placeholder)
-
-**New to skills?** Start with the weather-toolkit example to learn the system:
-```bash
-cat skills/weather-toolkit/README.md
-pytest tests/test_example_skill_integration.py -v
-```
-
-### Skills System Features
-
-- **JSON Schema Validation**: All skills validated against Pydantic schema
-- **Automatic Discovery**: Skills auto-discovered from `skills/` directory
-- **Hardened Loader**: Comprehensive error handling and validation
-- **Version Checks**: Semver validation and compatibility checks
-- **Git Integration**: Install/update skills from GitHub repositories
-
-### Installing New Skills
-
-```bash
-# Using the SkillsManager API
-from src.skills import SkillsManager
-
-manager = SkillsManager("./skills")
-await manager.install_skill(
-    "https://github.com/user/skill-name",
-    "skill-name"
-)
-
-# Or manually
-cd skills
-git clone https://github.com/user/skill-name skill-name
-```
-
-### Documentation
-
-See [docs/SKILLS_SYSTEM.md](docs/SKILLS_SYSTEM.md) for:
-- Skill metadata format (skill.json schema)
-- Creating custom skills
-- API usage and examples
-- Error handling
-- Testing
-
-### Skill Repositories
-
-More skills available at:
-- [ComposioHQ/awesome-claude-skills](https://github.com/ComposioHQ/awesome-claude-skills)
-- [karanb192/awesome-claude-skills](https://github.com/karanb192/awesome-claude-skills)
-
-## Releases and Deployment
-
-### Creating a Release
-
-```bash
-# Bump version and create release (patch/minor/major)
-./scripts/release.sh patch
-
-# This triggers automated:
-# - Docker image build and publish to ghcr.io
-# - GitHub release with changelog
-# - Staging deployment (configurable)
-```
-
-### Deploying
-
-**Docker Compose (Development/Production)**:
-```bash
-docker compose up -d
-```
-
-See [docs/RELEASE.md](docs/RELEASE.md) for:
-- Release process and versioning strategy
-- CI/CD pipeline architecture
-- Rollback procedures
-- Troubleshooting guide
-
-## Progress Tracking
-
-See [PROGRESS.md](PROGRESS.md) for phase status and QA results.
+---
 
 ## Configuration
 
-Environment variables (see `.env.example`):
-- `ANTHROPIC_API_KEY` - Your Claude API key
-- `REDIS_HOST/PORT` - Redis connection
-- `POSTGRES_HOST/PORT` - PostgreSQL connection
-- `SKILLS_DIRECTORY` - Path to skills directory
+Key environment variables (see `.env.example` for full list):
+
+| Variable | Description |
+|----------|-------------|
+| `ANTHROPIC_API_KEY` | Claude API key (required) |
+| `REDIS_HOST` | Redis hostname |
+| `POSTGRES_HOST` | PostgreSQL hostname |
+| `SKILLS_DIRECTORY` | Path to skills directory |
+
+---
 
 ## License
 
@@ -493,248 +157,4 @@ MIT
 
 ## Contributing
 
-See [PLAN.md](PLAN.md) for implementation roadmap and contribution guidelines.
-
-## New Features
-
-### API Document Processing
-
-Ingest external API documentation (OpenAPI specs, Markdown docs, plain text) into long-term memory for development context.
-
-```bash
-# Process an OpenAPI spec
-curl -X POST http://localhost:8000/api/api-documents/process \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Stripe API",
-    "content": "<openapi spec content>",
-    "use_llm_extraction": true
-  }'
-
-# Query for relevant endpoints during development
-curl -X POST http://localhost:8000/api/api-documents/query/endpoints \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "create a payment intent",
-    "top_k": 5
-  }'
-
-# Get comprehensive development context
-curl -X POST http://localhost:8000/api/api-documents/context/development \
-  -H "Content-Type: application/json" \
-  -d '{
-    "task_description": "Implement payment processing with Stripe"
-  }'
-```
-
-**Supported Formats**: OpenAPI 3.x, OpenAPI 2.x (Swagger), Markdown, HTML, plain text
-
-**Extracted Information**:
-- API endpoints with parameters and responses
-- Rate limiting policies
-- Authentication requirements
-- Error handling guidelines
-
-See [API Document Processing Guide](docs/API_DOCUMENT_PROCESSING.md) for detailed documentation.
-
-### Memory Retention & Evaluation
-Configure pattern retention policies and evaluate memory quality:
-
-```bash
-# Check memory health and metrics
-agent-bus-memory health
-
-# Evaluation metrics include:
-# - Recall rate (pattern retrieval accuracy)
-# - Precision (relevance of retrieved patterns)  
-# - Template match rate
-# - Pattern diversity
-```
-
-### Real-time Events
-Subscribe to job/task updates via Server-Sent Events:
-
-```bash
-curl -N http://localhost:8000/api/events/stream
-# Streams: job_created, task_started, task_completed, workflow_transition
-```
-
-### Observability
-Access metrics in Prometheus format:
-
-```bash
-curl http://localhost:8000/api/metrics
-# Metrics: project_total, agent_execution_time, llm_tokens_used, memory_queries
-```
-
-### Authentication & RBAC
-Secure API endpoints with JWT authentication:
-
-```bash
-# Login
-curl -X POST http://localhost:8000/api/auth/login \
-  -d '{"username":"user","password":"pass"}'
-
-# Use token
-curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8000/api/projects/
-```
-
-
-## Using the System
-
-### Web UI (Coming Soon)
-
-The React web UI at `http://localhost:3000` will provide:
-- Requirements submission form
-- Job status dashboard
-- PRD viewer with approval actions
-- Real-time progress tracking
-- Artifact downloads
-
-**Current Status**: API-first. Web UI is under development. Use API endpoints or CLI for now.
-
-### API Usage (Current)
-
-#### 1. Create a New Project
-
-```bash
-curl -X POST http://localhost:8000/api/projects/ \
-  -H "Content-Type: application/json" \
-  -d '{
-    "project_id": "my-saas-dashboard",
-    "requirements": "Build a SaaS analytics dashboard with user authentication, real-time charts, and export to PDF. Support 10k concurrent users."
-  }'
-```
-
-Response:
-```json
-{
-  "job_id": "job_abc123",
-  "status": "queued",
-  "created_at": "2024-01-01T12:00:00Z"
-}
-```
-
-#### 2. Check Job Status
-
-```bash
-curl http://localhost:8000/api/projects/job_abc123
-```
-
-Response shows current workflow stage:
-```json
-{
-  "job_id": "job_abc123",
-  "status": "in_progress",
-  "workflow_stage": "prd_generation",
-  "progress": 15,
-  "artifacts": []
-}
-```
-
-#### 3. Get PRD (when ready)
-
-```bash
-curl http://localhost:8000/api/projects/job_abc123/prd
-```
-
-#### 4. Approve PRD (HITL Gate)
-
-```bash
-curl -X POST http://localhost:8000/api/projects/job_abc123/approve \
-  -H "Content-Type: application/json" \
-  -d '{"approved": true, "feedback": "Looks good!"}'
-```
-
-#### 5. Monitor Progress (Real-time)
-
-```bash
-# Subscribe to event stream
-curl -N http://localhost:8000/api/events/stream
-
-# You'll see events like:
-# data: {"type":"task_started","job_id":"job_abc123","stage":"architecture"}
-# data: {"type":"task_completed","job_id":"job_abc123","stage":"architecture"}
-```
-
-#### 6. Download Artifacts
-
-Once complete, download all deliverables:
-```bash
-# Get PRD
-curl http://localhost:8000/api/projects/job_abc123/prd > prd.md
-
-# Get Architecture
-curl http://localhost:8000/api/projects/job_abc123/architecture > architecture.md
-
-# Get Plan
-curl http://localhost:8000/api/projects/job_abc123/plan > plan.json
-```
-
-### Memory System Usage
-
-Query past patterns to improve your projects:
-
-```bash
-# Search for similar PRDs
-curl -X POST http://localhost:8000/api/patterns/query \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "analytics dashboard with real-time updates",
-    "top_k": 5,
-    "pattern_type": "prd"
-  }'
-
-# Get template suggestions
-curl -X POST http://localhost:8000/api/patterns/suggest \
-  -H "Content-Type: application/json" \
-  -d '{
-    "requirements": "Build a SaaS web application",
-    "top_k": 3
-  }'
-```
-
-### Workflow States
-
-```mermaid
-stateDiagram-v2
-    [*] --> Queued
-    Queued --> PRD_Generation
-    PRD_Generation --> Waiting_Approval
-    Waiting_Approval --> Plan_Generation: Approved
-    Waiting_Approval --> PRD_Generation: Rejected
-    Plan_Generation --> Architecture
-    Architecture --> UI_UX_Design
-    UI_UX_Design --> Development
-    Development --> QA_Testing
-    Development --> Security_Review
-    Development --> Documentation
-    Development --> Support_Docs
-    QA_Testing --> PM_Review
-    Security_Review --> PM_Review
-    Documentation --> PM_Review
-    Support_Docs --> PM_Review
-    PM_Review --> Delivery
-    Delivery --> [*]
-```
-
-### Understanding Stages
-
-| Stage | Agent | Output | Typical Duration |
-|-------|-------|--------|------------------|
-| PRD Generation | PRD Agent | Product Requirements Document | 2-5 min |
-| **HITL Gate** | Human | Approval/Changes | Manual |
-| Plan Generation | Plan Agent | Milestones, tasks, dependencies | 2-3 min |
-| Architecture | Architect Agent | System design, tech stack | 3-5 min |
-| UI/UX Design | UI/UX Agent | Design system, mockups | 3-5 min |
-| Development | Developer Agent | Code structure, TDD plan | 5-8 min |
-| QA Testing | QA Agent | Test plans, test cases | 3-5 min |
-| Security Review | Security Agent | Vulnerabilities, fixes | 3-5 min |
-| Documentation | Tech Writer | User manuals, tutorials | 3-5 min |
-| Support Docs | Support Engineer | FAQ, troubleshooting | 2-3 min |
-| PM Review | Product Manager | Final review, recommendations | 2-3 min |
-| Delivery | System | Package all artifacts | <1 min |
-
-**Total End-to-End**: ~30-45 minutes (excluding HITL wait time)
-
+See [PLAN.md](PLAN.md) for implementation roadmap.
