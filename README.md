@@ -267,7 +267,48 @@ More skills available at:
 - [ComposioHQ/awesome-claude-skills](https://github.com/ComposioHQ/awesome-claude-skills)
 - [karanb192/awesome-claude-skills](https://github.com/karanb192/awesome-claude-skills)
 
-## Deployment
+## Releases and Deployment
+
+### Creating a Release
+
+```bash
+# Bump version and create release (patch/minor/major)
+./scripts/release.sh patch
+
+# This triggers automated:
+# - Docker image build and publish to ghcr.io
+# - GitHub release with changelog
+# - Staging deployment (configurable)
+```
+
+### Deploying
+
+**Docker Compose (Development)**:
+```bash
+docker-compose up -d
+```
+
+**Kubernetes (Staging/Production)**:
+```bash
+# Staging
+helm upgrade --install agent-bus ./helm/agent-bus \
+  --set image.tag=v1.0.0 \
+  -f helm/agent-bus/values-staging.yaml \
+  --namespace agent-bus-staging
+
+# Production
+helm upgrade --install agent-bus ./helm/agent-bus \
+  --set image.tag=v1.0.0 \
+  -f helm/agent-bus/values-prod.yaml \
+  --namespace agent-bus-prod
+```
+
+See [docs/RELEASE.md](docs/RELEASE.md) for:
+- Release process and versioning strategy
+- CI/CD pipeline architecture
+- Deployment environments and configurations
+- Rollback procedures
+- Troubleshooting guide
 
 See [PLAN.md](PLAN.md) for detailed deployment instructions including:
 - Kubernetes setup for distributed compute
