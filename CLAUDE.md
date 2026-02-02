@@ -333,8 +333,23 @@ Key environment variables (see `.env.example` for full list):
 | `GET` | `/api/api-documents/{doc_id}` | Get specific API document |
 | `DELETE` | `/api/api-documents/{doc_id}` | Delete an API document |
 
+### Web UI Endpoints
+
+Minimal server-rendered HTML interface for browser-based interaction:
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/ui/` | Home page - project creation form |
+| `POST` | `/ui/create` | Submit new project |
+| `GET` | `/ui/jobs` | List all jobs |
+| `GET` | `/ui/prd/{job_id}` | View PRD with approve/reject buttons |
+| `POST` | `/ui/prd/{job_id}/approve` | Approve PRD |
+| `POST` | `/ui/prd/{job_id}/request_changes` | Request changes to PRD |
+| `GET` | `/ui/plan/{job_id}` | View project plan |
+
 ### API Documentation
 
+- Web UI: `http://localhost:8000/ui/`
 - Swagger UI: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
 

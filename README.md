@@ -65,6 +65,7 @@ curl http://localhost:8000/health    # Returns {"status":"healthy"}
 
 ### Access
 
+- **Web UI**: http://localhost:8000/ui/
 - **API Docs**: http://localhost:8000/docs
 - **Health**: http://localhost:8000/health
 - **Metrics**: http://localhost:8000/api/metrics
@@ -73,7 +74,22 @@ curl http://localhost:8000/health    # Returns {"status":"healthy"}
 
 ## Basic Usage
 
-### Create a Project
+### Web UI
+
+The simplest way to use Agent Bus is through the web interface at http://localhost:8000/ui/
+
+| Route | Description |
+|-------|-------------|
+| `/ui/` | Home page - create new projects |
+| `/ui/jobs` | View all jobs and their status |
+| `/ui/prd/{job_id}` | View PRD with approve/reject buttons |
+| `/ui/plan/{job_id}` | View project plan |
+
+### API
+
+Alternatively, use the REST API directly:
+
+#### Create a Project
 
 ```bash
 curl -X POST http://localhost:8000/api/projects/ \
@@ -84,13 +100,13 @@ curl -X POST http://localhost:8000/api/projects/ \
   }'
 ```
 
-### Check Status
+#### Check Status
 
 ```bash
 curl http://localhost:8000/api/projects/{job_id}
 ```
 
-### Approve PRD (HITL Gate)
+#### Approve PRD (HITL Gate)
 
 ```bash
 curl -X POST http://localhost:8000/api/projects/{job_id}/approve \
