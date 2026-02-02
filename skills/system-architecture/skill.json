@@ -1,0 +1,41 @@
+{
+  "name": "system-architecture",
+  "version": "1.0.0",
+  "description": "Cloud architecture patterns and system design guidance for scalable, resilient systems",
+  "author": "Agent Bus",
+  "capabilities": [
+    {
+      "name": "cloud-architecture",
+      "description": "Design cloud-native architectures for AWS, GCP, and Azure"
+    },
+    {
+      "name": "microservices-design",
+      "description": "Design microservices patterns, service boundaries, and communication"
+    },
+    {
+      "name": "scalability-patterns",
+      "description": "Apply horizontal/vertical scaling, caching, and load balancing patterns"
+    },
+    {
+      "name": "data-architecture",
+      "description": "Design database schemas, data pipelines, and storage strategies"
+    }
+  ],
+  "required_tools": [
+    {
+      "name": "web_fetch",
+      "required": false
+    }
+  ],
+  "dependencies": [],
+  "entry_point": "skill.md",
+  "min_python_version": "3.10",
+  "repository": "https://github.com/tefj-fun/agent_bus",
+  "license": "MIT",
+  "tags": ["architecture", "cloud", "aws", "gcp", "azure", "microservices", "scalability", "system-design"],
+  "metadata": {
+    "target_agent": "architect_agent",
+    "cloud_providers": ["AWS", "GCP", "Azure"],
+    "patterns": ["microservices", "event-driven", "serverless", "monolith"]
+  }
+}

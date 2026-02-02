@@ -1,0 +1,41 @@
+{
+  "name": "security-owasp",
+  "version": "1.0.0",
+  "description": "OWASP security guidelines, threat modeling, and vulnerability assessment for secure software development",
+  "author": "Agent Bus",
+  "capabilities": [
+    {
+      "name": "vulnerability-assessment",
+      "description": "Identify and categorize security vulnerabilities using OWASP Top 10"
+    },
+    {
+      "name": "threat-modeling",
+      "description": "Perform STRIDE threat modeling and attack surface analysis"
+    },
+    {
+      "name": "secure-coding",
+      "description": "Apply secure coding practices and security patterns"
+    },
+    {
+      "name": "security-review",
+      "description": "Conduct security reviews with actionable remediation guidance"
+    }
+  ],
+  "required_tools": [
+    {
+      "name": "web_fetch",
+      "required": false
+    }
+  ],
+  "dependencies": [],
+  "entry_point": "skill.md",
+  "min_python_version": "3.10",
+  "repository": "https://github.com/tefj-fun/agent_bus",
+  "license": "MIT",
+  "tags": ["security", "owasp", "vulnerability", "threat-modeling", "secure-coding", "appsec"],
+  "metadata": {
+    "target_agent": "security_agent",
+    "owasp_version": "2021",
+    "frameworks": ["OWASP Top 10", "STRIDE", "ASVS", "SAMM"]
+  }
+}
