@@ -162,6 +162,15 @@ docker compose logs -f api
 # Watch for: "Application startup complete"
 ```
 
+**With live logs** (to see the system performing):
+```bash
+# Option 1: Foreground mode - shows all logs, Ctrl+C stops containers
+docker compose up
+
+# Option 2: Start detached, then tail specific services
+docker compose up -d && docker compose logs -f api worker orchestrator
+```
+
 3. **Access the Application**
 
 - **Web UI**: http://localhost:3000 (React dashboard - coming soon)
