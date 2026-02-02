@@ -123,26 +123,41 @@ WORKLOAD_PATTERNS = {
     ],
 }
 
-# Library/framework indicators
-ML_FRAMEWORKS = [
-    "torch", "pytorch", "tensorflow", "tf", "keras",
-    "jax", "sklearn", "scikit-learn", "xgboost", "lightgbm",
-]
+# Library/framework indicators with weights
+ML_FRAMEWORKS = {
+    "torch": 0.8, "pytorch": 0.8, "tensorflow": 0.8, "tf": 0.5,
+    "keras": 0.7, "jax": 0.8, "sklearn": 0.6, "scikit-learn": 0.6,
+    "xgboost": 0.7, "lightgbm": 0.7, "catboost": 0.7,
+    "mxnet": 0.7, "paddle": 0.7, "onnx": 0.6,
+}
 
-CV_LIBRARIES = [
-    "opencv", "cv2", "pillow", "pil", "torchvision",
-    "detectron2", "mmdetection", "albumentations",
-]
+CV_LIBRARIES = {
+    "opencv": 0.7, "cv2": 0.7, "pillow": 0.4, "pil": 0.4,
+    "torchvision": 0.8, "detectron2": 0.9, "mmdetection": 0.9,
+    "albumentations": 0.6, "imgaug": 0.5, "kornia": 0.7,
+}
 
-NLP_LIBRARIES = [
-    "transformers", "huggingface", "spacy", "nltk",
-    "gensim", "sentence-transformers",
-]
+NLP_LIBRARIES = {
+    "transformers": 0.9, "huggingface": 0.9, "spacy": 0.6,
+    "nltk": 0.4, "gensim": 0.5, "sentence-transformers": 0.8,
+    "langchain": 0.7, "llama": 0.9, "openai": 0.6,
+}
 
-GPU_KEYWORDS = [
-    "gpu", "cuda", "cudnn", "tensorrt", "nvidia",
-    "accelerat", "device=cuda", "to(\"cuda\")",
-]
+GPU_KEYWORDS = {
+    "gpu": 0.8, "cuda": 0.9, "cudnn": 0.9, "tensorrt": 0.9,
+    "nvidia": 0.7, "accelerat": 0.6, "device=cuda": 0.9,
+    "to(\"cuda\")": 0.9, "to('cuda')": 0.9, "cupy": 0.8,
+    "numba.cuda": 0.8, "rapids": 0.8,
+}
+
+# Model architecture keywords (strong GPU indicators)
+MODEL_ARCHITECTURES = {
+    "resnet": 0.8, "vgg": 0.8, "efficientnet": 0.8, "mobilenet": 0.7,
+    "bert": 0.9, "gpt": 0.9, "t5": 0.9, "llama": 0.9, "mistral": 0.9,
+    "yolo": 0.9, "rcnn": 0.9, "mask-rcnn": 0.9, "retinanet": 0.8,
+    "unet": 0.8, "vae": 0.8, "gan": 0.8, "diffusion": 0.9,
+    "transformer": 0.8, "attention": 0.7, "lstm": 0.6, "gru": 0.6,
+}
 
 
 class WorkloadDetector:
@@ -198,35 +213,54 @@ class WorkloadDetector:
                     )
                 )
 
-        # Check for framework/library indicators
+        # Check for framework/library indicators with weighted scoring
         framework_score = 0.0
         framework_indicators = []
 
-        for framework in ML_FRAMEWORKS + CV_LIBRARIES + NLP_LIBRARIES:
+        all_frameworks = {**ML_FRAMEWORKS, **CV_LIBRARIES, **NLP_LIBRARIES}
+        for framework, weight in all_frameworks.items():
             if framework.lower() in text:
-                framework_score += 0.2
+                framework_score += weight * 0.25
                 framework_indicators.append(framework)
 
-        # Check for GPU keywords
+        # Check for model architecture keywords
+        architecture_score = 0.0
+        architecture_indicators = []
+
+        for arch, weight in MODEL_ARCHITECTURES.items():
+            if arch.lower() in text:
+                architecture_score += weight * 0.3
+                architecture_indicators.append(arch)
+
+        # Check for GPU keywords with weighted scoring
         gpu_score = 0.0
         gpu_indicators = []
 
-        for keyword in GPU_KEYWORDS:
+        for keyword, weight in GPU_KEYWORDS.items():
             if keyword.lower() in text:
-                gpu_score += 0.3
+                gpu_score += weight * 0.3
                 gpu_indicators.append(keyword)
 
         # Add generic GPU-accelerated signature if indicators found but no specific workload
-        if (framework_score > 0 or gpu_score > 0 or explicit_gpu) and not signatures:
-            confidence = min(1.0, framework_score + gpu_score + (0.5 if explicit_gpu else 0))
+        total_score = framework_score + architecture_score + gpu_score
+        all_indicators = framework_indicators + architecture_indicators + gpu_indicators
+
+        if (total_score > 0 or explicit_gpu) and not signatures:
+            confidence = min(1.0, total_score + (0.5 if explicit_gpu else 0))
             signatures.append(
                 WorkloadSignature(
                     workload_type=WorkloadType.GPU_ACCELERATED,
                     confidence=confidence,
-                    indicators=framework_indicators + gpu_indicators,
+                    indicators=all_indicators,
                     requires_gpu=True,
                 )
             )
+        elif signatures and all_indicators:
+            # Boost confidence of existing signatures if strong framework/GPU indicators present
+            for sig in signatures:
+                boost = min(0.3, total_score * 0.2)
+                sig.confidence = min(1.0, sig.confidence + boost)
+                sig.indicators.extend(all_indicators)
 
         # If no GPU indicators at all, mark as CPU-bound
         if not signatures:
@@ -241,6 +275,61 @@ class WorkloadDetector:
 
         # Sort by confidence (highest first)
         signatures.sort(key=lambda s: s.confidence, reverse=True)
+
+        return signatures
+
+    def detect_from_code(self, code_snippet: str) -> List[WorkloadSignature]:
+        """Detect workload from code snippet with enhanced heuristics.
+
+        Args:
+            code_snippet: Python code to analyze
+
+        Returns:
+            List of detected workload signatures
+        """
+        signatures = []
+        text = code_snippet.lower()
+
+        # Code-specific patterns
+        code_patterns = {
+            WorkloadType.ML_TRAINING: [
+                r"\.train\(\)", r"\.fit\(", r"optimizer\.", r"loss\.backward",
+                r"model\.zero_grad", r"scheduler\.",
+            ],
+            WorkloadType.ML_INFERENCE: [
+                r"\.eval\(\)", r"torch\.no_grad", r"model\.predict",
+                r"@torch\.inference_mode", r"with\s+torch\.no_grad",
+            ],
+            WorkloadType.CV_DETECTION: [
+                r"cv2\.detect", r"\.detect\(", r"nms\(", r"iou\(",
+            ],
+            WorkloadType.NLP_GENERATION: [
+                r"\.generate\(", r"tokenizer\(", r"model\.forward",
+            ],
+        }
+
+        # Check code-specific patterns
+        for workload_type, patterns in code_patterns.items():
+            matches = []
+            for pattern_str in patterns:
+                pattern = re.compile(pattern_str, re.IGNORECASE)
+                if pattern.search(text):
+                    matches.append(pattern_str)
+
+            if matches:
+                confidence = min(1.0, len(matches) * 0.4)
+                signatures.append(
+                    WorkloadSignature(
+                        workload_type=workload_type,
+                        confidence=confidence,
+                        indicators=matches,
+                        requires_gpu=True,
+                    )
+                )
+
+        # If no code-specific patterns, fall back to regular detection
+        if not signatures:
+            signatures = self.detect(code_snippet)
 
         return signatures
 
