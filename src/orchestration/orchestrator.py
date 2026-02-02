@@ -16,6 +16,7 @@ from .master_agent import MasterAgent
 from ..infrastructure.redis_client import redis_client
 from ..infrastructure.postgres_client import postgres_client
 from ..skills.manager import SkillsManager
+from ..storage.artifact_store import init_artifact_store
 from ..config import settings
 
 
@@ -37,6 +38,11 @@ class OrchestratorService:
         print(
             f"[Orchestrator] Connected to PostgreSQL at {settings.postgres_host}:{settings.postgres_port}"
         )
+
+        # Initialize artifact store for file-based output storage
+        if settings.artifact_storage_backend == "file":
+            init_artifact_store(settings.artifact_output_dir)
+            print(f"[Orchestrator] Artifact store initialized at {settings.artifact_output_dir}")
 
         while True:
             try:

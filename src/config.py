@@ -46,6 +46,12 @@ class Settings(BaseSettings):
     # ChromaDB
     chroma_persist_directory: str = Field(default="./data/chroma", env="CHROMA_PERSIST_DIRECTORY")
 
+    # Artifact Storage
+    artifact_output_dir: str = Field(default="./outputs", env="ARTIFACT_OUTPUT_DIR")
+    artifact_storage_backend: str = Field(
+        default="file", env="ARTIFACT_STORAGE_BACKEND"
+    )  # file|postgres
+
     # Skills
     skills_directory: str = Field(default="./skills", env="SKILLS_DIRECTORY")
 

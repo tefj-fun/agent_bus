@@ -7,13 +7,14 @@ from contextlib import asynccontextmanager
 from .infrastructure.container import container
 from .infrastructure.redis_client import redis_client
 from .infrastructure.postgres_client import postgres_client
-from .api.routes import projects, memory, skills
+from .api.routes import projects, memory, skills, artifacts
 from .api.routes import ui, ui_jobs
 from .api.routes import ui_prd
 from .api.routes import ui_prd_actions
 from .api.routes import ui_plan
 from .api.error_handling import setup_error_handlers
 from .config import settings
+from .storage.artifact_store import init_artifact_store
 
 
 @asynccontextmanager
@@ -30,6 +31,11 @@ async def lifespan(app: FastAPI):
     # Also connect legacy clients for backwards compatibility
     await redis_client.connect()
     await postgres_client.connect()
+
+    # Initialize artifact store for file-based output storage
+    if settings.artifact_storage_backend == "file":
+        init_artifact_store(settings.artifact_output_dir)
+        print(f"Artifact store initialized at {settings.artifact_output_dir}")
 
     yield
 
@@ -64,6 +70,7 @@ app.add_middleware(
 app.include_router(projects.router, prefix="/api/projects", tags=["projects"])
 app.include_router(memory.router, prefix="/api/memory", tags=["memory"])
 app.include_router(skills.router, prefix="/api", tags=["skills"])
+app.include_router(artifacts.router, prefix="/api/artifacts", tags=["artifacts"])
 app.include_router(ui.router, prefix="/ui", tags=["ui"])
 app.include_router(ui_jobs.router, prefix="/ui", tags=["ui"])
 app.include_router(ui_prd.router, prefix="/ui", tags=["ui"])

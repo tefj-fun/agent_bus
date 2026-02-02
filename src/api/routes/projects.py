@@ -7,6 +7,27 @@ from pydantic import BaseModel
 from typing import Optional
 
 from ...infrastructure.postgres_client import postgres_client
+from ...config import settings
+from ...storage.artifact_store import get_artifact_store, FileArtifactStore
+
+
+async def _get_artifact_from_file_store(job_id: str, artifact_type: str) -> Optional[dict]:
+    """Try to get artifact from file storage.
+
+    Returns artifact dict if found, None otherwise.
+    """
+    if settings.artifact_storage_backend != "file":
+        return None
+
+    try:
+        store = get_artifact_store()
+        if isinstance(store, FileArtifactStore):
+            artifact = await store.get_latest_by_type(job_id, artifact_type)
+            if artifact:
+                return artifact
+    except RuntimeError:
+        pass
+    return None
 
 
 router = APIRouter()
@@ -124,6 +145,12 @@ async def get_job_status(job_id: str):
 async def get_job_prd(job_id: str):
     """Fetch the latest PRD for a job."""
     try:
+        # Try file storage first
+        file_artifact = await _get_artifact_from_file_store(job_id, "prd")
+        if file_artifact:
+            return file_artifact
+
+        # Fall back to PostgreSQL
         pool = await postgres_client.get_pool()
         async with pool.acquire() as conn:
             artifact_row = await conn.fetchrow(
@@ -166,6 +193,12 @@ async def get_job_prd(job_id: str):
 async def get_job_plan(job_id: str):
     """Fetch the latest plan for a job."""
     try:
+        # Try file storage first
+        file_artifact = await _get_artifact_from_file_store(job_id, "plan")
+        if file_artifact:
+            return file_artifact
+
+        # Fall back to PostgreSQL
         pool = await postgres_client.get_pool()
         async with pool.acquire() as conn:
             artifact_row = await conn.fetchrow(
@@ -208,6 +241,12 @@ async def get_job_plan(job_id: str):
 async def get_job_architecture(job_id: str):
     """Fetch the latest architecture for a job."""
     try:
+        # Try file storage first
+        file_artifact = await _get_artifact_from_file_store(job_id, "architecture")
+        if file_artifact:
+            return file_artifact
+
+        # Fall back to PostgreSQL
         pool = await postgres_client.get_pool()
         async with pool.acquire() as conn:
             artifact_row = await conn.fetchrow(
@@ -250,6 +289,12 @@ async def get_job_architecture(job_id: str):
 async def get_job_ui_ux(job_id: str):
     """Fetch the latest UI/UX design for a job."""
     try:
+        # Try file storage first
+        file_artifact = await _get_artifact_from_file_store(job_id, "ui_ux")
+        if file_artifact:
+            return file_artifact
+
+        # Fall back to PostgreSQL
         pool = await postgres_client.get_pool()
         async with pool.acquire() as conn:
             artifact_row = await conn.fetchrow(
@@ -292,6 +337,12 @@ async def get_job_ui_ux(job_id: str):
 async def get_job_development(job_id: str):
     """Fetch the latest development plan for a job."""
     try:
+        # Try file storage first
+        file_artifact = await _get_artifact_from_file_store(job_id, "development")
+        if file_artifact:
+            return file_artifact
+
+        # Fall back to PostgreSQL
         pool = await postgres_client.get_pool()
         async with pool.acquire() as conn:
             artifact_row = await conn.fetchrow(
@@ -334,6 +385,12 @@ async def get_job_development(job_id: str):
 async def get_job_qa(job_id: str):
     """Fetch the latest QA strategy and test plans for a job."""
     try:
+        # Try file storage first
+        file_artifact = await _get_artifact_from_file_store(job_id, "qa")
+        if file_artifact:
+            return file_artifact
+
+        # Fall back to PostgreSQL
         pool = await postgres_client.get_pool()
         async with pool.acquire() as conn:
             artifact_row = await conn.fetchrow(
@@ -376,6 +433,12 @@ async def get_job_qa(job_id: str):
 async def get_job_security(job_id: str):
     """Fetch the latest security audit for a job."""
     try:
+        # Try file storage first
+        file_artifact = await _get_artifact_from_file_store(job_id, "security")
+        if file_artifact:
+            return file_artifact
+
+        # Fall back to PostgreSQL
         pool = await postgres_client.get_pool()
         async with pool.acquire() as conn:
             artifact_row = await conn.fetchrow(
@@ -418,6 +481,12 @@ async def get_job_security(job_id: str):
 async def get_job_documentation(job_id: str):
     """Fetch the latest documentation for a job."""
     try:
+        # Try file storage first
+        file_artifact = await _get_artifact_from_file_store(job_id, "documentation")
+        if file_artifact:
+            return file_artifact
+
+        # Fall back to PostgreSQL
         pool = await postgres_client.get_pool()
         async with pool.acquire() as conn:
             artifact_row = await conn.fetchrow(
@@ -460,6 +529,12 @@ async def get_job_documentation(job_id: str):
 async def get_job_support_docs(job_id: str):
     """Fetch the latest support documentation for a job."""
     try:
+        # Try file storage first
+        file_artifact = await _get_artifact_from_file_store(job_id, "support_docs")
+        if file_artifact:
+            return file_artifact
+
+        # Fall back to PostgreSQL
         pool = await postgres_client.get_pool()
         async with pool.acquire() as conn:
             artifact_row = await conn.fetchrow(
