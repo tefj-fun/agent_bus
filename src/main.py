@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
+from .infrastructure.container import container
 from .infrastructure.redis_client import redis_client
 from .infrastructure.postgres_client import postgres_client
 from .api.routes import projects, memory, skills
@@ -11,6 +12,7 @@ from .api.routes import ui, ui_jobs
 from .api.routes import ui_prd
 from .api.routes import ui_prd_actions
 from .api.routes import ui_plan
+from .api.error_handling import setup_error_handlers
 from .config import settings
 
 
@@ -19,15 +21,21 @@ async def lifespan(app: FastAPI):
     """Application lifespan manager."""
     # Startup
     print("Starting agent_bus API...")
-    await redis_client.connect()
-    await postgres_client.connect()
+
+    # Initialize DI container (lazy connection initialization)
+    await container.init()
     print(f"Connected to Redis at {settings.redis_host}:{settings.redis_port}")
     print(f"Connected to PostgreSQL at {settings.postgres_host}:{settings.postgres_port}")
+
+    # Also connect legacy clients for backwards compatibility
+    await redis_client.connect()
+    await postgres_client.connect()
 
     yield
 
     # Shutdown
     print("Shutting down agent_bus API...")
+    await container.close()
     await redis_client.close()
     await postgres_client.close()
 
@@ -39,6 +47,9 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+# Setup standardized error handlers
+setup_error_handlers(app)
 
 # Add CORS middleware
 app.add_middleware(
