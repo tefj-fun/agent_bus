@@ -9,9 +9,11 @@ python = "^3.10"
 [tool.poetry.scripts]
 agent-bus-skills = "src.cli:main"
 agent-bus-memory = "src.cli_memory:main"
+agent-bus-jobs = "src.cli_jobs:main"
 
 [tool.poetry.dependencies]
 python = "^3.10"
+click = "^8.1.0"
 fastapi = "^0.109.0"
 uvicorn = {extras = ["standard"], version = "^0.27.0"}
 redis = "^5.0.0"
