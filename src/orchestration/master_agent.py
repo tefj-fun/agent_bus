@@ -9,9 +9,11 @@ from .workflow import WorkflowStateMachine, WorkflowStage
 from ..infrastructure.redis_client import RedisClient
 from ..infrastructure.postgres_client import PostgresClient
 from ..infrastructure.anthropic_client import anthropic_client
+from ..infrastructure.metrics import record_project_created
 from ..skills.manager import SkillsManager
 from ..agents.base import AgentContext
 from ..config import settings
+from ..ml_pipeline.detector import detect_ml_workload
 
 
 class MasterAgent:
@@ -62,8 +64,37 @@ class MasterAgent:
             )
 
         print(f"[MasterAgent] Starting job {job_id} for project {project_id}")
+        
+        # Record project creation metric
+        record_project_created("created")
 
         try:
+            # Detect ML workload requirements
+            ml_analysis = detect_ml_workload(requirements)
+            print(f"[MasterAgent] ML workload analysis: {ml_analysis.reasoning}")
+            
+            # Store ML analysis metadata (for future GPU routing)
+            await self.postgres.execute(
+                """
+                UPDATE jobs 
+                SET metadata = jsonb_set(
+                    COALESCE(metadata, '{}'::jsonb),
+                    '{ml_analysis}',
+                    $1::jsonb
+                )
+                WHERE job_id = $2
+                """,
+                {
+                    "is_ml_workload": ml_analysis.is_ml_workload,
+                    "confidence": ml_analysis.confidence,
+                    "workload_type": ml_analysis.workload_type,
+                    "requires_gpu": ml_analysis.workload_type == "gpu_required",
+                    "gpu_count": ml_analysis.required_gpu_count,
+                    "memory_gb": ml_analysis.estimated_memory_gb,
+                },
+                job_id,
+            )
+            
             # Phase 1 scope: PRD only. Later phases can enable downstream stages.
             prd_result = await self._execute_stage(
                 job_id=job_id,

@@ -1,0 +1,17 @@
+apiVersion: v2
+name: agent-bus
+description: A Helm chart for Agent Bus - AI-powered software development automation
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - ai
+  - agents
+  - automation
+  - orchestration
+  - llm
+maintainers:
+  - name: Agent Bus Team
+home: https://github.com/tefj-fun/agent_bus
+sources:
+  - https://github.com/tefj-fun/agent_bus

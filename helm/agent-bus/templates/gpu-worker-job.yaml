@@ -1,0 +1,56 @@
+{{- if .Values.gpuWorker.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "agent-bus.fullname" . }}-gpu-worker-{{ now | date "20060102150405" }}
+  labels:
+    {{- include "agent-bus.labels" . | nindent 4 }}
+    app.kubernetes.io/component: gpu-worker
+spec:
+  template:
+    metadata:
+      labels:
+        {{- include "agent-bus.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: gpu-worker
+    spec:
+      restartPolicy: OnFailure
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "agent-bus.serviceAccountName" . }}
+      containers:
+      - name: gpu-worker
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command: ["python", "-m", "src.ml_pipeline.executor"]
+        envFrom:
+        - configMapRef:
+            name: {{ include "agent-bus.fullname" . }}-config
+        - secretRef:
+            name: {{ include "agent-bus.fullname" . }}-secrets
+        env:
+        - name: WORKER_TYPE
+          value: "gpu"
+        resources:
+          {{- toYaml .Values.resources.gpuWorker | nindent 10 }}
+        volumeMounts:
+        {{- if .Values.persistence.enabled }}
+        - name: data
+          mountPath: {{ .Values.persistence.mountPath }}
+        {{- end }}
+      volumes:
+      {{- if .Values.persistence.enabled }}
+      - name: data
+        persistentVolumeClaim:
+          claimName: {{ include "agent-bus.fullname" . }}-data
+      {{- end }}
+      {{- with .Values.gpuWorker.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.gpuWorker.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

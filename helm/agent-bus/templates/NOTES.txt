@@ -1,0 +1,69 @@
+Thank you for installing {{ .Chart.Name }}!
+
+Your release is named {{ .Release.Name }}.
+
+To learn more about the release, try:
+
+  $ helm status {{ .Release.Name }}
+  $ helm get all {{ .Release.Name }}
+
+{{- if .Values.ingress.enabled }}
+
+Agent Bus API is available at:
+{{- range .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
+{{- end }}
+
+{{- else if eq .Values.service.type "LoadBalancer" }}
+
+Get the application URL by running:
+
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "agent-bus.fullname" . }}-api -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+  echo http://$SERVICE_IP:{{ .Values.service.port }}
+
+NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+
+{{- else if eq .Values.service.type "NodePort" }}
+
+Get the application URL by running:
+
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "agent-bus.fullname" . }}-api)
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+
+{{- else }}
+
+Access the API by port-forwarding:
+
+  kubectl port-forward --namespace {{ .Release.Namespace }} svc/{{ include "agent-bus.fullname" . }}-api 8000:{{ .Values.service.port }}
+  echo "Visit http://127.0.0.1:8000"
+
+{{- end }}
+
+Check health:
+  curl http://localhost:8000/health
+
+View metrics:
+  curl http://localhost:8000/metrics
+
+{{- if not .Values.secrets.anthropicApiKey }}
+
+⚠️  WARNING: Anthropic API key is not set!
+Set it with:
+  helm upgrade {{ .Release.Name }} {{ .Chart.Name }} --reuse-values --set secrets.anthropicApiKey=YOUR_KEY
+
+{{- end }}
+
+{{- if .Values.gpuWorker.enabled }}
+
+GPU workers are enabled. Ensure GPU nodes are available:
+  kubectl get nodes -l nvidia.com/gpu=true
+
+{{- end }}
+
+📊 Monitor your deployment:
+  kubectl get pods -l app.kubernetes.io/instance={{ .Release.Name }}
+  kubectl logs -l app.kubernetes.io/component=api --tail=50
+
+For more information, visit:
+  https://github.com/tefj-fun/agent_bus

@@ -6,12 +6,15 @@ from contextlib import asynccontextmanager
 
 from .infrastructure.redis_client import redis_client
 from .infrastructure.postgres_client import postgres_client
+from .infrastructure.metrics import get_metrics, get_metrics_content_type, set_system_info
 from .api.routes import projects, memory, skills
 from .api.routes import ui, ui_jobs
 from .api.routes import ui_prd
 from .api.routes import ui_prd_actions
 from .api.routes import ui_plan
 from .config import settings
+from fastapi.responses import Response
+import os
 
 
 @asynccontextmanager
@@ -23,6 +26,13 @@ async def lifespan(app: FastAPI):
     await postgres_client.connect()
     print(f"Connected to Redis at {settings.redis_host}:{settings.redis_port}")
     print(f"Connected to PostgreSQL at {settings.postgres_host}:{settings.postgres_port}")
+    
+    # Set system info for metrics
+    set_system_info(
+        version="0.1.0",
+        environment=os.getenv("ENVIRONMENT", "development"),
+        python_version=os.sys.version.split()[0],
+    )
 
     yield
 
@@ -117,3 +127,12 @@ async def health():
         "redis": "connected",
         "postgres": "connected",
     }
+
+
+@app.get("/metrics")
+async def metrics():
+    """Prometheus metrics endpoint."""
+    return Response(
+        content=get_metrics(),
+        media_type=get_metrics_content_type(),
+    )

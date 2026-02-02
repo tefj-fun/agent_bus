@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "agent-bus.fullname" . }}-config
+  labels:
+    {{- include "agent-bus.labels" . | nindent 4 }}
+data:
+  LOG_LEVEL: {{ .Values.config.logLevel | quote }}
+  ANTHROPIC_MODEL: {{ .Values.config.anthropicModel | quote }}
+  REDIS_URL: {{ include "agent-bus.redisUrl" . | quote }}
+  DATABASE_URL: {{ include "agent-bus.databaseUrl" . | quote }}
+  CHROMADB_PATH: {{ .Values.config.chromadbPath | quote }}
+  SKILLS_PATH: {{ .Values.config.skillsPath | quote }}

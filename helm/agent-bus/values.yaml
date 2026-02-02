@@ -1,0 +1,192 @@
+# Default values for agent-bus
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount:
+  api: 2
+  cpuWorker: 3
+
+image:
+  repository: ghcr.io/tefj-fun/agent-bus
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  fsGroup: 2000
+
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: false
+  runAsNonRoot: true
+  runAsUser: 1000
+
+service:
+  type: LoadBalancer
+  port: 80
+  targetPort: 8000
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations: {}
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: agent-bus.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  #  - secretName: agent-bus-tls
+  #    hosts:
+  #      - agent-bus.local
+
+resources:
+  api:
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+    requests:
+      cpu: 1000m
+      memory: 1Gi
+  cpuWorker:
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+  gpuWorker:
+    limits:
+      nvidia.com/gpu: 1
+      cpu: 4000m
+      memory: 16Gi
+    requests:
+      nvidia.com/gpu: 1
+      cpu: 2000m
+      memory: 8Gi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Redis configuration
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: true
+      size: 8Gi
+      storageClass: ""
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 250m
+        memory: 256Mi
+
+# PostgreSQL configuration
+postgresql:
+  enabled: true
+  auth:
+    username: agent_bus
+    password: changeme
+    database: agent_bus
+  primary:
+    persistence:
+      enabled: true
+      size: 10Gi
+      storageClass: ""
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+      requests:
+        cpu: 500m
+        memory: 512Mi
+
+# Application configuration
+config:
+  logLevel: INFO
+  anthropicModel: claude-3-5-sonnet-20241022
+  redisUrl: "redis://agent-bus-redis-master:6379"
+  databaseUrl: "postgresql://agent_bus:changeme@agent-bus-postgresql:5432/agent_bus"
+  chromadbPath: "/data/chromadb"
+  skillsPath: "/app/skills"
+
+# Secrets (should be overridden in production)
+secrets:
+  anthropicApiKey: ""
+  # Add in secrets.yaml or via --set
+
+# GPU worker job configuration
+gpuWorker:
+  enabled: false
+  nodeSelector:
+    nvidia.com/gpu: "true"
+  tolerations:
+    - key: nvidia.com/gpu
+      operator: Exists
+      effect: NoSchedule
+
+# Monitoring
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    scrapeTimeout: 10s
+
+# Health checks
+healthCheck:
+  enabled: true
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8000
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 8000
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# Persistence for ChromaDB and skills
+persistence:
+  enabled: true
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 20Gi
+  mountPath: /data

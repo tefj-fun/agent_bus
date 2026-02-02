@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: agent-bus
+  labels:
+    name: agent-bus
+    app: agent-bus

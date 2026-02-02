@@ -1,0 +1,63 @@
+# Development environment overrides
+replicaCount:
+  api: 1
+  cpuWorker: 1
+
+image:
+  pullPolicy: Always
+  tag: "dev"
+
+service:
+  type: NodePort
+
+ingress:
+  enabled: false
+
+resources:
+  api:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  cpuWorker:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+
+redis:
+  master:
+    persistence:
+      enabled: false
+    resources:
+      limits:
+        cpu: 250m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+postgresql:
+  primary:
+    persistence:
+      enabled: false
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 250m
+        memory: 256Mi
+
+config:
+  logLevel: DEBUG
+
+persistence:
+  enabled: false
+
+gpuWorker:
+  enabled: false
