@@ -2,6 +2,23 @@
 
 Multi-agent SWE engineering system with distributed GPU compute and Claude Skills integration.
 
+---
+
+## Documentation
+
+| Document | Description | Audience |
+|----------|-------------|----------|
+| **[User Guide](docs/USER_GUIDE.md)** | How to use Agent Bus, write requirements, understand deliverables | End users, Project managers |
+| [README](README.md) (this file) | Technical overview, setup, API reference | Developers, DevOps |
+| [Architecture](docs/ARCHITECTURE.md) | System design and service topology | Developers |
+| [Skills System](docs/SKILLS_SYSTEM.md) | Creating and managing Claude Skills | Developers |
+| [Memory Store](docs/MEMORY_STORE.md) | Pattern storage and retrieval system | Developers |
+| [Release Guide](docs/RELEASE.md) | Deployment and release process | DevOps |
+
+> **New to Agent Bus?** Start with the **[User Guide](docs/USER_GUIDE.md)** for a friendly introduction.
+
+---
+
 ## Overview
 
 Agent Bus is a comprehensive multi-agent system where sales inputs requirements, and 12 specialized AI agents collaborate to deliver complete software solutions. The system automatically routes ML/CV workloads to GPU nodes and maintains project memory for pattern reuse.
