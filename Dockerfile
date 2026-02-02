@@ -30,6 +30,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     python-multipart==0.0.9 \
     chromadb==0.4.22 \
     sentence-transformers==2.3.1 \
+    "numpy<2.0.0" \
     kubernetes==29.0.0 \
     prometheus-client==0.19.0 \
     opentelemetry-api==1.22.0 \
