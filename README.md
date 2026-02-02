@@ -92,15 +92,23 @@ graph TB
     API --> Redis[(Redis Queue)]
     API --> ChromaDB[(ChromaDB Vector Store)]
 
-    Postgres --> Orchestrator[Orchestrator]
-    Orchestrator --> MasterAgent[MasterAgent]
-    MasterAgent --> Redis
+    Postgres -->|polls for jobs| Orchestrator[Orchestrator]
+    Orchestrator -->|runs| MasterAgent[MasterAgent]
+    MasterAgent -->|enqueues tasks| Redis
 
-    Redis --> Worker1[Worker 1]
-    Redis --> Worker2[Worker 2]
+    Redis -->|dequeue tasks| Workers[Workers]
 
-    Worker1 --> Agents[12 Specialized Agents]
-    Worker2 --> Agents
+    subgraph Agents[12 Specialized Agents - run in parallel]
+        PRD[PRD Agent]
+        Arch[Architect]
+        Dev[Developer]
+        QA[QA Agent]
+        Sec[Security]
+        Docs[Tech Writer]
+        More[+ 6 more...]
+    end
+
+    Workers -->|execute| Agents
 
     Agents --> LLM[Anthropic Claude API]
     Agents --> Postgres
@@ -112,6 +120,7 @@ graph TB
     style API fill:#fff4e1
     style Agents fill:#e8f5e9
     style Orchestrator fill:#ffe8e8
+    style Workers fill:#f3e5f5
 ```
 
 ## Workflow Diagram
