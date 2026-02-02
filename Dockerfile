@@ -2,7 +2,7 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies (cached layer)
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
@@ -10,10 +10,10 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy dependency files
+# Copy dependency files first (invalidate cache only when deps change)
 COPY pyproject.toml ./
 
-# Install Python dependencies
+# Install Python dependencies (cached layer when deps unchanged)
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir \
     fastapi==0.109.0 \
@@ -42,7 +42,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     black==24.1.0 \
     ruff==0.2.0
 
-# Copy application code
+# Copy application code last (invalidates only when source changes)
 COPY src/ ./src/
 COPY skills/ ./skills/
 COPY tests/ ./tests/
