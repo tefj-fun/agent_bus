@@ -8,12 +8,37 @@ Agent Bus is a comprehensive multi-agent system where sales inputs requirements,
 
 ## Features
 
+### Core System
 - **12 Specialized Agents**: PRD, Architecture, UI/UX Design, Development, QA, Security, Documentation, Support, Product Management, Project Management, Memory
 - **Claude Skills Integration**: UI/UX Pro Max, Webapp Testing, TDD, Pypict, Systematic Debugging
+- **Full Workflow**: From sales requirements to delivery with HITL approval gates
+
+### Infrastructure & Scaling
 - **Distributed Compute**: Kubernetes-based CPU/GPU worker orchestration
-- **ML/CV Pipeline**: Auto-detection and GPU routing for ML workloads
-- **Memory System v2**: ChromaDB vector database with sentence-transformers for semantic pattern search and template suggestions
-- **Full Workflow**: From sales requirements to delivery
+- **ML/CV Pipeline**: Auto-detection and GPU routing for ML workloads (detector + executor)
+- **Auto-scaling**: Horizontal pod autoscaling for API and workers
+- **GPU Support**: V100/A100 node affinity and resource allocation
+
+### Memory & Intelligence
+- **Memory System v2**: ChromaDB vector database with sentence-transformers
+- **Pattern Recognition**: Semantic search for similar PRDs, architectures, code patterns
+- **Template Suggestions**: Automatic template matching for new projects
+- **Retention Policies**: Configurable pattern retention and archival
+- **Evaluation Harness**: Quality metrics for memory system performance
+
+### Observability & Security
+- **Structured Logging**: JSON-formatted logs for all services
+- **Metrics Endpoint**: Prometheus-compatible metrics (projects, agents, LLM usage, memory)
+- **Event Streaming**: SSE endpoint for real-time job/task updates
+- **Authentication**: JWT-based auth middleware for API endpoints
+- **RBAC**: Role-based access control for HITL approval actions
+- **Secrets Management**: Secure handling of API keys and credentials
+
+### DevOps
+- **CI/CD Pipeline**: Automated builds, tests, lint checks, Docker caching
+- **Release Automation**: One-command versioning with changelog generation
+- **Multi-environment**: Dev, staging, production Helm configurations
+- **Health Checks**: Comprehensive health endpoints for all services
 
 ## Quick Start
 
@@ -66,17 +91,24 @@ Memory Agent stores patterns for future reuse
 ```
 agent_bus/
 ├── src/
-│   ├── agents/           # Specialized agent implementations
-│   ├── orchestration/    # Master agent and workflow
-│   ├── workers/          # Worker processes
-│   ├── infrastructure/   # Redis, PostgreSQL, Anthropic clients
-│   ├── ml_pipeline/      # ML workload detection and routing
-│   ├── skills/           # Skills manager and registry
-│   └── api/              # FastAPI routes
-├── skills/               # Local Claude Skills directory
-├── k8s/                  # Kubernetes manifests
-├── tests/                # Test suites
-└── docker-compose.yml    # Local development setup
+│   ├── agents/              # 12+ specialized agent implementations
+│   ├── orchestration/       # Master agent and workflow state machine
+│   ├── workers/             # CPU/GPU worker processes
+│   ├── infrastructure/      # Redis, PostgreSQL, LLM clients
+│   ├── ml_pipeline/         # ML workload detector + GPU executor
+│   ├── memory/              # ChromaDB store, embeddings, retention, evaluation
+│   ├── skills/              # Skills manager, registry, allowlist
+│   └── api/
+│       └── routes/          # Projects, patterns, skills, metrics, events, auth
+├── skills/                  # Local Claude Skills directory
+├── k8s/
+│   ├── base/                # Base K8s manifests (GPU workers)
+│   └── overlays/            # Environment overlays (staging, prod)
+├── helm/agent-bus/          # Helm chart with multi-env values
+├── scripts/                 # Release, seed templates, smoke tests
+├── tests/                   # Unit + integration test suites
+├── docs/                    # Architecture, skills, release, API docs
+└── docker-compose.yml       # Local dev with GPU compose service
 ```
 
 ## API Usage
@@ -335,3 +367,59 @@ MIT
 ## Contributing
 
 See [PLAN.md](PLAN.md) for implementation roadmap and contribution guidelines.
+
+## New Features
+
+### ML/CV Pipeline
+The system automatically detects ML/CV workloads from requirements and routes them to GPU workers:
+
+```python
+# Automatic detection based on 50+ ML/CV keywords
+detector = MLWorkloadDetector()
+result = detector.analyze("Build a CNN image classifier")
+# Returns: is_ml=True, confidence=0.95, gpu_required=True
+```
+
+### Memory Retention & Evaluation
+Configure pattern retention policies and evaluate memory quality:
+
+```bash
+# Check memory health and metrics
+agent-bus-memory health
+
+# Evaluation metrics include:
+# - Recall rate (pattern retrieval accuracy)
+# - Precision (relevance of retrieved patterns)  
+# - Template match rate
+# - Pattern diversity
+```
+
+### Real-time Events
+Subscribe to job/task updates via Server-Sent Events:
+
+```bash
+curl -N http://localhost:8000/api/events/stream
+# Streams: job_created, task_started, task_completed, workflow_transition
+```
+
+### Observability
+Access metrics in Prometheus format:
+
+```bash
+curl http://localhost:8000/api/metrics
+# Metrics: project_total, agent_execution_time, llm_tokens_used, memory_queries
+```
+
+### Authentication & RBAC
+Secure API endpoints with JWT authentication:
+
+```bash
+# Login
+curl -X POST http://localhost:8000/api/auth/login \
+  -d '{"username":"user","password":"pass"}'
+
+# Use token
+curl -H "Authorization: Bearer $TOKEN" \
+  http://localhost:8000/api/projects/
+```
+
