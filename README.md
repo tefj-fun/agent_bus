@@ -88,26 +88,30 @@ graph TB
     User[Sales/User] --> WebUI[Web UI :3000]
     WebUI --> API[FastAPI Server :8000]
 
-    API --> Redis[(Redis Queue)]
     API --> Postgres[(PostgreSQL)]
+    API --> Redis[(Redis Queue)]
     API --> ChromaDB[(ChromaDB Vector Store)]
+
+    Postgres --> Orchestrator[Orchestrator]
+    Orchestrator --> MasterAgent[MasterAgent]
+    MasterAgent --> Redis
 
     Redis --> Worker1[Worker 1]
     Redis --> Worker2[Worker 2]
-    Redis --> Orchestrator[Orchestrator]
 
     Worker1 --> Agents[12 Specialized Agents]
     Worker2 --> Agents
 
     Agents --> LLM[Anthropic Claude API]
-    Orchestrator --> Agents
-
     Agents --> Postgres
     Agents --> ChromaDB
+
+    MasterAgent -.->|polls results| Redis
 
     style WebUI fill:#e1f5ff
     style API fill:#fff4e1
     style Agents fill:#e8f5e9
+    style Orchestrator fill:#ffe8e8
 ```
 
 ## Workflow Diagram
