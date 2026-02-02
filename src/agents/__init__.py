@@ -13,6 +13,8 @@ from .uiux_agent import UIUXAgent
 from .developer_agent import DeveloperAgent
 from .qa_agent import QAAgent
 from .security_agent import SecurityAgent
+from .delivery_agent import DeliveryAgent
+from .memory_agent_v2 import MemoryAgentV2
 
 __all__ = [
     "BaseAgent",
@@ -31,4 +33,6 @@ __all__ = [
     "DeveloperAgent",
     "QAAgent",
     "SecurityAgent",
+    "DeliveryAgent",
+    "MemoryAgentV2",
 ]
