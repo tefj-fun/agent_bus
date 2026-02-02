@@ -178,33 +178,41 @@ class MasterAgent:
         # Execute Documentation and Support stages in parallel after Security
         security_content = await self._fetch_artifact_content(job_id, "security")
 
+        print(f"[MasterAgent] Starting parallel execution: documentation + support_docs")
+
         # Run documentation and support in parallel (gather awaits the coroutines)
-        documentation_result, support_result = await asyncio.gather(
-            self._execute_stage(
-                job_id=job_id,
-                project_id=project_id,
-                stage=WorkflowStage.DOCUMENTATION,
-                inputs={
-                    "development": development_content or "",
-                    "architecture": architecture_content or "",
-                    "qa": qa_content or "",
-                    "security": security_content or "",
-                    "prd": prd_content,
-                },
-            ),
-            self._execute_stage(
-                job_id=job_id,
-                project_id=project_id,
-                stage=WorkflowStage.SUPPORT_DOCS,
-                inputs={
-                    "development": development_content or "",
-                    "architecture": architecture_content or "",
-                    "qa": qa_content or "",
-                    "security": security_content or "",
-                    "prd": prd_content,
-                },
-            ),
-        )
+        try:
+            documentation_result, support_result = await asyncio.gather(
+                self._execute_stage(
+                    job_id=job_id,
+                    project_id=project_id,
+                    stage=WorkflowStage.DOCUMENTATION,
+                    inputs={
+                        "development": development_content or "",
+                        "architecture": architecture_content or "",
+                        "qa": qa_content or "",
+                        "security": security_content or "",
+                        "prd": prd_content,
+                    },
+                ),
+                self._execute_stage(
+                    job_id=job_id,
+                    project_id=project_id,
+                    stage=WorkflowStage.SUPPORT_DOCS,
+                    inputs={
+                        "development": development_content or "",
+                        "architecture": architecture_content or "",
+                        "qa": qa_content or "",
+                        "security": security_content or "",
+                        "prd": prd_content,
+                    },
+                ),
+                return_exceptions=False,  # Raise exceptions immediately
+            )
+            print(f"[MasterAgent] Parallel execution completed successfully")
+        except Exception as e:
+            print(f"[MasterAgent] ERROR in parallel execution: {e}")
+            raise
 
         # Execute PM Review stage
         documentation_content = await self._fetch_artifact_content(job_id, "documentation")
@@ -374,12 +382,16 @@ class MasterAgent:
             task_type=stage.value,
             input_data=inputs,
         )
+        print(f"[MasterAgent] Created task {task_id} in database for stage {stage.value}")
 
         # Enqueue task to Redis
         await self.redis.enqueue_task(queue_name, task_data)
+        print(f"[MasterAgent] Enqueued task {task_id} to {queue_name}")
 
         # Wait for completion
+        print(f"[MasterAgent] Waiting for task {task_id} to complete...")
         result = await self._wait_for_task(task_id, timeout=3600)
+        print(f"[MasterAgent] Task {task_id} completed with result type: {type(result)}")
 
         # Normalize failure signaling (worker writes a result key even on crash)
         if isinstance(result, dict) and result.get("success") is False:
