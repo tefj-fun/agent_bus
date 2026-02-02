@@ -14,8 +14,10 @@ RUN apt-get update && apt-get install -y \
 COPY pyproject.toml ./
 
 # Install Python dependencies
+# Note: Pin numpy<2.0 for chromadb compatibility
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir \
+    'numpy<2.0' \
     fastapi==0.109.0 \
     uvicorn[standard]==0.27.0 \
     redis==5.0.0 \
