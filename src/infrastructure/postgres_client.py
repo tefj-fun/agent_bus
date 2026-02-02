@@ -15,10 +15,7 @@ class PostgresClient:
         """Create connection pool."""
         if self._pool is None:
             self._pool = await asyncpg.create_pool(
-                settings.postgres_url,
-                min_size=2,
-                max_size=10,
-                command_timeout=60
+                settings.postgres_url, min_size=2, max_size=10, command_timeout=60
             )
         return self._pool
 
@@ -39,7 +36,7 @@ class PostgresClient:
         job_id: str,
         project_id: str,
         status: str = "created",
-        workflow_stage: str = "initialization"
+        workflow_stage: str = "initialization",
     ) -> None:
         """Create a new job."""
         pool = await self.get_pool()
@@ -52,14 +49,11 @@ class PostgresClient:
                 job_id,
                 project_id,
                 status,
-                workflow_stage
+                workflow_stage,
             )
 
     async def update_job_status(
-        self,
-        job_id: str,
-        status: str,
-        workflow_stage: Optional[str] = None
+        self, job_id: str, status: str, workflow_stage: Optional[str] = None
     ) -> None:
         """Update job status."""
         pool = await self.get_pool()
@@ -73,7 +67,7 @@ class PostgresClient:
                     """,
                     job_id,
                     status,
-                    workflow_stage
+                    workflow_stage,
                 )
             else:
                 await conn.execute(
@@ -83,7 +77,7 @@ class PostgresClient:
                     WHERE id = $1
                     """,
                     job_id,
-                    status
+                    status,
                 )
 
     async def update_job_metadata(self, job_id: str, metadata: dict) -> None:
@@ -91,6 +85,7 @@ class PostgresClient:
         pool = await self.get_pool()
         async with pool.acquire() as conn:
             import json
+
             await conn.execute(
                 """
                 UPDATE jobs
@@ -98,10 +93,12 @@ class PostgresClient:
                 WHERE id = $1
                 """,
                 job_id,
-                json.dumps(metadata)
+                json.dumps(metadata),
             )
 
-    async def claim_next_job(self, from_status: str = 'queued', to_status: str = 'orchestrating') -> Optional[dict]:
+    async def claim_next_job(
+        self, from_status: str = "queued", to_status: str = "orchestrating"
+    ) -> Optional[dict]:
         """Atomically claim the next job of a given status.
 
         Returns:
@@ -136,12 +133,13 @@ class PostgresClient:
         task_type: str,
         input_data: dict,
         dependencies: list = None,
-        priority: int = 5
+        priority: int = 5,
     ) -> None:
         """Create a new task."""
         pool = await self.get_pool()
         async with pool.acquire() as conn:
             import json
+
             await conn.execute(
                 """
                 INSERT INTO tasks (
@@ -156,7 +154,7 @@ class PostgresClient:
                 task_type,
                 priority,
                 json.dumps(input_data),
-                dependencies or []
+                dependencies or [],
             )
 
     async def update_task_status(
@@ -164,13 +162,14 @@ class PostgresClient:
         task_id: str,
         status: str,
         output_data: Optional[dict] = None,
-        error: Optional[str] = None
+        error: Optional[str] = None,
     ) -> None:
         """Update task status."""
         pool = await self.get_pool()
         async with pool.acquire() as conn:
             if output_data is not None:
                 import json
+
                 await conn.execute(
                     """
                     UPDATE tasks
@@ -179,7 +178,7 @@ class PostgresClient:
                     """,
                     task_id,
                     status,
-                    json.dumps(output_data)
+                    json.dumps(output_data),
                 )
             elif error:
                 await conn.execute(
@@ -190,7 +189,7 @@ class PostgresClient:
                     """,
                     task_id,
                     status,
-                    error
+                    error,
                 )
             else:
                 await conn.execute(
@@ -200,7 +199,7 @@ class PostgresClient:
                     WHERE id = $1
                     """,
                     task_id,
-                    status
+                    status,
                 )
 
 

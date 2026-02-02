@@ -4,13 +4,12 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any
 from pathlib import Path
 import json
-import os
 import logging
 from datetime import datetime
 
 from pydantic import ValidationError
 
-from .schema import SkillMetadataSchema, SkillsRegistrySchema, SkillCapability, SkillTool
+from .schema import SkillMetadataSchema, SkillsRegistrySchema
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +32,7 @@ class SkillMetadata:
     dependencies: List[Dict[str, Any]] = field(default_factory=list)
     min_python_version: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
-    
+
     @classmethod
     def from_schema(cls, schema: SkillMetadataSchema, path: str) -> "SkillMetadata":
         """Create SkillMetadata from validated schema."""
@@ -57,23 +56,26 @@ class SkillMetadata:
 
 class SkillRegistryError(Exception):
     """Base exception for skill registry errors."""
+
     pass
 
 
 class SkillValidationError(SkillRegistryError):
     """Skill validation failed."""
+
     pass
 
 
 class SkillNotFoundError(SkillRegistryError):
     """Skill not found in registry."""
+
     pass
 
 
 class SkillRegistry:
     """
     Registry for tracking and discovering Claude Skills.
-    
+
     Features:
     - Automatic skill discovery from skills directory
     - JSON schema validation for skill.json files
@@ -101,7 +103,7 @@ class SkillRegistry:
     def _load_registry(self) -> None:
         """
         Load all available skills from the skills directory.
-        
+
         This method:
         1. Scans the skills directory for subdirectories
         2. Validates skill.json against schema
@@ -119,11 +121,11 @@ class SkillRegistry:
         for item in self.skills_dir.iterdir():
             if not item.is_dir():
                 continue
-            
+
             skill_name = item.name
-            
+
             # Skip special directories
-            if skill_name.startswith('.') or skill_name == '__pycache__':
+            if skill_name.startswith(".") or skill_name == "__pycache__":
                 continue
 
             try:
@@ -138,25 +140,19 @@ class SkillRegistry:
                 logger.error(f"Unexpected error loading skill '{skill_name}': {e}")
                 error_count += 1
 
-        logger.info(
-            f"Registry loaded: {loaded_count} skills, {error_count} errors"
-        )
+        logger.info(f"Registry loaded: {loaded_count} skills, {error_count} errors")
 
-    def _load_skill_metadata(
-        self,
-        skill_name: str,
-        skill_path: Path
-    ) -> SkillMetadata:
+    def _load_skill_metadata(self, skill_name: str, skill_path: Path) -> SkillMetadata:
         """
         Load and validate metadata for a single skill.
-        
+
         Args:
             skill_name: Name of the skill directory
             skill_path: Path to skill directory
-            
+
         Returns:
             SkillMetadata object
-            
+
         Raises:
             SkillValidationError: If validation fails
         """
@@ -167,10 +163,10 @@ class SkillRegistry:
             try:
                 with open(metadata_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                
+
                 # Validate against schema
                 schema = SkillMetadataSchema(**data)
-                
+
                 # Verify skill name matches directory name
                 if schema.name != skill_name:
                     logger.warning(
@@ -179,26 +175,18 @@ class SkillRegistry:
                     )
                     # Override with directory name for consistency
                     schema.name = skill_name
-                
+
                 return SkillMetadata.from_schema(schema, str(skill_path))
-                
+
             except json.JSONDecodeError as e:
-                raise SkillValidationError(
-                    f"Invalid JSON in skill.json: {e}"
-                )
+                raise SkillValidationError(f"Invalid JSON in skill.json: {e}")
             except ValidationError as e:
-                raise SkillValidationError(
-                    f"Schema validation failed: {e}"
-                )
+                raise SkillValidationError(f"Schema validation failed: {e}")
             except Exception as e:
-                raise SkillValidationError(
-                    f"Failed to load skill.json: {e}"
-                )
+                raise SkillValidationError(f"Failed to load skill.json: {e}")
         else:
             # Fallback to basic metadata from directory
-            logger.debug(
-                f"No skill.json found for '{skill_name}', using basic metadata"
-            )
+            logger.debug(f"No skill.json found for '{skill_name}', using basic metadata")
             return SkillMetadata(
                 name=skill_name,
                 version="0.1.0",
@@ -212,10 +200,10 @@ class SkillRegistry:
     def get_skill(self, name: str) -> Optional[SkillMetadata]:
         """
         Get skill metadata by name.
-        
+
         Args:
             name: Skill name
-            
+
         Returns:
             SkillMetadata or None if not found
         """
@@ -224,7 +212,7 @@ class SkillRegistry:
     def list_skills(self) -> List[SkillMetadata]:
         """
         List all available skills.
-        
+
         Returns:
             List of SkillMetadata objects
         """
@@ -233,10 +221,10 @@ class SkillRegistry:
     def has_skill(self, name: str) -> bool:
         """
         Check if a skill is registered.
-        
+
         Args:
             name: Skill name
-            
+
         Returns:
             True if skill exists
         """
@@ -245,10 +233,10 @@ class SkillRegistry:
     def get_skill_path(self, name: str) -> Optional[str]:
         """
         Get the filesystem path for a skill.
-        
+
         Args:
             name: Skill name
-            
+
         Returns:
             Path string or None if not found
         """
@@ -258,21 +246,17 @@ class SkillRegistry:
     def reload(self) -> None:
         """
         Reload the registry from disk.
-        
+
         This clears the in-memory registry and re-scans the skills directory.
         """
         logger.info("Reloading skills registry")
         self._registry.clear()
         self._load_registry()
 
-    def register_skill(
-        self,
-        name: str,
-        metadata: SkillMetadata
-    ) -> None:
+    def register_skill(self, name: str, metadata: SkillMetadata) -> None:
         """
         Manually register a skill.
-        
+
         Args:
             name: Skill name
             metadata: SkillMetadata object
@@ -283,10 +267,10 @@ class SkillRegistry:
     def unregister_skill(self, name: str) -> bool:
         """
         Unregister a skill from the registry.
-        
+
         Args:
             name: Skill name
-            
+
         Returns:
             True if skill was removed, False if not found
         """
@@ -299,7 +283,7 @@ class SkillRegistry:
     def save_registry(self) -> None:
         """
         Persist the current registry to skills.json.
-        
+
         This creates a snapshot of all registered skills.
         """
         try:
@@ -324,18 +308,18 @@ class SkillRegistry:
                         "metadata": meta.metadata,
                     }
                     for name, meta in self._registry.items()
-                }
+                },
             }
-            
+
             # Validate against schema
             SkillsRegistrySchema(**registry_data)
-            
+
             # Write to file
             with open(self._registry_file, "w", encoding="utf-8") as f:
                 json.dump(registry_data, f, indent=2, sort_keys=True)
-            
+
             logger.info(f"Registry saved to {self._registry_file}")
-            
+
         except Exception as e:
             logger.error(f"Failed to save registry: {e}")
             raise SkillRegistryError(f"Cannot save registry: {e}")
@@ -343,49 +327,43 @@ class SkillRegistry:
     def get_skills_by_capability(self, capability: str) -> List[SkillMetadata]:
         """
         Find skills that provide a specific capability.
-        
+
         Args:
             capability: Capability name to search for
-            
+
         Returns:
             List of matching skills
         """
-        return [
-            skill for skill in self._registry.values()
-            if capability in skill.capabilities
-        ]
+        return [skill for skill in self._registry.values() if capability in skill.capabilities]
 
     def get_skills_by_tag(self, tag: str) -> List[SkillMetadata]:
         """
         Find skills with a specific tag.
-        
+
         Args:
             tag: Tag to search for
-            
+
         Returns:
             List of matching skills
         """
-        return [
-            skill for skill in self._registry.values()
-            if tag in skill.tags
-        ]
+        return [skill for skill in self._registry.values() if tag in skill.tags]
 
     def validate_skill_directory(self, skill_path: Path) -> tuple[bool, Optional[str]]:
         """
         Validate a skill directory structure.
-        
+
         Args:
             skill_path: Path to skill directory
-            
+
         Returns:
             Tuple of (is_valid, error_message)
         """
         if not skill_path.exists():
             return False, f"Directory does not exist: {skill_path}"
-        
+
         if not skill_path.is_dir():
             return False, f"Not a directory: {skill_path}"
-        
+
         # Check for skill.json
         skill_json = skill_path / "skill.json"
         if skill_json.exists():
@@ -395,14 +373,12 @@ class SkillRegistry:
                 SkillMetadataSchema(**data)
             except Exception as e:
                 return False, f"Invalid skill.json: {e}"
-        
+
         # Check for entry point files
         entry_points = ["skill.md", "README.md", "prompt.md"]
-        has_entry_point = any(
-            (skill_path / ep).exists() for ep in entry_points
-        )
-        
+        has_entry_point = any((skill_path / ep).exists() for ep in entry_points)
+
         if not has_entry_point:
             return False, "No entry point file found (skill.md, README.md, or prompt.md)"
-        
+
         return True, None

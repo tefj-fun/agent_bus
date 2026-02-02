@@ -1,4 +1,5 @@
 """Integration test for QA workflow stage - E2E API test."""
+
 import pytest
 
 import os
@@ -62,7 +63,13 @@ def test_qa_stage_in_workflow():
         lambda j: j.get("workflow_stage") == "waiting_for_approval",
         timeout_s=120,
     )
-    assert job.get("status") in {"waiting_for_approval", "in_progress", "orchestrating", "queued", "approved"}
+    assert job.get("status") in {
+        "waiting_for_approval",
+        "in_progress",
+        "orchestrating",
+        "queued",
+        "approved",
+    }
 
     # Approve
     status, _ = http(
@@ -88,7 +95,7 @@ def test_qa_stage_in_workflow():
     # QA artifact exists
     _, qa = http("GET", f"{BASE_URL}/api/projects/{job_id}/qa", timeout=10)
     assert qa.get("content") or qa.get("output_data")
-    
+
     # Verify QA artifact contains expected structure
     qa_content = qa.get("content")
     if qa_content:
@@ -96,6 +103,8 @@ def test_qa_stage_in_workflow():
             qa_data = json.loads(qa_content)
         else:
             qa_data = qa_content
-        
+
         # Verify QA strategy structure
-        assert "qa_strategy" in qa_data or "test_plans" in qa_data, "QA artifact should contain qa_strategy or test_plans"
+        assert (
+            "qa_strategy" in qa_data or "test_plans" in qa_data
+        ), "QA artifact should contain qa_strategy or test_plans"

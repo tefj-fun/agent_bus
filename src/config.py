@@ -1,6 +1,5 @@
 """Configuration management for agent_bus system."""
 
-import os
 from typing import Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings
@@ -45,10 +44,7 @@ class Settings(BaseSettings):
     postgres_password: str = Field(..., env="POSTGRES_PASSWORD")
 
     # ChromaDB
-    chroma_persist_directory: str = Field(
-        default="./data/chroma",
-        env="CHROMA_PERSIST_DIRECTORY"
-    )
+    chroma_persist_directory: str = Field(default="./data/chroma", env="CHROMA_PERSIST_DIRECTORY")
 
     # Skills
     skills_directory: str = Field(default="./skills", env="SKILLS_DIRECTORY")
@@ -60,8 +56,7 @@ class Settings(BaseSettings):
     # Kubernetes
     k8s_namespace: str = Field(default="agent-bus", env="K8S_NAMESPACE")
     k8s_gpu_node_selector: str = Field(
-        default="accelerator=nvidia-tesla-v100",
-        env="K8S_GPU_NODE_SELECTOR"
+        default="accelerator=nvidia-tesla-v100", env="K8S_GPU_NODE_SELECTOR"
     )
 
     @property

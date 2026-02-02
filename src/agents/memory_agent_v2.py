@@ -110,7 +110,7 @@ class MemoryAgentV2(BaseAgent):
             raise ValueError("Pattern storage requires 'text', 'document', or 'content' field")
 
         doc_id = input_data.get("id") or f"pattern_{uuid.uuid4().hex[:12]}"
-        
+
         # Prepare metadata
         metadata = input_data.get("metadata") or {}
         pattern_type = input_data.get("pattern_type") or metadata.get("pattern_type", "general")
@@ -122,7 +122,11 @@ class MemoryAgentV2(BaseAgent):
             "pattern_type": pattern_type,
             "success_score": str(success_score),
             "usage_count": str(usage_count),
-            **{k: str(v) for k, v in metadata.items() if k not in ["pattern_type", "success_score", "usage_count"]},
+            **{
+                k: str(v)
+                for k, v in metadata.items()
+                if k not in ["pattern_type", "success_score", "usage_count"]
+            },
         }
 
         # Store in ChromaDB
@@ -165,7 +169,9 @@ class MemoryAgentV2(BaseAgent):
         """Suggest templates based on requirements."""
         query = input_data.get("query") or input_data.get("requirements") or input_data.get("text")
         if not query:
-            raise ValueError("Template suggestion requires 'query', 'requirements', or 'text' field")
+            raise ValueError(
+                "Template suggestion requires 'query', 'requirements', or 'text' field"
+            )
 
         top_k = int(input_data.get("top_k", 3))
         min_score = float(input_data.get("min_score", 0.5))
@@ -185,15 +191,17 @@ class MemoryAgentV2(BaseAgent):
             combined_score = similarity_score * 0.7 + success_score * 0.3
 
             if combined_score >= min_score:
-                suggestions.append({
-                    "id": candidate.get("id"),
-                    "text": candidate.get("text", "")[:500],  # Truncate for display
-                    "similarity_score": similarity_score,
-                    "success_score": success_score,
-                    "usage_count": usage_count,
-                    "combined_score": combined_score,
-                    "metadata": metadata,
-                })
+                suggestions.append(
+                    {
+                        "id": candidate.get("id"),
+                        "text": candidate.get("text", "")[:500],  # Truncate for display
+                        "similarity_score": similarity_score,
+                        "success_score": success_score,
+                        "usage_count": usage_count,
+                        "combined_score": combined_score,
+                        "metadata": metadata,
+                    }
+                )
 
         # Sort by combined score
         suggestions.sort(key=lambda x: x["combined_score"], reverse=True)

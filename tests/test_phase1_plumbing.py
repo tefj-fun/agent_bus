@@ -1,4 +1,3 @@
-import asyncio
 import json
 import pathlib
 
@@ -8,14 +7,14 @@ import pytest
 def test_no_eval_left_in_repo():
     # Basic safety check: eval() should not be used for task payloads/results.
     root = pathlib.Path(__file__).resolve().parents[1]
-    py_files = list(root.rglob('*.py'))
+    py_files = list(root.rglob("*.py"))
     offenders = []
     for p in py_files:
-        txt = p.read_text(encoding='utf-8', errors='ignore')
+        txt = p.read_text(encoding="utf-8", errors="ignore")
         # allow this test file itself to contain the string "eval("
         if p.name == "test_phase1_plumbing.py":
             continue
-        if 'eval(' in txt:
+        if "eval(" in txt:
             offenders.append(str(p.relative_to(root)))
     assert offenders == [], f"Found eval() usage in: {offenders}"
 
@@ -55,7 +54,7 @@ async def test_notify_completion_does_not_write_results_key():
 
     class DummyAgent(BaseAgent):
         def get_agent_id(self) -> str:
-            return 'dummy'
+            return "dummy"
 
         def define_capabilities(self):
             return {}
@@ -65,33 +64,33 @@ async def test_notify_completion_does_not_write_results_key():
 
     r = FakeRedis()
     ctx = AgentContext(
-        project_id='p',
-        job_id='j',
-        session_key='s',
-        workspace_dir='/tmp',
+        project_id="p",
+        job_id="j",
+        session_key="s",
+        workspace_dir="/tmp",
         redis_client=r,
         db_pool=FakePool(),
         anthropic_client=None,
-        skills_manager=SkillsManager('./skills'),
+        skills_manager=SkillsManager("./skills"),
         config={},
     )
     agent = DummyAgent(ctx)
 
     result = AgentResult(
-        task_id='task_123',
-        agent_id='dummy',
+        task_id="task_123",
+        agent_id="dummy",
         success=True,
-        output={'ok': True},
+        output={"ok": True},
         artifacts=[],
     )
 
     await agent.notify_completion(result)
 
     # It should publish a JSON payload...
-    assert r.published, 'Expected publish() to be called'
+    assert r.published, "Expected publish() to be called"
     channel, payload = r.published[0]
-    assert channel == 'agent_bus:events:task_completed'
+    assert channel == "agent_bus:events:task_completed"
     json.loads(payload)
 
     # ...but MUST NOT set the master result key.
-    assert r.setex_calls == [], 'notify_completion must not write agent_bus:results:*'
+    assert r.setex_calls == [], "notify_completion must not write agent_bus:results:*"

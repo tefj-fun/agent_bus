@@ -20,7 +20,7 @@ class PRDAgent(BaseAgent):
             "can_generate_prd": True,
             "can_validate_specifications": True,
             "can_query_memory": True,
-            "output_formats": ["markdown", "json"]
+            "output_formats": ["markdown", "json"],
         }
 
     async def execute(self, task: AgentTask) -> AgentResult:
@@ -53,7 +53,8 @@ class PRDAgent(BaseAgent):
             user_prompt = self._build_prd_user_prompt(sales_requirements, similar_prds)
 
             from ..config import settings
-            if settings.llm_mode == 'mock':
+
+            if settings.llm_mode == "mock":
                 prd_content = (
                     "# Product Requirements Document: Mock PRD\n\n"
                     "## Executive Summary\n"
@@ -69,10 +70,7 @@ class PRDAgent(BaseAgent):
                 )
             else:
                 prd_content = await self.query_llm(
-                    prompt=user_prompt,
-                    system=system_prompt,
-                    thinking_budget=2048,
-                    max_tokens=8192
+                    prompt=user_prompt, system=system_prompt, thinking_budget=2048, max_tokens=8192
                 )
 
             # Save PRD as artifact
@@ -83,8 +81,8 @@ class PRDAgent(BaseAgent):
                     "requirements_length": len(sales_requirements),
                     "prd_length": len(prd_content),
                     "task_id": task.task_id,
-                    "memory_hits": memory_hits
-                }
+                    "memory_hits": memory_hits,
+                },
             )
 
             await self.log_event("info", f"PRD generated successfully: {artifact_id}")
@@ -110,14 +108,14 @@ class PRDAgent(BaseAgent):
                     "prd_content": prd_content,
                     "artifact_id": artifact_id,
                     "next_stage": "architecture_design",
-                    "memory_hits": memory_hits
+                    "memory_hits": memory_hits,
                 },
                 artifacts=[artifact_id],
                 metadata={
                     "word_count": len(prd_content.split()),
                     "sections": self._count_sections(prd_content),
-                    "memory_hits": memory_hits
-                }
+                    "memory_hits": memory_hits,
+                },
             )
 
             await self.notify_completion(result)
@@ -135,7 +133,7 @@ class PRDAgent(BaseAgent):
                 success=False,
                 output={},
                 artifacts=[],
-                error=str(e)
+                error=str(e),
             )
 
             await self.notify_completion(result)
@@ -184,10 +182,7 @@ Your role is to transform sales requirements into detailed, actionable PRDs that
                     snippets.append(snippet[:800])
             if snippets:
                 joined = "\n\n".join(f"- {snippet}" for snippet in snippets)
-                memory_context = (
-                    "\n\nRelevant snippets from prior PRDs:\n"
-                    f"{joined}\n"
-                )
+                memory_context = "\n\nRelevant snippets from prior PRDs:\n" f"{joined}\n"
 
         return f"""Generate a comprehensive Product Requirements Document based on these sales requirements:
 

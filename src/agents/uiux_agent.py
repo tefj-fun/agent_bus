@@ -19,7 +19,7 @@ class UIUXAgent(BaseAgent):
             "can_design_uiux": True,
             "can_parse_architecture": True,
             "can_create_design_system": True,
-            "output_formats": ["json", "markdown"]
+            "output_formats": ["json", "markdown"],
         }
 
     async def execute(self, task: AgentTask) -> AgentResult:
@@ -55,84 +55,83 @@ class UIUXAgent(BaseAgent):
             user_prompt = self._build_uiux_user_prompt(architecture_content, prd_content)
 
             from ..config import settings
-            if settings.llm_mode == 'mock':
+
+            if settings.llm_mode == "mock":
                 uiux_payload = {
                     "design_system": {
                         "name": "Mock Design System",
                         "version": "1.0.0",
-                        "description": "Mock design system for CI/testing"
+                        "description": "Mock design system for CI/testing",
                     },
                     "color_palette": {
                         "primary": "#0066CC",
                         "secondary": "#6C757D",
                         "success": "#28A745",
                         "danger": "#DC3545",
-                        "neutral": {
-                            "100": "#F8F9FA",
-                            "900": "#212529"
-                        }
+                        "neutral": {"100": "#F8F9FA", "900": "#212529"},
                     },
                     "typography": {
                         "font_family": {
                             "primary": "Inter, sans-serif",
-                            "monospace": "Fira Code, monospace"
+                            "monospace": "Fira Code, monospace",
                         },
                         "scale": {
                             "h1": "2rem",
                             "h2": "1.5rem",
                             "body": "1rem",
-                            "small": "0.875rem"
-                        }
+                            "small": "0.875rem",
+                        },
                     },
                     "spacing": {
                         "unit": "8px",
-                        "scale": ["4px", "8px", "16px", "24px", "32px", "48px"]
+                        "scale": ["4px", "8px", "16px", "24px", "32px", "48px"],
                     },
                     "components": [
                         {
                             "name": "Button",
                             "variants": ["primary", "secondary", "outline"],
-                            "states": ["default", "hover", "active", "disabled"]
+                            "states": ["default", "hover", "active", "disabled"],
                         },
                         {
                             "name": "Input",
                             "variants": ["text", "email", "password"],
-                            "states": ["default", "focus", "error", "disabled"]
+                            "states": ["default", "focus", "error", "disabled"],
                         },
                         {
                             "name": "Card",
                             "variants": ["default", "elevated"],
-                            "states": ["default", "hover"]
-                        }
+                            "states": ["default", "hover"],
+                        },
                     ],
                     "layouts": [
                         {
                             "name": "Dashboard",
                             "structure": "header + sidebar + main content + footer",
-                            "breakpoints": ["mobile", "tablet", "desktop"]
+                            "breakpoints": ["mobile", "tablet", "desktop"],
                         }
                     ],
                     "user_flows": [
                         {
                             "name": "User Login",
                             "steps": ["Landing", "Login Form", "Dashboard"],
-                            "interactions": ["click", "type", "submit"]
+                            "interactions": ["click", "type", "submit"],
                         }
                     ],
                     "accessibility": {
                         "wcag_level": "AA",
-                        "features": ["keyboard navigation", "screen reader support", "color contrast"]
-                    }
+                        "features": [
+                            "keyboard navigation",
+                            "screen reader support",
+                            "color contrast",
+                        ],
+                    },
                 }
                 uiux_content = json.dumps(uiux_payload, indent=2)
             else:
                 response_text = await self.query_llm(
-                    prompt=user_prompt,
-                    system=system_prompt,
-                    thinking_budget=2048,
-                    max_tokens=8192
+                    prompt=user_prompt, system=system_prompt, thinking_budget=2048, max_tokens=8192
                 )
-                
+
                 # Try to parse as JSON, fallback to raw text
                 try:
                     uiux_payload = json.loads(response_text)
@@ -150,7 +149,7 @@ class UIUXAgent(BaseAgent):
                     "architecture_length": len(architecture_content),
                     "prd_length": len(prd_content),
                     "parseable_json": "raw_design" not in uiux_payload,
-                }
+                },
             )
 
             await self.log_event("info", f"UI/UX design generated successfully: {artifact_id}")
@@ -169,7 +168,7 @@ class UIUXAgent(BaseAgent):
                 metadata={
                     "component_count": len(uiux_payload.get("components", [])),
                     "parseable_json": "raw_design" not in uiux_payload,
-                }
+                },
             )
 
             await self.notify_completion(result)
@@ -187,7 +186,7 @@ class UIUXAgent(BaseAgent):
                 success=False,
                 output={},
                 artifacts=[],
-                error=str(e)
+                error=str(e),
             )
 
             await self.notify_completion(result)
@@ -304,7 +303,7 @@ Your role is to transform technical architectures into beautiful, usable, and ac
 
 {architecture_content}
 """
-        
+
         if prd_content.strip():
             prompt += f"""
 

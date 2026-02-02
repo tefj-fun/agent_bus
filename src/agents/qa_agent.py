@@ -20,7 +20,7 @@ class QAAgent(BaseAgent):
             "can_define_test_cases": True,
             "can_assess_coverage": True,
             "can_create_qa_strategy": True,
-            "output_formats": ["json", "markdown"]
+            "output_formats": ["json", "markdown"],
         }
 
     async def execute(self, task: AgentTask) -> AgentResult:
@@ -59,13 +59,14 @@ class QAAgent(BaseAgent):
             )
 
             from ..config import settings
-            if settings.llm_mode == 'mock':
+
+            if settings.llm_mode == "mock":
                 qa_payload = {
                     "qa_strategy": {
                         "approach": "risk-based testing",
                         "test_levels": ["unit", "integration", "system", "acceptance"],
                         "coverage_target": "85%",
-                        "automation_ratio": "70%"
+                        "automation_ratio": "70%",
                     },
                     "test_plans": [
                         {
@@ -76,7 +77,7 @@ class QAAgent(BaseAgent):
                             "test_types": ["unit"],
                             "tools": ["pytest", "jest", "junit"],
                             "coverage_target": "90%",
-                            "priority": "high"
+                            "priority": "high",
                         },
                         {
                             "plan_id": "TP-002",
@@ -86,7 +87,7 @@ class QAAgent(BaseAgent):
                             "test_types": ["integration"],
                             "tools": ["pytest-asyncio", "testcontainers", "supertest"],
                             "coverage_target": "80%",
-                            "priority": "high"
+                            "priority": "high",
                         },
                         {
                             "plan_id": "TP-003",
@@ -96,7 +97,7 @@ class QAAgent(BaseAgent):
                             "test_types": ["e2e"],
                             "tools": ["playwright", "cypress"],
                             "coverage_target": "critical paths only",
-                            "priority": "medium"
+                            "priority": "medium",
                         },
                         {
                             "plan_id": "TP-004",
@@ -106,8 +107,8 @@ class QAAgent(BaseAgent):
                             "test_types": ["performance"],
                             "tools": ["locust", "k6", "lighthouse"],
                             "coverage_target": "key endpoints and pages",
-                            "priority": "medium"
-                        }
+                            "priority": "medium",
+                        },
                     ],
                     "test_cases": [
                         {
@@ -120,11 +121,11 @@ class QAAgent(BaseAgent):
                                 "Create user with valid data",
                                 "Verify user is created",
                                 "Attempt to create user with invalid email",
-                                "Verify validation error is raised"
+                                "Verify validation error is raised",
                             ],
                             "expected_result": "Valid users created, invalid users rejected with appropriate errors",
                             "priority": "high",
-                            "test_type": "unit"
+                            "test_type": "unit",
                         },
                         {
                             "case_id": "TC-002",
@@ -136,11 +137,11 @@ class QAAgent(BaseAgent):
                                 "POST to /api/users/register with valid data",
                                 "Verify 201 status code",
                                 "Verify user exists in database",
-                                "Verify confirmation email sent"
+                                "Verify confirmation email sent",
                             ],
                             "expected_result": "User created, stored in DB, confirmation email sent",
                             "priority": "high",
-                            "test_type": "integration"
+                            "test_type": "integration",
                         },
                         {
                             "case_id": "TC-003",
@@ -155,30 +156,30 @@ class QAAgent(BaseAgent):
                                 "Check email for confirmation link",
                                 "Click confirmation link",
                                 "Login with credentials",
-                                "Verify dashboard loads"
+                                "Verify dashboard loads",
                             ],
                             "expected_result": "User successfully registers, confirms, and logs in",
                             "priority": "high",
-                            "test_type": "e2e"
-                        }
+                            "test_type": "e2e",
+                        },
                     ],
                     "coverage_strategy": {
                         "code_coverage": {
                             "target": "85%",
                             "minimum": "75%",
                             "measurement": "line and branch coverage",
-                            "tools": ["pytest-cov", "coverage.py", "istanbul"]
+                            "tools": ["pytest-cov", "coverage.py", "istanbul"],
                         },
                         "functional_coverage": {
                             "requirements_traceability": "All requirements must have test cases",
                             "risk_coverage": "High and medium risk areas must be fully tested",
-                            "user_scenarios": "All critical user paths tested"
+                            "user_scenarios": "All critical user paths tested",
                         },
                         "regression_coverage": {
                             "strategy": "Automated regression suite for all releases",
                             "scope": "All existing functionality",
-                            "frequency": "every commit via CI/CD"
-                        }
+                            "frequency": "every commit via CI/CD",
+                        },
                     },
                     "test_environment": {
                         "environments": [
@@ -186,87 +187,84 @@ class QAAgent(BaseAgent):
                                 "name": "dev",
                                 "purpose": "Developer testing",
                                 "data": "synthetic test data",
-                                "automation": "unit and integration tests"
+                                "automation": "unit and integration tests",
                             },
                             {
                                 "name": "staging",
                                 "purpose": "Pre-production testing",
                                 "data": "anonymized production-like data",
-                                "automation": "full test suite"
+                                "automation": "full test suite",
                             },
                             {
                                 "name": "production",
                                 "purpose": "Smoke tests only",
                                 "data": "real data",
-                                "automation": "smoke tests and monitoring"
-                            }
+                                "automation": "smoke tests and monitoring",
+                            },
                         ],
-                        "test_data_strategy": "Fixtures for unit, containers for integration, synthetic for e2e"
+                        "test_data_strategy": "Fixtures for unit, containers for integration, synthetic for e2e",
                     },
                     "quality_metrics": {
                         "defect_metrics": [
                             "defect density (defects per KLOC)",
                             "defect removal efficiency",
                             "mean time to detect (MTTD)",
-                            "mean time to resolve (MTTR)"
+                            "mean time to resolve (MTTR)",
                         ],
                         "test_metrics": [
                             "test pass rate",
                             "test execution time",
                             "code coverage %",
-                            "automation coverage %"
+                            "automation coverage %",
                         ],
                         "release_criteria": {
                             "code_coverage": ">= 85%",
                             "critical_tests_pass": "100%",
                             "high_priority_tests_pass": ">= 95%",
                             "no_blocker_defects": True,
-                            "no_critical_defects": True
-                        }
+                            "no_critical_defects": True,
+                        },
                     },
                     "automation_strategy": {
                         "framework": "pytest + playwright",
                         "ci_integration": "GitHub Actions / GitLab CI",
                         "test_selection": "smart test selection based on code changes",
                         "parallel_execution": "distribute tests across multiple workers",
-                        "reporting": "HTML reports + dashboard integration"
+                        "reporting": "HTML reports + dashboard integration",
                     },
                     "risk_assessment": [
                         {
                             "risk": "Data loss or corruption",
                             "severity": "critical",
                             "probability": "low",
-                            "mitigation": "Comprehensive DB transaction tests, backup validation"
+                            "mitigation": "Comprehensive DB transaction tests, backup validation",
                         },
                         {
                             "risk": "Security vulnerabilities",
                             "severity": "critical",
                             "probability": "medium",
-                            "mitigation": "Security-focused test cases, penetration testing, dependency scanning"
+                            "mitigation": "Security-focused test cases, penetration testing, dependency scanning",
                         },
                         {
                             "risk": "Performance degradation",
                             "severity": "high",
                             "probability": "medium",
-                            "mitigation": "Load testing, performance benchmarks, monitoring"
+                            "mitigation": "Load testing, performance benchmarks, monitoring",
                         },
                         {
                             "risk": "Integration failures",
                             "severity": "medium",
                             "probability": "medium",
-                            "mitigation": "Contract testing, API integration tests, mock services"
-                        }
-                    ]
+                            "mitigation": "Contract testing, API integration tests, mock services",
+                        },
+                    ],
                 }
                 qa_content = json.dumps(qa_payload, indent=2)
             else:
                 response_text = await self.query_llm(
-                    prompt=user_prompt,
-                    system=system_prompt,
-                    thinking_budget=2048,
-                    max_tokens=8192
+                    prompt=user_prompt, system=system_prompt, thinking_budget=2048, max_tokens=8192
                 )
-                
+
                 # Try to parse as JSON, fallback to raw text
                 try:
                     qa_payload = json.loads(response_text)
@@ -285,7 +283,7 @@ class QAAgent(BaseAgent):
                     "architecture_length": len(architecture_content),
                     "prd_length": len(prd_content),
                     "parseable_json": "raw_qa" not in qa_payload,
-                }
+                },
             )
 
             await self.log_event("info", f"QA strategy generated successfully: {artifact_id}")
@@ -305,7 +303,7 @@ class QAAgent(BaseAgent):
                     "test_plans_count": len(qa_payload.get("test_plans", [])),
                     "test_cases_count": len(qa_payload.get("test_cases", [])),
                     "parseable_json": "raw_qa" not in qa_payload,
-                }
+                },
             )
 
             await self.notify_completion(result)
@@ -323,7 +321,7 @@ class QAAgent(BaseAgent):
                 success=False,
                 output={},
                 artifacts=[],
-                error=str(e)
+                error=str(e),
             )
 
             await self.notify_completion(result)
@@ -454,7 +452,7 @@ Your role is to create comprehensive QA strategies, test plans, and test cases b
 
 {development_content}
 """
-        
+
         if architecture_content.strip():
             prompt += f"""
 

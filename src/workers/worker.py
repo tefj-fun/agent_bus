@@ -2,9 +2,9 @@
 
 import asyncio
 import json
-from typing import Dict, Optional
+from typing import Dict
 
-from ..agents.base import BaseAgent, AgentContext, AgentTask
+from ..agents.base import AgentContext, AgentTask
 from ..agents.prd_agent import PRDAgent
 from ..agents.technical_writer import TechnicalWriter
 from ..agents.support_engineer import SupportEngineer
@@ -17,11 +17,12 @@ from ..agents.uiux_agent import UIUXAgent
 from ..agents.developer_agent import DeveloperAgent
 from ..agents.qa_agent import QAAgent
 from ..agents.security_agent import SecurityAgent
+
 # TODO: Import other specialized agents as they are implemented
 # etc.
 
-from ..infrastructure.redis_client import RedisClient, redis_client
-from ..infrastructure.postgres_client import PostgresClient, postgres_client
+from ..infrastructure.redis_client import redis_client
+from ..infrastructure.postgres_client import postgres_client
 from ..infrastructure.anthropic_client import anthropic_client
 from ..skills.manager import SkillsManager
 from ..config import settings
@@ -58,10 +59,7 @@ class AgentWorker:
 
     async def run(self):
         """Main worker loop."""
-        queue_name = (
-            "agent_bus:tasks:gpu" if self.worker_type == "gpu"
-            else "agent_bus:tasks:cpu"
-        )
+        queue_name = "agent_bus:tasks:gpu" if self.worker_type == "gpu" else "agent_bus:tasks:cpu"
 
         print(f"Worker started: type={self.worker_type} queue={queue_name}")
 
@@ -111,7 +109,7 @@ class AgentWorker:
                 db_pool=await self.postgres.get_pool(),
                 anthropic_client=self.anthropic,
                 skills_manager=self.skills_manager,
-                config=task_dict.get("config", {})
+                config=task_dict.get("config", {}),
             )
 
             # Instantiate and execute agent
@@ -124,7 +122,7 @@ class AgentWorker:
                 input_data=task_dict["inputs"],
                 dependencies=task_dict.get("dependencies", []),
                 priority=task_dict.get("priority", 5),
-                metadata=task_dict.get("metadata", {})
+                metadata=task_dict.get("metadata", {}),
             )
 
             # Execute
@@ -133,18 +131,18 @@ class AgentWorker:
             if not result.success:
                 # Persist failure details
                 await self.postgres.update_task_status(
-                    task_id=task_id,
-                    status="failed",
-                    error=result.error or "Agent reported failure"
+                    task_id=task_id, status="failed", error=result.error or "Agent reported failure"
                 )
                 # Also store output (may contain partials) for master/debug
                 await self.redis.set_with_expiry(
                     f"agent_bus:results:{task_id}",
-                    json.dumps({
-                        "success": False,
-                        "error": result.error or "Agent reported failure",
-                        **(result.output or {}),
-                    }),
+                    json.dumps(
+                        {
+                            "success": False,
+                            "error": result.error or "Agent reported failure",
+                            **(result.output or {}),
+                        }
+                    ),
                     3600,
                 )
                 print(f"Task {task_id} failed (agent reported failure)")
@@ -152,16 +150,12 @@ class AgentWorker:
 
             # Save success result
             await self.postgres.update_task_status(
-                task_id=task_id,
-                status="completed",
-                output_data=result.output
+                task_id=task_id, status="completed", output_data=result.output
             )
 
             # Store result in Redis for master agent
             await self.redis.set_with_expiry(
-                f"agent_bus:results:{task_id}",
-                json.dumps(result.output),
-                3600  # 1 hour TTL
+                f"agent_bus:results:{task_id}", json.dumps(result.output), 3600  # 1 hour TTL
             )
 
             print(f"Task {task_id} completed successfully")
@@ -169,11 +163,7 @@ class AgentWorker:
         except Exception as e:
             print(f"Task {task_id} failed: {str(e)}")
 
-            await self.postgres.update_task_status(
-                task_id=task_id,
-                status="failed",
-                error=str(e)
-            )
+            await self.postgres.update_task_status(task_id=task_id, status="failed", error=str(e))
 
             # Ensure master agent doesn't hang forever waiting for a result key
             await self.redis.set_with_expiry(

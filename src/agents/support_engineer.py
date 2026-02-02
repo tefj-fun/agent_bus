@@ -25,10 +25,11 @@ class SupportEngineer(BaseAgent):
             await self.log_event("info", "Starting support documentation generation")
 
             input_payload = json.dumps(task.input_data or {}, indent=2, sort_keys=True)
-            
+
             # Mock mode for CI/testing
             from ..config import settings
-            if settings.llm_mode == 'mock':
+
+            if settings.llm_mode == "mock":
                 support_content = (
                     "# Support Documentation: Mock Support Docs\n\n"
                     "## FAQ\n"

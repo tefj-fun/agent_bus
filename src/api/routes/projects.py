@@ -46,7 +46,7 @@ async def create_project(request: ProjectRequest):
             job_id=job_id,
             project_id=request.project_id,
             status="queued",
-            workflow_stage="initialization"
+            workflow_stage="initialization",
         )
 
         # Persist requirements for the orchestrator service
@@ -62,7 +62,7 @@ async def create_project(request: ProjectRequest):
             job_id=job_id,
             project_id=request.project_id,
             status="queued",
-            message="Project workflow queued"
+            message="Project workflow queued",
         )
 
     except Exception as e:
@@ -91,7 +91,7 @@ async def get_job_status(job_id: str):
                 FROM jobs
                 WHERE id = $1
                 """,
-                job_id
+                job_id,
             )
 
             if not row:
@@ -107,7 +107,7 @@ async def get_job_status(job_id: str):
                 ORDER BY created_at DESC
                 LIMIT 1
                 """,
-                job_id
+                job_id,
             )
             if task_row:
                 job["latest_task"] = dict(task_row)
@@ -134,7 +134,7 @@ async def get_job_prd(job_id: str):
                 ORDER BY updated_at DESC, created_at DESC
                 LIMIT 1
                 """,
-                job_id
+                job_id,
             )
             if artifact_row:
                 return dict(artifact_row)
@@ -148,7 +148,7 @@ async def get_job_prd(job_id: str):
                 ORDER BY completed_at DESC, created_at DESC
                 LIMIT 1
                 """,
-                job_id
+                job_id,
             )
             if task_row and task_row.get("prd_content"):
                 payload = dict(task_row)
@@ -176,7 +176,7 @@ async def get_job_plan(job_id: str):
                 ORDER BY updated_at DESC, created_at DESC
                 LIMIT 1
                 """,
-                job_id
+                job_id,
             )
             if artifact_row:
                 return dict(artifact_row)
@@ -190,7 +190,7 @@ async def get_job_plan(job_id: str):
                 ORDER BY completed_at DESC, created_at DESC
                 LIMIT 1
                 """,
-                job_id
+                job_id,
             )
             if task_row and task_row.get("plan"):
                 payload = dict(task_row)
@@ -218,7 +218,7 @@ async def get_job_architecture(job_id: str):
                 ORDER BY updated_at DESC, created_at DESC
                 LIMIT 1
                 """,
-                job_id
+                job_id,
             )
             if artifact_row:
                 return dict(artifact_row)
@@ -232,7 +232,7 @@ async def get_job_architecture(job_id: str):
                 ORDER BY completed_at DESC, created_at DESC
                 LIMIT 1
                 """,
-                job_id
+                job_id,
             )
             if task_row and task_row.get("architecture"):
                 payload = dict(task_row)
@@ -260,7 +260,7 @@ async def get_job_ui_ux(job_id: str):
                 ORDER BY updated_at DESC, created_at DESC
                 LIMIT 1
                 """,
-                job_id
+                job_id,
             )
             if artifact_row:
                 return dict(artifact_row)
@@ -274,7 +274,7 @@ async def get_job_ui_ux(job_id: str):
                 ORDER BY completed_at DESC, created_at DESC
                 LIMIT 1
                 """,
-                job_id
+                job_id,
             )
             if task_row and task_row.get("ui_ux"):
                 payload = dict(task_row)
@@ -302,7 +302,7 @@ async def get_job_development(job_id: str):
                 ORDER BY updated_at DESC, created_at DESC
                 LIMIT 1
                 """,
-                job_id
+                job_id,
             )
             if artifact_row:
                 return dict(artifact_row)
@@ -316,7 +316,7 @@ async def get_job_development(job_id: str):
                 ORDER BY completed_at DESC, created_at DESC
                 LIMIT 1
                 """,
-                job_id
+                job_id,
             )
             if task_row and task_row.get("development"):
                 payload = dict(task_row)
@@ -344,7 +344,7 @@ async def get_job_qa(job_id: str):
                 ORDER BY updated_at DESC, created_at DESC
                 LIMIT 1
                 """,
-                job_id
+                job_id,
             )
             if artifact_row:
                 return dict(artifact_row)
@@ -358,7 +358,7 @@ async def get_job_qa(job_id: str):
                 ORDER BY completed_at DESC, created_at DESC
                 LIMIT 1
                 """,
-                job_id
+                job_id,
             )
             if task_row and task_row.get("qa"):
                 payload = dict(task_row)
@@ -386,7 +386,7 @@ async def get_job_security(job_id: str):
                 ORDER BY updated_at DESC, created_at DESC
                 LIMIT 1
                 """,
-                job_id
+                job_id,
             )
             if artifact_row:
                 return dict(artifact_row)
@@ -400,7 +400,7 @@ async def get_job_security(job_id: str):
                 ORDER BY completed_at DESC, created_at DESC
                 LIMIT 1
                 """,
-                job_id
+                job_id,
             )
             if task_row and task_row.get("security"):
                 payload = dict(task_row)
@@ -428,7 +428,7 @@ async def get_job_documentation(job_id: str):
                 ORDER BY updated_at DESC, created_at DESC
                 LIMIT 1
                 """,
-                job_id
+                job_id,
             )
             if artifact_row:
                 return dict(artifact_row)
@@ -442,7 +442,7 @@ async def get_job_documentation(job_id: str):
                 ORDER BY completed_at DESC, created_at DESC
                 LIMIT 1
                 """,
-                job_id
+                job_id,
             )
             if task_row and task_row.get("documentation"):
                 payload = dict(task_row)
@@ -470,7 +470,7 @@ async def get_job_support_docs(job_id: str):
                 ORDER BY updated_at DESC, created_at DESC
                 LIMIT 1
                 """,
-                job_id
+                job_id,
             )
             if artifact_row:
                 return dict(artifact_row)
@@ -484,7 +484,7 @@ async def get_job_support_docs(job_id: str):
                 ORDER BY completed_at DESC, created_at DESC
                 LIMIT 1
                 """,
-                job_id
+                job_id,
             )
             if task_row and task_row.get("support_docs"):
                 payload = dict(task_row)
@@ -513,7 +513,7 @@ async def get_job_memory_hits(job_id: str):
                 ORDER BY completed_at DESC, created_at DESC
                 LIMIT 1
                 """,
-                job_id
+                job_id,
             )
 
         if not task_row:
@@ -524,6 +524,7 @@ async def get_job_memory_hits(job_id: str):
         # Normalize hits to a JSON array (some historical rows stored a JSON-encoded string)
         if isinstance(hits, str):
             import json
+
             try:
                 hits = json.loads(hits)
             except Exception:
@@ -559,16 +560,14 @@ async def approve_job(job_id: str, request: ApprovalRequest):
             raise HTTPException(status_code=404, detail="Job not found")
 
         await postgres_client.update_job_status(
-            job_id=job_id,
-            status="approved",
-            workflow_stage="plan_generation"
+            job_id=job_id, status="approved", workflow_stage="plan_generation"
         )
         await postgres_client.update_job_metadata(
             job_id=job_id,
             metadata={
                 "approval_notes": request.notes,
-                "approved_at": datetime.now(timezone.utc).isoformat()
-            }
+                "approved_at": datetime.now(timezone.utc).isoformat(),
+            },
         )
 
         return {"job_id": job_id, "status": "approved"}
@@ -587,16 +586,14 @@ async def request_changes(job_id: str, request: ApprovalRequest):
             raise HTTPException(status_code=404, detail="Job not found")
 
         await postgres_client.update_job_status(
-            job_id=job_id,
-            status="changes_requested",
-            workflow_stage="waiting_for_approval"
+            job_id=job_id, status="changes_requested", workflow_stage="waiting_for_approval"
         )
         await postgres_client.update_job_metadata(
             job_id=job_id,
             metadata={
                 "change_request_notes": request.notes,
-                "changes_requested_at": datetime.now(timezone.utc).isoformat()
-            }
+                "changes_requested_at": datetime.now(timezone.utc).isoformat(),
+            },
         )
         return {"job_id": job_id, "status": "changes_requested"}
     except Exception as e:

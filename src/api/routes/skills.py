@@ -22,14 +22,14 @@ skills_manager = SkillsManager("./skills")
 # Request/Response Models
 class InstallSkillRequest(BaseModel):
     """Request to install a skill."""
-    
+
     git_url: str = Field(..., description="Git repository URL")
     skill_name: Optional[str] = Field(None, description="Custom skill name (defaults to repo name)")
 
 
 class SkillResponse(BaseModel):
     """Skill metadata response."""
-    
+
     name: str
     version: str
     description: str
@@ -47,14 +47,14 @@ class SkillResponse(BaseModel):
 
 class SkillListResponse(BaseModel):
     """List of skills response."""
-    
+
     skills: List[SkillResponse]
     total: int
 
 
 class SuccessResponse(BaseModel):
     """Generic success response."""
-    
+
     success: bool
     message: str
 
@@ -65,24 +65,24 @@ class SuccessResponse(BaseModel):
     response_model=SkillResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Install a skill from git repository",
-    tags=["skills"]
+    tags=["skills"],
 )
 async def install_skill(request: InstallSkillRequest):
     """
     Install a skill from a git repository.
-    
+
     This endpoint:
     1. Clones the git repository
     2. Validates the skill structure
     3. Registers the skill in the registry
     4. Returns the installed skill metadata
-    
+
     Args:
         request: Installation request with git_url and optional skill_name
-        
+
     Returns:
         Installed skill metadata
-        
+
     Raises:
         400: Invalid request or skill already exists
         500: Installation failed
@@ -93,38 +93,35 @@ async def install_skill(request: InstallSkillRequest):
         if not skill_name:
             skill_name = _extract_skill_name(request.git_url)
             logger.info(f"Using extracted skill name: {skill_name}")
-        
+
         # Install skill
         logger.info(f"Installing skill '{skill_name}' from {request.git_url}")
         success = await skills_manager.install_skill(request.git_url, skill_name)
-        
+
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Skill installation failed"
+                detail="Skill installation failed",
             )
-        
+
         # Get installed skill info
         skill_info = skills_manager.get_skill_info(skill_name)
         if not skill_info:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Skill installed but not found in registry"
+                detail="Skill installed but not found in registry",
             )
-        
+
         return _skill_to_response(skill_info)
-        
+
     except SkillRegistryError as e:
         logger.error(f"Skill installation failed: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         logger.error(f"Unexpected error during skill installation: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Installation failed: {str(e)}"
+            detail=f"Installation failed: {str(e)}",
         )
 
 
@@ -132,52 +129,41 @@ async def install_skill(request: InstallSkillRequest):
     "/skills/{skill_name}/update",
     response_model=SuccessResponse,
     summary="Update a skill from its git repository",
-    tags=["skills"]
+    tags=["skills"],
 )
 async def update_skill(skill_name: str):
     """
     Update a skill by pulling latest changes from git.
-    
+
     Args:
         skill_name: Name of the skill to update
-        
+
     Returns:
         Success message
-        
+
     Raises:
         404: Skill not found
         500: Update failed
     """
     try:
         success = await skills_manager.update_skill(skill_name)
-        
+
         if not success:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Skill update failed"
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Skill update failed"
             )
-        
-        return SuccessResponse(
-            success=True,
-            message=f"Skill '{skill_name}' updated successfully"
-        )
-        
+
+        return SuccessResponse(success=True, message=f"Skill '{skill_name}' updated successfully")
+
     except SkillNotFoundError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except SkillRegistryError as e:
         logger.error(f"Skill update failed: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     except Exception as e:
         logger.error(f"Unexpected error during skill update: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Update failed: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Update failed: {str(e)}"
         )
 
 
@@ -185,21 +171,18 @@ async def update_skill(skill_name: str):
     "/skills",
     response_model=SkillListResponse,
     summary="List all installed skills",
-    tags=["skills"]
+    tags=["skills"],
 )
-def list_skills(
-    capability: Optional[str] = None,
-    tag: Optional[str] = None
-):
+def list_skills(capability: Optional[str] = None, tag: Optional[str] = None):
     """
     List all installed skills.
-    
+
     Optionally filter by capability or tag.
-    
+
     Args:
         capability: Filter by capability
         tag: Filter by tag
-        
+
     Returns:
         List of skills with metadata
     """
@@ -210,17 +193,16 @@ def list_skills(
             skills = skills_manager.get_skills_by_tag(tag)
         else:
             skills = skills_manager.list_skills()
-        
+
         return SkillListResponse(
-            skills=[_skill_to_response(skill) for skill in skills],
-            total=len(skills)
+            skills=[_skill_to_response(skill) for skill in skills], total=len(skills)
         )
-        
+
     except Exception as e:
         logger.error(f"Error listing skills: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to list skills: {str(e)}"
+            detail=f"Failed to list skills: {str(e)}",
         )
 
 
@@ -228,29 +210,28 @@ def list_skills(
     "/skills/{skill_name}",
     response_model=SkillResponse,
     summary="Get skill information",
-    tags=["skills"]
+    tags=["skills"],
 )
 def get_skill(skill_name: str):
     """
     Get detailed information about a specific skill.
-    
+
     Args:
         skill_name: Name of the skill
-        
+
     Returns:
         Skill metadata
-        
+
     Raises:
         404: Skill not found
     """
     skill_info = skills_manager.get_skill_info(skill_name)
-    
+
     if not skill_info:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Skill '{skill_name}' not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Skill '{skill_name}' not found"
         )
-    
+
     return _skill_to_response(skill_info)
 
 
@@ -258,32 +239,31 @@ def get_skill(skill_name: str):
     "/skills/reload",
     response_model=SuccessResponse,
     summary="Reload skills registry",
-    tags=["skills"]
+    tags=["skills"],
 )
 def reload_skills():
     """
     Reload the skills registry from disk.
-    
+
     This re-scans the skills directory and updates the registry.
-    
+
     Returns:
         Success message
     """
     try:
         skills_manager.reload_registry()
-        
+
         skills = skills_manager.list_skills()
-        
+
         return SuccessResponse(
-            success=True,
-            message=f"Registry reloaded. {len(skills)} skills found."
+            success=True, message=f"Registry reloaded. {len(skills)} skills found."
         )
-        
+
     except Exception as e:
         logger.error(f"Error reloading registry: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to reload registry: {str(e)}"
+            detail=f"Failed to reload registry: {str(e)}",
         )
 
 
@@ -310,18 +290,18 @@ def _skill_to_response(skill) -> SkillResponse:
 def _extract_skill_name(git_url: str) -> str:
     """
     Extract skill name from git URL.
-    
+
     Args:
         git_url: Git repository URL
-        
+
     Returns:
         Skill name
     """
-    url = git_url.rstrip('/')
-    if url.endswith('.git'):
+    url = git_url.rstrip("/")
+    if url.endswith(".git"):
         url = url[:-4]
-    
-    name = url.split('/')[-1]
-    name = name.lower().replace('_', '-')
-    
+
+    name = url.split("/")[-1]
+    name = name.lower().replace("_", "-")
+
     return name

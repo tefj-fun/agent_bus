@@ -11,7 +11,7 @@ from .base import MemoryStoreBase
 
 class InMemoryStore(MemoryStoreBase):
     """In-memory memory store for testing and development.
-    
+
     This backend stores documents in memory (Python dict) and provides
     TF-IDF-based search. Useful for testing without external dependencies.
     Data is lost when the process exits.
@@ -55,10 +55,10 @@ class InMemoryStore(MemoryStoreBase):
         for doc in self._documents.values():
             if self._matches_filters(doc, filters):
                 filtered_docs.append(doc)
-        
+
         if not filtered_docs:
             return []
-        
+
         # TF-IDF search
         docs = [doc["text"] for doc in filtered_docs]
         doc_tokens = [self._tokenize(text) for text in docs]
@@ -71,12 +71,14 @@ class InMemoryStore(MemoryStoreBase):
         scored: List[Dict[str, Any]] = []
         for doc, doc_vec in zip(filtered_docs, doc_vectors):
             score = self._cosine_similarity(query_vec, doc_vec)
-            scored.append({
-                "id": doc["id"],
-                "text": doc["text"],
-                "metadata": doc["metadata"],
-                "score": score,
-            })
+            scored.append(
+                {
+                    "id": doc["id"],
+                    "text": doc["text"],
+                    "metadata": doc["metadata"],
+                    "score": score,
+                }
+            )
 
         scored.sort(key=lambda item: (item["score"], item["id"]), reverse=True)
         return scored[:top_k]
@@ -90,17 +92,17 @@ class InMemoryStore(MemoryStoreBase):
         """Update an existing document."""
         if doc_id not in self._documents:
             return False
-        
+
         if text is not None:
             self._documents[doc_id]["text"] = text
-        
+
         if metadata is not None:
             # Merge metadata
             self._documents[doc_id]["metadata"] = {
                 **self._documents[doc_id]["metadata"],
                 **metadata,
             }
-        
+
         return True
 
     async def delete(
@@ -120,7 +122,7 @@ class InMemoryStore(MemoryStoreBase):
         """Count documents matching optional filters."""
         if not filters:
             return len(self._documents)
-        
+
         count = 0
         for doc in self._documents.values():
             if self._matches_filters(doc, filters):
@@ -142,18 +144,16 @@ class InMemoryStore(MemoryStoreBase):
             count = len(self._documents)
             self._documents.clear()
             return count
-        
+
         # Find matching documents
         to_delete = [
-            doc_id
-            for doc_id, doc in self._documents.items()
-            if self._matches_filters(doc, filters)
+            doc_id for doc_id, doc in self._documents.items() if self._matches_filters(doc, filters)
         ]
-        
+
         # Delete them
         for doc_id in to_delete:
             del self._documents[doc_id]
-        
+
         return len(to_delete)
 
     # Helper methods
@@ -162,12 +162,12 @@ class InMemoryStore(MemoryStoreBase):
         """Check if a document matches the given filters."""
         if not filters:
             return True
-        
+
         metadata = doc.get("metadata", {})
         for key, value in filters.items():
             if metadata.get(key) != value:
                 return False
-        
+
         return True
 
     def _tokenize(self, text: str) -> List[str]:
@@ -181,10 +181,7 @@ class InMemoryStore(MemoryStoreBase):
         for tokens in docs_tokens:
             for token in set(tokens):
                 df[token] = df.get(token, 0) + 1
-        idf = {
-            token: math.log((1 + doc_count) / (1 + freq)) + 1.0
-            for token, freq in df.items()
-        }
+        idf = {token: math.log((1 + doc_count) / (1 + freq)) + 1.0 for token, freq in df.items()}
         return idf
 
     def _tfidf(self, tokens: List[str], idf: Dict[str, float]) -> Dict[str, float]:
