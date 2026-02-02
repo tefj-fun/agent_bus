@@ -13,6 +13,7 @@ Multi-agent SWE planning system that generates comprehensive software project sp
 | [Architecture](docs/ARCHITECTURE.md) | System design and service topology | Developers |
 | [Skills System](docs/SKILLS_SYSTEM.md) | Creating and managing Claude Skills | Developers |
 | [Memory Store](docs/MEMORY_STORE.md) | Pattern storage and retrieval system | Developers |
+| [API Document Processing](docs/API_DOCUMENT_PROCESSING.md) | External API document ingestion | Developers |
 | [Release Guide](docs/RELEASE.md) | Deployment and release process | DevOps |
 
 > **New to Agent Bus?** Start with the **[User Guide](docs/USER_GUIDE.md)** for a friendly introduction.
@@ -67,6 +68,7 @@ if not prd_content.strip():
 - **Template Suggestions**: Automatic template matching for new projects
 - **Retention Policies**: Configurable pattern retention and archival
 - **Evaluation Harness**: Quality metrics for memory system performance
+- **API Document Processing**: Ingest external API docs (OpenAPI, Markdown) into long-term memory
 
 ### Observability & Security
 - **Structured Logging**: JSON-formatted logs for all services
@@ -494,6 +496,46 @@ MIT
 See [PLAN.md](PLAN.md) for implementation roadmap and contribution guidelines.
 
 ## New Features
+
+### API Document Processing
+
+Ingest external API documentation (OpenAPI specs, Markdown docs, plain text) into long-term memory for development context.
+
+```bash
+# Process an OpenAPI spec
+curl -X POST http://localhost:8000/api/api-documents/process \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Stripe API",
+    "content": "<openapi spec content>",
+    "use_llm_extraction": true
+  }'
+
+# Query for relevant endpoints during development
+curl -X POST http://localhost:8000/api/api-documents/query/endpoints \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "create a payment intent",
+    "top_k": 5
+  }'
+
+# Get comprehensive development context
+curl -X POST http://localhost:8000/api/api-documents/context/development \
+  -H "Content-Type: application/json" \
+  -d '{
+    "task_description": "Implement payment processing with Stripe"
+  }'
+```
+
+**Supported Formats**: OpenAPI 3.x, OpenAPI 2.x (Swagger), Markdown, HTML, plain text
+
+**Extracted Information**:
+- API endpoints with parameters and responses
+- Rate limiting policies
+- Authentication requirements
+- Error handling guidelines
+
+See [API Document Processing Guide](docs/API_DOCUMENT_PROCESSING.md) for detailed documentation.
 
 ### Memory Retention & Evaluation
 Configure pattern retention policies and evaluate memory quality:

@@ -39,7 +39,8 @@ agent_bus/
 │   │   ├── plan_agent.py        # Milestone and task planning
 │   │   ├── memory_agent.py      # Legacy pattern storage
 │   │   ├── memory_agent_v2.py   # Enhanced pattern management
-│   │   └── delivery_agent.py    # Final delivery coordination
+│   │   ├── delivery_agent.py    # Final delivery coordination
+│   │   └── api_document_agent.py # External API document processing
 │   │
 │   ├── orchestration/            # Workflow management
 │   │   ├── master_agent.py      # Main orchestrator - coordinates all agents
@@ -61,6 +62,11 @@ agent_bus/
 │   │   ├── postgres_store.py    # PostgreSQL metadata store
 │   │   ├── embedding_generator.py # Sentence-transformer embeddings
 │   │   └── retention.py         # Pattern retention policies
+│   │
+│   ├── api_docs/                 # External API document processing
+│   │   ├── schema.py            # Pydantic models for API documents
+│   │   ├── parser.py            # Multi-format document parser
+│   │   └── policy_extractor.py  # LLM-based policy extraction
 │   │
 │   ├── skills/                   # Claude Skills system
 │   │   ├── schema.py            # Pydantic models for skill.json validation
@@ -313,6 +319,20 @@ Key environment variables (see `.env.example` for full list):
 | `GET` | `/api/events/stream` | SSE event stream |
 | `GET` | `/api/metrics` | Prometheus metrics |
 
+### API Document Processing Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/api-documents/process` | Process and store an API document |
+| `POST` | `/api/api-documents/upload` | Upload API document file |
+| `POST` | `/api/api-documents/query/endpoints` | Search for relevant endpoints |
+| `POST` | `/api/api-documents/query/policies` | Get policies for an API |
+| `POST` | `/api/api-documents/suggest/integration` | Get integration suggestions |
+| `POST` | `/api/api-documents/context/development` | Get dev context for a task |
+| `GET` | `/api/api-documents/list` | List all stored API documents |
+| `GET` | `/api/api-documents/{doc_id}` | Get specific API document |
+| `DELETE` | `/api/api-documents/{doc_id}` | Delete an API document |
+
 ### API Documentation
 
 - Swagger UI: `http://localhost:8000/docs`
@@ -348,6 +368,8 @@ The system processes jobs through these stages:
 | `src/skills/registry.py` | Skill auto-discovery and validation |
 | `src/config.py` | Environment configuration |
 | `src/workers/worker.py` | Task execution engine |
+| `src/api_docs/parser.py` | Multi-format API document parser |
+| `src/agents/api_document_agent.py` | API document processing agent |
 
 ## Documentation
 
@@ -357,6 +379,7 @@ The system processes jobs through these stages:
 | Architecture | `docs/ARCHITECTURE.md` | Service split details |
 | Skills System | `docs/SKILLS_SYSTEM.md` | Skill implementation guide |
 | Memory Store | `docs/MEMORY_STORE.md` | Memory system architecture |
+| API Doc Processing | `docs/API_DOCUMENT_PROCESSING.md` | External API document ingestion |
 | Release | `docs/RELEASE.md` | Release process |
 | Implementation Plan | `PLAN.md` | Detailed roadmap |
 
