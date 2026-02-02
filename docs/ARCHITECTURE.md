@@ -93,42 +93,35 @@ The agent_bus platform is designed as a distributed system with three primary se
 - API → Orchestrator: Real-time status updates
 - Orchestrator → Workers: Health checks
 
-## Deployment Topology
+## System Architecture
 
 ```
-                    ┌─────────────┐
-                    │ Load        │
-                    │ Balancer    │
-                    └──────┬──────┘
-                           │
-            ┌──────────────┼──────────────┐
-            │              │              │
-       ┌────▼────┐    ┌───▼────┐    ┌───▼────┐
-       │ API     │    │ API    │    │ API    │
-       │ Pod 1   │    │ Pod 2  │    │ Pod N  │
-       └────┬────┘    └───┬────┘    └───┬────┘
-            │             │             │
-            └─────────────┼─────────────┘
-                          │
-                    ┌─────▼──────┐
-                    │ Redis      │
-                    │ Queue      │
-                    └─────┬──────┘
-                          │
-            ┌─────────────┼─────────────┐
-            │             │             │
-       ┌────▼────┐   ┌───▼────┐   ┌───▼────┐
-       │Orchestr-│   │Worker  │   │Worker  │
-       │ator     │   │  1     │   │  N     │
-       └────┬────┘   └───┬────┘   └───┬────┘
-            │            │            │
-            └────────────┼────────────┘
-                         │
-                    ┌────▼──────┐
-                    │PostgreSQL │
-                    │           │
-                    └───────────┘
+┌─────────┐      ┌─────────────┐      ┌──────────────┐
+│  User   │─────▶│     API     │─────▶│ Orchestrator │
+└─────────┘      └──────┬──────┘      └──────┬───────┘
+                        │                    │
+                        │              ┌─────▼─────┐
+                        │              │   Redis   │
+                        │              └─────┬─────┘
+                        │                    │
+                        │              ┌─────▼─────┐
+                        │              │  Workers  │
+                        │              └─────┬─────┘
+                        │                    │
+                        └────────┬───────────┘
+                                 │
+                    ┌────────────┼────────────┐
+                    │            │            │
+               ┌────▼────┐ ┌────▼────┐ ┌─────▼─────┐
+               │PostgreSQL│ │ChromaDB │ │ Artifacts │
+               └──────────┘ └─────────┘ └───────────┘
 ```
+
+**Data Flow:**
+1. User submits requirements via API
+2. Orchestrator creates job and queues tasks in Redis
+3. Workers pull tasks, execute agents, store results
+4. All services share PostgreSQL (state) and ChromaDB (memory)
 
 ## Benefits of Service Split
 
