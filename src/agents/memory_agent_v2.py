@@ -22,7 +22,7 @@ class MemoryAgentV2(BaseAgent):
         super().__init__(context)
 
     def get_agent_id(self) -> str:
-        return "memory_agent"
+        return "memory_agent_v2"
 
     def define_capabilities(self) -> Dict[str, Any]:
         return {
