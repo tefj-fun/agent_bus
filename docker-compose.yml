@@ -40,10 +40,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      cache_from:
-        - type=local,src=${BUILDX_CACHE_FROM:-/tmp/.buildx-cache}
-      cache_to:
-        - type=local,dest=${BUILDX_CACHE_TO:-/tmp/.buildx-cache-new}
     container_name: agent_bus_api
     environment:
       - PYTHONUNBUFFERED=1
@@ -79,10 +75,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      cache_from:
-        - type=local,src=${BUILDX_CACHE_FROM:-/tmp/.buildx-cache}
-      cache_to:
-        - type=local,dest=${BUILDX_CACHE_TO:-/tmp/.buildx-cache-new}
     container_name: agent_bus_orchestrator
     environment:
       - PYTHONUNBUFFERED=1
@@ -114,10 +106,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      cache_from:
-        - type=local,src=${BUILDX_CACHE_FROM:-/tmp/.buildx-cache}
-      cache_to:
-        - type=local,dest=${BUILDX_CACHE_TO:-/tmp/.buildx-cache-new}
     container_name: agent_bus_worker
     environment:
       - PYTHONUNBUFFERED=1
