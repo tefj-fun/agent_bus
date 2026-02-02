@@ -97,7 +97,18 @@ graph TB
     MasterAgent -->|enqueues tasks| Redis
 
     Redis -->|dequeue tasks| Workers[Workers]
-    Workers -->|execute| Agents[12 Specialized Agents]
+
+    subgraph Agents[12 Specialized Agents - run in parallel]
+        PRD[PRD Agent]
+        Arch[Architect]
+        Dev[Developer]
+        QA[QA Agent]
+        Sec[Security]
+        Docs[Tech Writer]
+        More[+ 6 more...]
+    end
+
+    Workers -->|execute| Agents
 
     Agents --> LLM[Anthropic Claude API]
     Agents --> Postgres
