@@ -363,16 +363,7 @@ class MasterAgent:
             "priority": 5,
         }
 
-        # Detect ML/CV workload and route appropriately
-        if self._is_ml_workload(inputs):
-            task_data["resource_requirements"] = {
-                "gpu": True,
-                "gpu_type": "nvidia-tesla-v100",
-                "memory": "32Gi",
-            }
-            queue_name = "agent_bus:tasks:gpu"
-        else:
-            queue_name = "agent_bus:tasks:cpu"
+        queue_name = "agent_bus:tasks"
 
         # Create task in database
         await self.postgres.create_task(
@@ -400,33 +391,6 @@ class MasterAgent:
             raise RuntimeError(result.get("error"))
 
         return result
-
-    def _is_ml_workload(self, inputs: Dict) -> bool:
-        """
-        Detect if this is an ML/CV workload that needs GPU.
-
-        Args:
-            inputs: Stage input data
-
-        Returns:
-            True if ML/CV workload detected
-        """
-        ml_keywords = [
-            "machine learning",
-            "neural network",
-            "deep learning",
-            "computer vision",
-            "image processing",
-            "model training",
-            "tensorflow",
-            "pytorch",
-            "cv",
-            "ml pipeline",
-            "ai model",
-        ]
-
-        text = str(inputs).lower()
-        return any(keyword in text for keyword in ml_keywords)
 
     async def _wait_for_task(self, task_id: str, timeout: int = 3600) -> Dict:
         """

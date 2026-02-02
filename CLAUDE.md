@@ -4,7 +4,9 @@ This document provides essential information for AI assistants working with the 
 
 ## Project Overview
 
-**Agent Bus** is a multi-agent SWE (Software Engineering) system where 12+ specialized AI agents collaborate to deliver complete software solutions. The system processes sales requirements through a complete workflow: PRD generation → Architecture → UI/UX → Development → QA → Security → Documentation → Support → PM Review → Delivery.
+**Agent Bus** is a multi-agent SWE (Software Engineering) planning system where 12+ specialized AI agents collaborate to generate comprehensive software project specifications and documentation. The system processes requirements through a complete workflow: PRD generation → Architecture → UI/UX Design → Development Planning → QA Strategy → Security Review → Documentation → Support Docs → PM Review → Delivery.
+
+> **Note**: This system generates planning documents and specifications (PRDs, architecture designs, development plans, etc.), not actual runnable code. For code generation based on these specifications, see the companion project `agent_bus_code`.
 
 ### Key Features
 
@@ -12,7 +14,6 @@ This document provides essential information for AI assistants working with the 
 - Redis-based async task queue for job processing
 - PostgreSQL for state persistence and artifact storage
 - ChromaDB vector database for semantic memory and pattern recognition
-- GPU workload auto-detection and routing
 - Claude Skills integration for extensible capabilities
 - Human-in-the-loop (HITL) approval gates
 - Real-time event streaming (SSE)
@@ -67,12 +68,8 @@ agent_bus/
 │   │   ├── manager.py           # Skill loading, caching, git installation
 │   │   └── allowlist.py         # Skill capability allowlisting
 │   │
-│   ├── ml_pipeline/             # ML/CV workload detection and routing
-│   │   ├── detector.py          # ML workload detection (50+ keywords)
-│   │   └── executor.py          # GPU task executor
-│   │
 │   ├── workers/                 # Task execution
-│   │   └── worker.py            # CPU/GPU worker process
+│   │   └── worker.py            # Worker process for agent task execution
 │   │
 │   ├── config.py                # Pydantic Settings for environment configuration
 │   ├── cli.py                   # Skills CLI (agent-bus-skills command)
@@ -82,8 +79,6 @@ agent_bus/
 │   └── weather-toolkit/         # Reference implementation example
 │
 ├── tests/                        # Comprehensive test suite (30+ test files)
-├── k8s/                         # Kubernetes manifests
-├── helm/                        # Helm chart for K8s deployment
 ├── scripts/                     # Automation scripts
 ├── docs/                        # Documentation
 ├── docker-compose.yml           # Local development setup
@@ -105,7 +100,6 @@ agent_bus/
 | Migrations | Alembic | ^1.13.0 |
 | Metrics | prometheus-client | ^0.19.0 |
 | Container | Docker + docker-compose V2 |
-| Orchestration | Kubernetes + Helm |
 
 ## Development Commands
 
@@ -301,7 +295,6 @@ Key environment variables (see `.env.example` for full list):
 | `POSTGRES_PASSWORD` | PostgreSQL password | (required) |
 | `CHROMA_PERSIST_DIRECTORY` | ChromaDB data path | `./data/chroma` |
 | `SKILLS_DIRECTORY` | Skills directory path | `./skills` |
-| `WORKER_TYPE` | `cpu` or `gpu` | `cpu` |
 
 ## API Endpoints
 
@@ -335,7 +328,7 @@ The system processes jobs through these stages:
 4. **Plan_Generation** - Plan Agent creates milestones/tasks
 5. **Architecture** - Architect Agent designs system
 6. **UI_UX_Design** - UI/UX Agent creates design system
-7. **Development** - Developer Agent generates code
+7. **Development** - Developer Agent creates development plan with TDD strategy
 8. **QA_Testing** - QA Agent creates test plans (parallel)
 9. **Security_Review** - Security Agent reviews vulnerabilities (parallel)
 10. **Documentation** - Tech Writer creates docs (parallel)
@@ -364,7 +357,6 @@ The system processes jobs through these stages:
 | Architecture | `docs/ARCHITECTURE.md` | Service split details |
 | Skills System | `docs/SKILLS_SYSTEM.md` | Skill implementation guide |
 | Memory Store | `docs/MEMORY_STORE.md` | Memory system architecture |
-| GPU Workers | `docs/GPU_WORKERS.md` | GPU setup guide |
 | Release | `docs/RELEASE.md` | Release process |
 | Implementation Plan | `PLAN.md` | Detailed roadmap |
 

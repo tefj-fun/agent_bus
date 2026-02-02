@@ -50,7 +50,6 @@ class Settings(BaseSettings):
     skills_directory: str = Field(default="./skills", env="SKILLS_DIRECTORY")
 
     # Workers
-    worker_type: str = Field(default="cpu", env="WORKER_TYPE")  # cpu or gpu
     max_workers: int = Field(default=4, env="MAX_WORKERS")
 
     # PostgreSQL Pool Settings
@@ -78,12 +77,6 @@ class Settings(BaseSettings):
     circuit_breaker_half_open_requests: int = Field(
         default=3, env="CIRCUIT_BREAKER_HALF_OPEN_REQUESTS"
     )  # Requests to test in half-open
-
-    # Kubernetes
-    k8s_namespace: str = Field(default="agent-bus", env="K8S_NAMESPACE")
-    k8s_gpu_node_selector: str = Field(
-        default="accelerator=nvidia-tesla-v100", env="K8S_GPU_NODE_SELECTOR"
-    )
 
     @property
     def redis_url(self) -> str:

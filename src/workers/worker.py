@@ -29,8 +29,7 @@ from ..config import settings
 class AgentWorker:
     """Worker process that polls Redis and executes agent tasks."""
 
-    def __init__(self, worker_type: str = "cpu"):
-        self.worker_type = worker_type
+    def __init__(self):
         self.redis = redis_client
         self.postgres = postgres_client
         self.anthropic = anthropic_client
@@ -57,9 +56,9 @@ class AgentWorker:
 
     async def run(self):
         """Main worker loop."""
-        queue_name = "agent_bus:tasks:gpu" if self.worker_type == "gpu" else "agent_bus:tasks:cpu"
+        queue_name = "agent_bus:tasks"
 
-        print(f"Worker started: type={self.worker_type} queue={queue_name}")
+        print(f"Worker started: queue={queue_name}")
 
         # Connect to infrastructure
         await self.redis.connect()
@@ -173,7 +172,7 @@ class AgentWorker:
 
 async def main():
     """Main entry point for worker."""
-    worker = AgentWorker(worker_type=settings.worker_type)
+    worker = AgentWorker()
     await worker.run()
 
 

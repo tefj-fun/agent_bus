@@ -1,6 +1,6 @@
 # Agent Bus
 
-Multi-agent SWE engineering system with distributed GPU compute and Claude Skills integration.
+Multi-agent SWE planning system that generates comprehensive software project specifications and documentation.
 
 ---
 
@@ -21,20 +21,16 @@ Multi-agent SWE engineering system with distributed GPU compute and Claude Skill
 
 ## Overview
 
-Agent Bus is a comprehensive multi-agent system where sales inputs requirements, and 12 specialized AI agents collaborate to deliver complete software solutions. The system automatically routes ML/CV workloads to GPU nodes and maintains project memory for pattern reuse.
+Agent Bus is a comprehensive multi-agent planning system where 12 specialized AI agents collaborate to generate complete software project specifications and documentation. The system processes requirements through a full workflow and maintains project memory for pattern reuse.
+
+> **Note**: This system generates planning documents and specifications (PRDs, architecture designs, development plans, etc.), not actual runnable code. For code generation based on these specifications, see the companion project `agent_bus_code`.
 
 ## Features
 
 ### Core System
-- **12 Specialized Agents**: PRD, Architecture, UI/UX Design, Development, QA, Security, Documentation, Support, Product Management, Project Management, Memory
+- **12 Specialized Agents**: PRD, Architecture, UI/UX Design, Development Planning, QA Strategy, Security Review, Documentation, Support, Product Management, Project Management, Memory
 - **Claude Skills Integration**: UI/UX Pro Max, Webapp Testing, TDD, Pypict, Systematic Debugging
-- **Full Workflow**: From sales requirements to delivery with HITL approval gates
-
-### Infrastructure & Scaling
-- **Distributed Compute**: Kubernetes-based CPU/GPU worker orchestration
-- **ML/CV Pipeline**: Auto-detection and GPU routing for ML workloads (detector + executor)
-- **Auto-scaling**: Horizontal pod autoscaling for API and workers
-- **GPU Support**: V100/A100 node affinity and resource allocation
+- **Full Workflow**: From requirements to delivery with HITL approval gates
 
 ### Memory & Intelligence
 - **Memory System v2**: ChromaDB vector database with sentence-transformers
@@ -54,7 +50,6 @@ Agent Bus is a comprehensive multi-agent system where sales inputs requirements,
 ### DevOps
 - **CI/CD Pipeline**: Automated builds, tests, lint checks, Docker caching
 - **Release Automation**: One-command versioning with changelog generation
-- **Multi-environment**: Dev, staging, production Helm configurations
 - **Health Checks**: Comprehensive health endpoints for all services
 
 ## System Architecture
@@ -63,30 +58,27 @@ Agent Bus is a comprehensive multi-agent system where sales inputs requirements,
 graph TB
     User[Sales/User] --> WebUI[Web UI :3000]
     WebUI --> API[FastAPI Server :8000]
-    
+
     API --> Redis[(Redis Queue)]
     API --> Postgres[(PostgreSQL)]
     API --> ChromaDB[(ChromaDB Vector Store)]
-    
-    Redis --> Worker1[CPU Worker 1]
-    Redis --> Worker2[CPU Worker 2]
-    Redis --> GPUWorker[GPU Worker]
+
+    Redis --> Worker1[Worker 1]
+    Redis --> Worker2[Worker 2]
     Redis --> Orchestrator[Orchestrator]
-    
+
     Worker1 --> Agents[12 Specialized Agents]
     Worker2 --> Agents
-    GPUWorker --> MLPipeline[ML/CV Pipeline]
-    
+
     Agents --> LLM[Anthropic Claude API]
     Orchestrator --> Agents
-    
+
     Agents --> Postgres
     Agents --> ChromaDB
-    
+
     style WebUI fill:#e1f5ff
     style API fill:#fff4e1
     style Agents fill:#e8f5e9
-    style MLPipeline fill:#fce4ec
 ```
 
 ## Workflow Diagram
@@ -202,22 +194,17 @@ agent_bus/
 ├── src/
 │   ├── agents/              # 12+ specialized agent implementations
 │   ├── orchestration/       # Master agent and workflow state machine
-│   ├── workers/             # CPU/GPU worker processes
+│   ├── workers/             # Worker processes for task execution
 │   ├── infrastructure/      # Redis, PostgreSQL, LLM clients
-│   ├── ml_pipeline/         # ML workload detector + GPU executor
 │   ├── memory/              # ChromaDB store, embeddings, retention, evaluation
 │   ├── skills/              # Skills manager, registry, allowlist
 │   └── api/
 │       └── routes/          # Projects, patterns, skills, metrics, events, auth
 ├── skills/                  # Local Claude Skills directory
-├── k8s/
-│   ├── base/                # Base K8s manifests (GPU workers)
-│   └── overlays/            # Environment overlays (staging, prod)
-├── helm/agent-bus/          # Helm chart with multi-env values
 ├── scripts/                 # Release, seed templates, smoke tests
 ├── tests/                   # Unit + integration test suites
 ├── docs/                    # Architecture, skills, release, API docs
-└── docker compose.yml       # Local dev with GPU compose service
+└── docker-compose.yml       # Local development setup
 ```
 
 ## API Usage
@@ -424,37 +411,16 @@ More skills available at:
 
 ### Deploying
 
-**Docker Compose (Development)**:
+**Docker Compose (Development/Production)**:
 ```bash
 docker compose up -d
-```
-
-**Kubernetes (Staging/Production)**:
-```bash
-# Staging
-helm upgrade --install agent-bus ./helm/agent-bus \
-  --set image.tag=v1.0.0 \
-  -f helm/agent-bus/values-staging.yaml \
-  --namespace agent-bus-staging
-
-# Production
-helm upgrade --install agent-bus ./helm/agent-bus \
-  --set image.tag=v1.0.0 \
-  -f helm/agent-bus/values-prod.yaml \
-  --namespace agent-bus-prod
 ```
 
 See [docs/RELEASE.md](docs/RELEASE.md) for:
 - Release process and versioning strategy
 - CI/CD pipeline architecture
-- Deployment environments and configurations
 - Rollback procedures
 - Troubleshooting guide
-
-See [PLAN.md](PLAN.md) for detailed deployment instructions including:
-- Kubernetes setup for distributed compute
-- GPU node configuration
-- Production environment setup
 
 ## Progress Tracking
 
@@ -467,7 +433,6 @@ Environment variables (see `.env.example`):
 - `REDIS_HOST/PORT` - Redis connection
 - `POSTGRES_HOST/PORT` - PostgreSQL connection
 - `SKILLS_DIRECTORY` - Path to skills directory
-- `WORKER_TYPE` - `cpu` or `gpu`
 
 ## License
 
@@ -478,16 +443,6 @@ MIT
 See [PLAN.md](PLAN.md) for implementation roadmap and contribution guidelines.
 
 ## New Features
-
-### ML/CV Pipeline
-The system automatically detects ML/CV workloads from requirements and routes them to GPU workers:
-
-```python
-# Automatic detection based on 50+ ML/CV keywords
-detector = MLWorkloadDetector()
-result = detector.analyze("Build a CNN image classifier")
-# Returns: is_ml=True, confidence=0.95, gpu_required=True
-```
 
 ### Memory Retention & Evaluation
 Configure pattern retention policies and evaluate memory quality:
