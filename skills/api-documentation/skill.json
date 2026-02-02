@@ -1,0 +1,42 @@
+{
+  "name": "api-documentation",
+  "version": "1.0.0",
+  "description": "API documentation generation with OpenAPI/Swagger specs, SDK examples, and integration guides",
+  "author": "Agent Bus",
+  "capabilities": [
+    {
+      "name": "openapi-generation",
+      "description": "Generate OpenAPI 3.0+ specifications from requirements or code"
+    },
+    {
+      "name": "api-reference",
+      "description": "Create comprehensive API reference documentation"
+    },
+    {
+      "name": "sdk-examples",
+      "description": "Generate SDK code examples in multiple languages"
+    },
+    {
+      "name": "integration-guide",
+      "description": "Create step-by-step API integration guides"
+    }
+  ],
+  "required_tools": [
+    {
+      "name": "web_fetch",
+      "required": false
+    }
+  ],
+  "dependencies": [],
+  "entry_point": "skill.md",
+  "min_python_version": "3.10",
+  "repository": "https://github.com/tefj-fun/agent_bus",
+  "license": "MIT",
+  "tags": ["api", "documentation", "openapi", "swagger", "rest", "sdk", "integration"],
+  "metadata": {
+    "target_agent": "api_document_agent",
+    "openapi_version": "3.1.0",
+    "supported_formats": ["OpenAPI", "AsyncAPI", "GraphQL SDL"],
+    "sdk_languages": ["Python", "JavaScript", "TypeScript", "Go", "Java", "cURL"]
+  }
+}
