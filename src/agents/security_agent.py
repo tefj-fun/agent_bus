@@ -20,7 +20,7 @@ class SecurityAgent(BaseAgent):
             "can_identify_vulnerabilities": True,
             "can_recommend_mitigations": True,
             "can_assess_compliance": True,
-            "output_formats": ["json", "markdown"]
+            "output_formats": ["json", "markdown"],
         }
 
     async def execute(self, task: AgentTask) -> AgentResult:
@@ -60,14 +60,15 @@ class SecurityAgent(BaseAgent):
             )
 
             from ..config import settings
-            if settings.llm_mode == 'mock':
+
+            if settings.llm_mode == "mock":
                 security_payload = {
                     "security_audit": {
                         "audit_date": "2026-02-01",
                         "audit_scope": "Full application security review",
                         "security_level": "medium-risk",
                         "overall_rating": "B+",
-                        "summary": "Application demonstrates good security practices with some areas requiring attention"
+                        "summary": "Application demonstrates good security practices with some areas requiring attention",
                     },
                     "vulnerabilities": [
                         {
@@ -83,7 +84,7 @@ class SecurityAgent(BaseAgent):
                             "impact": "Account compromise through credential stuffing or brute force",
                             "recommendation": "Implement rate limiting with exponential backoff on all authentication endpoints",
                             "mitigation_priority": "high",
-                            "estimated_effort": "2-4 hours"
+                            "estimated_effort": "2-4 hours",
                         },
                         {
                             "vulnerability_id": "SEC-002",
@@ -98,7 +99,7 @@ class SecurityAgent(BaseAgent):
                             "impact": "Unauthorized data access, data manipulation, potential data exfiltration",
                             "recommendation": "Use parameterized queries or ORM with proper input validation",
                             "mitigation_priority": "critical",
-                            "estimated_effort": "4-8 hours"
+                            "estimated_effort": "4-8 hours",
                         },
                         {
                             "vulnerability_id": "SEC-003",
@@ -113,7 +114,7 @@ class SecurityAgent(BaseAgent):
                             "impact": "Unauthorized access to resources, privilege escalation",
                             "recommendation": "Implement comprehensive RBAC with middleware enforcement on all endpoints",
                             "mitigation_priority": "high",
-                            "estimated_effort": "8-16 hours"
+                            "estimated_effort": "8-16 hours",
                         },
                         {
                             "vulnerability_id": "SEC-004",
@@ -128,7 +129,7 @@ class SecurityAgent(BaseAgent):
                             "impact": "Exposure of sensitive data if logs are compromised",
                             "recommendation": "Implement log sanitization to redact PII, passwords, and tokens",
                             "mitigation_priority": "medium",
-                            "estimated_effort": "2-4 hours"
+                            "estimated_effort": "2-4 hours",
                         },
                         {
                             "vulnerability_id": "SEC-005",
@@ -143,7 +144,7 @@ class SecurityAgent(BaseAgent):
                             "impact": "Session hijacking through token prediction",
                             "recommendation": "Use cryptographically secure random token generation (e.g., secrets.token_urlsafe)",
                             "mitigation_priority": "medium",
-                            "estimated_effort": "1-2 hours"
+                            "estimated_effort": "1-2 hours",
                         },
                         {
                             "vulnerability_id": "SEC-006",
@@ -158,8 +159,8 @@ class SecurityAgent(BaseAgent):
                             "impact": "Increased attack surface for XSS and clickjacking",
                             "recommendation": "Add comprehensive security headers via middleware",
                             "mitigation_priority": "low",
-                            "estimated_effort": "1-2 hours"
-                        }
+                            "estimated_effort": "1-2 hours",
+                        },
                     ],
                     "security_recommendations": [
                         {
@@ -167,43 +168,43 @@ class SecurityAgent(BaseAgent):
                             "priority": "high",
                             "recommendation": "Implement multi-factor authentication (MFA)",
                             "rationale": "MFA significantly reduces account compromise risk",
-                            "implementation_guidance": "Support TOTP-based MFA with backup codes"
+                            "implementation_guidance": "Support TOTP-based MFA with backup codes",
                         },
                         {
                             "category": "encryption",
                             "priority": "high",
                             "recommendation": "Encrypt sensitive data at rest",
                             "rationale": "Protection against database compromise",
-                            "implementation_guidance": "Use AES-256 encryption for PII and credentials"
+                            "implementation_guidance": "Use AES-256 encryption for PII and credentials",
                         },
                         {
                             "category": "dependencies",
                             "priority": "high",
                             "recommendation": "Implement automated dependency scanning",
                             "rationale": "Early detection of vulnerable dependencies",
-                            "implementation_guidance": "Integrate Dependabot or Snyk in CI/CD pipeline"
+                            "implementation_guidance": "Integrate Dependabot or Snyk in CI/CD pipeline",
                         },
                         {
                             "category": "monitoring",
                             "priority": "medium",
                             "recommendation": "Establish security monitoring and alerting",
                             "rationale": "Early detection of security incidents",
-                            "implementation_guidance": "Log authentication failures, suspicious patterns, and anomalies"
+                            "implementation_guidance": "Log authentication failures, suspicious patterns, and anomalies",
                         },
                         {
                             "category": "access_control",
                             "priority": "medium",
                             "recommendation": "Implement principle of least privilege",
                             "rationale": "Minimize impact of compromised accounts",
-                            "implementation_guidance": "Review and restrict default permissions"
+                            "implementation_guidance": "Review and restrict default permissions",
                         },
                         {
                             "category": "incident_response",
                             "priority": "medium",
                             "recommendation": "Create incident response plan",
                             "rationale": "Structured response to security incidents",
-                            "implementation_guidance": "Document procedures for breach detection and response"
-                        }
+                            "implementation_guidance": "Document procedures for breach detection and response",
+                        },
                     ],
                     "compliance_assessment": {
                         "standards_evaluated": ["OWASP Top 10", "CWE Top 25", "GDPR", "SOC 2"],
@@ -217,21 +218,21 @@ class SecurityAgent(BaseAgent):
                             "A07_authentication_failures": "needs_attention",
                             "A08_software_data_integrity": "good",
                             "A09_security_logging_monitoring": "partial",
-                            "A10_server_side_request_forgery": "good"
+                            "A10_server_side_request_forgery": "good",
                         },
                         "gdpr_compliance": {
                             "data_encryption": "partial",
                             "access_controls": "partial",
                             "audit_logging": "needs_improvement",
                             "data_retention": "not_assessed",
-                            "breach_notification": "not_implemented"
+                            "breach_notification": "not_implemented",
                         },
                         "recommendations": [
                             "Address high and critical vulnerabilities before production deployment",
                             "Implement comprehensive audit logging for compliance",
                             "Conduct penetration testing before go-live",
-                            "Establish data retention and deletion policies"
-                        ]
+                            "Establish data retention and deletion policies",
+                        ],
                     },
                     "security_best_practices": {
                         "implemented": [
@@ -239,7 +240,7 @@ class SecurityAgent(BaseAgent):
                             "HTTPS enforcement",
                             "Input validation on user inputs",
                             "Secure password requirements",
-                            "CORS configuration"
+                            "CORS configuration",
                         ],
                         "missing": [
                             "Rate limiting on API endpoints",
@@ -248,8 +249,8 @@ class SecurityAgent(BaseAgent):
                             "Automated security scanning in CI/CD",
                             "Data encryption at rest",
                             "Security audit logging",
-                            "Web Application Firewall (WAF)"
-                        ]
+                            "Web Application Firewall (WAF)",
+                        ],
                     },
                     "penetration_testing": {
                         "recommended_scope": [
@@ -257,10 +258,10 @@ class SecurityAgent(BaseAgent):
                             "SQL injection and XSS testing",
                             "API security testing",
                             "Session management testing",
-                            "Business logic flaws"
+                            "Business logic flaws",
                         ],
                         "timing": "Before production deployment",
-                        "frequency": "Annually or after major changes"
+                        "frequency": "Annually or after major changes",
                     },
                     "security_metrics": {
                         "vulnerabilities_by_severity": {
@@ -268,11 +269,11 @@ class SecurityAgent(BaseAgent):
                             "high": 2,
                             "medium": 3,
                             "low": 2,
-                            "info": 0
+                            "info": 0,
                         },
                         "estimated_remediation_effort": "22-40 hours",
                         "security_debt_score": 6.2,
-                        "attack_surface_score": 7.1
+                        "attack_surface_score": 7.1,
                     },
                     "next_steps": [
                         "1. Address critical and high-severity vulnerabilities immediately",
@@ -280,18 +281,15 @@ class SecurityAgent(BaseAgent):
                         "3. Add comprehensive authorization middleware",
                         "4. Integrate automated security scanning in CI/CD",
                         "5. Conduct penetration testing before production release",
-                        "6. Establish ongoing security monitoring and incident response procedures"
-                    ]
+                        "6. Establish ongoing security monitoring and incident response procedures",
+                    ],
                 }
                 security_content = json.dumps(security_payload, indent=2)
             else:
                 response_text = await self.query_llm(
-                    prompt=user_prompt,
-                    system=system_prompt,
-                    thinking_budget=2048,
-                    max_tokens=8192
+                    prompt=user_prompt, system=system_prompt, thinking_budget=2048, max_tokens=8192
                 )
-                
+
                 # Try to parse as JSON, fallback to raw text
                 try:
                     security_payload = json.loads(response_text)
@@ -310,7 +308,7 @@ class SecurityAgent(BaseAgent):
                     "architecture_length": len(architecture_content),
                     "qa_length": len(qa_content),
                     "parseable_json": "raw_security" not in security_payload,
-                }
+                },
             )
 
             await self.log_event("info", f"Security review completed successfully: {artifact_id}")
@@ -328,9 +326,11 @@ class SecurityAgent(BaseAgent):
                 artifacts=[artifact_id],
                 metadata={
                     "vulnerabilities_count": len(security_payload.get("vulnerabilities", [])),
-                    "recommendations_count": len(security_payload.get("security_recommendations", [])),
+                    "recommendations_count": len(
+                        security_payload.get("security_recommendations", [])
+                    ),
                     "parseable_json": "raw_security" not in security_payload,
-                }
+                },
             )
 
             await self.notify_completion(result)
@@ -348,7 +348,7 @@ class SecurityAgent(BaseAgent):
                 success=False,
                 output={},
                 artifacts=[],
-                error=str(e)
+                error=str(e),
             )
 
             await self.notify_completion(result)
@@ -447,7 +447,7 @@ Your role is to conduct comprehensive security reviews and vulnerability assessm
 
 {development_content}
 """
-        
+
         if architecture_content.strip():
             prompt += f"""
 

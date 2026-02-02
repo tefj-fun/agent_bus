@@ -37,7 +37,7 @@ app = FastAPI(
     title="Agent Bus API",
     description="Multi-agent SWE engineering system",
     version="0.1.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Add CORS middleware
@@ -63,11 +63,7 @@ app.include_router(ui_plan.router, prefix="/ui", tags=["ui"])
 @app.get("/")
 async def root():
     """Root endpoint."""
-    return {
-        "name": "Agent Bus API",
-        "version": "0.1.0",
-        "status": "running"
-    }
+    return {"name": "Agent Bus API", "version": "0.1.0", "status": "running"}
 
 
 @app.get("/health")

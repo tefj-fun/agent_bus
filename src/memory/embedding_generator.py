@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
 from typing import Any, Dict, List, Optional, Tuple
 
 from sentence_transformers import SentenceTransformer
@@ -29,17 +28,17 @@ class EmbeddingGenerator:
         self.model_name = model_name
         self.cache_dir = cache_dir
         self.device = device
-        
+
         # Initialize model
         self.model = SentenceTransformer(
             model_name,
             cache_folder=cache_dir,
             device=device,
         )
-        
+
         # Embedding cache (in-memory for this session)
         self._cache: Dict[str, List[float]] = {}
-        
+
         # Get embedding dimension
         self.embedding_dim = self.model.get_sentence_embedding_dimension()
 
@@ -183,16 +182,16 @@ class EmbeddingGenerator:
 
         while start < len(text):
             end = min(start + max_chunk_length, len(text))
-            
+
             # Try to break at sentence boundary
             if end < len(text):
                 # Look for sentence endings in the last 20% of chunk
                 search_start = max(start, end - int(max_chunk_length * 0.2))
                 sentence_end = max(
-                    text.rfind('. ', search_start, end),
-                    text.rfind('! ', search_start, end),
-                    text.rfind('? ', search_start, end),
-                    text.rfind('\n', search_start, end),
+                    text.rfind(". ", search_start, end),
+                    text.rfind("! ", search_start, end),
+                    text.rfind("? ", search_start, end),
+                    text.rfind("\n", search_start, end),
                 )
                 if sentence_end > start:
                     end = sentence_end + 1
@@ -223,7 +222,7 @@ class EmbeddingGenerator:
         """
         # Chunk the text
         chunks = self.chunk_text(text, max_chunk_length, overlap)
-        
+
         if not chunks:
             return [0.0] * self.embedding_dim, []
 
@@ -240,8 +239,7 @@ class EmbeddingGenerator:
         elif aggregation == "max":
             # Take max value per dimension
             aggregated = [
-                max(emb[i] for emb in chunk_embeddings)
-                for i in range(self.embedding_dim)
+                max(emb[i] for emb in chunk_embeddings) for i in range(self.embedding_dim)
             ]
         elif aggregation == "first":
             # Use first chunk only

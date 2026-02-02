@@ -26,6 +26,7 @@ from .factory import MemoryStoreRegistry, create_memory_store
 # Lazy import for ChromaDB (optional dependency)
 try:
     from .chroma_store import ChromaDBMemoryStore
+
     _CHROMADB_AVAILABLE = True
 except ImportError:
     ChromaDBMemoryStore = None
@@ -37,16 +38,13 @@ MemoryStore = PostgresMemoryStore
 __all__ = [
     # Base interface
     "MemoryStoreBase",
-    
     # Backends
     "PostgresMemoryStore",
     "InMemoryStore",
     "ChromaDBMemoryStore",  # May be None if chromadb not installed
-    
     # Factory
     "MemoryStoreRegistry",
     "create_memory_store",
-    
     # Backward compatibility
     "MemoryStore",
 ]

@@ -1,7 +1,6 @@
 """Tests for UIUXAgent."""
 
 import pytest
-import json
 
 from src.agents.base import AgentContext, AgentTask
 from src.agents.uiux_agent import UIUXAgent
@@ -85,7 +84,7 @@ async def test_uiux_agent_capabilities(tmp_path):
     ctx = _make_context(tmp_path)
     agent = UIUXAgent(ctx)
     caps = agent.capabilities
-    
+
     assert caps["can_design_uiux"] is True
     assert caps["can_parse_architecture"] is True
     assert caps["can_create_design_system"] is True
@@ -98,29 +97,26 @@ async def test_uiux_agent_execute_mock_mode(tmp_path):
     """Test UIUXAgent execution in mock mode."""
     ctx = _make_context(tmp_path)
     agent = UIUXAgent(ctx)
-    
+
     task = AgentTask(
         task_id="task_123",
         task_type="uiux_design",
-        input_data={
-            "architecture": '{"components": []}',
-            "prd": "# PRD\nBuild a simple web app"
-        },
+        input_data={"architecture": '{"components": []}', "prd": "# PRD\nBuild a simple web app"},
         dependencies=[],
         priority=5,
-        metadata={}
+        metadata={},
     )
-    
+
     # Execute in mock mode (default)
     result = await agent.execute(task)
-    
+
     assert result.success is True
     assert result.agent_id == "uiux_agent"
     assert result.task_id == "task_123"
     assert "ui_ux" in result.output
     assert "artifact_id" in result.output
     assert len(result.artifacts) > 0
-    
+
     # Verify UI/UX structure in mock mode
     ui_ux = result.output["ui_ux"]
     assert "design_system" in ui_ux
@@ -131,19 +127,19 @@ async def test_uiux_agent_execute_mock_mode(tmp_path):
     assert "layouts" in ui_ux
     assert "user_flows" in ui_ux
     assert "accessibility" in ui_ux
-    
+
     # Verify design system structure
     design_system = ui_ux["design_system"]
     assert "name" in design_system
     assert "version" in design_system
     assert "description" in design_system
-    
+
     # Verify color palette
     colors = ui_ux["color_palette"]
     assert "primary" in colors
     assert "secondary" in colors
     assert "neutral" in colors
-    
+
     # Verify components
     assert len(ui_ux["components"]) > 0
     comp = ui_ux["components"][0]
@@ -157,18 +153,18 @@ async def test_uiux_agent_missing_architecture(tmp_path):
     """Test UIUXAgent fails gracefully when architecture is missing."""
     ctx = _make_context(tmp_path)
     agent = UIUXAgent(ctx)
-    
+
     task = AgentTask(
         task_id="task_456",
         task_type="uiux_design",
         input_data={},  # Missing architecture
         dependencies=[],
         priority=5,
-        metadata={}
+        metadata={},
     )
-    
+
     result = await agent.execute(task)
-    
+
     assert result.success is False
     assert "Missing architecture content" in result.error
 
@@ -179,21 +175,21 @@ async def test_uiux_agent_saves_artifact(tmp_path):
     ctx = _make_context(tmp_path)
     pool = ctx.db_pool
     agent = UIUXAgent(ctx)
-    
+
     task = AgentTask(
         task_id="task_789",
         task_type="uiux_design",
         input_data={
             "architecture": '{"components": [{"name": "API"}]}',
-            "prd": "# PRD\nBuild an API service"
+            "prd": "# PRD\nBuild an API service",
         },
         dependencies=[],
         priority=5,
-        metadata={}
+        metadata={},
     )
-    
+
     result = await agent.execute(task)
-    
+
     assert result.success is True
     assert len(pool.artifacts) > 0
 
@@ -203,21 +199,18 @@ async def test_uiux_agent_metadata(tmp_path):
     """Test that UIUXAgent includes metadata in result."""
     ctx = _make_context(tmp_path)
     agent = UIUXAgent(ctx)
-    
+
     task = AgentTask(
         task_id="task_999",
         task_type="uiux_design",
-        input_data={
-            "architecture": '{"components": []}',
-            "prd": "# PRD\nShort PRD"
-        },
+        input_data={"architecture": '{"components": []}', "prd": "# PRD\nShort PRD"},
         dependencies=[],
         priority=5,
-        metadata={}
+        metadata={},
     )
-    
+
     result = await agent.execute(task)
-    
+
     assert result.success is True
     assert result.metadata is not None
     assert "component_count" in result.metadata
@@ -228,9 +221,9 @@ async def test_uiux_agent_metadata(tmp_path):
 def test_uiux_agent_in_worker_registry():
     """Test that UIUXAgent is registered in worker."""
     from src.workers.worker import AgentWorker
-    
+
     worker = AgentWorker()
     registry = worker.agent_registry
-    
+
     assert "uiux_agent" in registry
     assert registry["uiux_agent"] == UIUXAgent

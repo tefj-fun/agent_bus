@@ -16,9 +16,7 @@ class RedisClient:
         if self._client is None:
             # redis.asyncio.from_url returns a configured client (not awaitable)
             self._client = redis.from_url(
-                settings.redis_url,
-                encoding="utf-8",
-                decode_responses=True
+                settings.redis_url, encoding="utf-8", decode_responses=True
             )
         return self._client
 
@@ -50,6 +48,7 @@ class RedisClient:
 
         # Push JSON to queue
         import json
+
         await client.lpush(queue_name, json.dumps(task_data))
 
         return task_id
@@ -71,6 +70,7 @@ class RedisClient:
         if result:
             _, task_data = result
             import json
+
             return json.loads(task_data)
         return None
 
@@ -83,6 +83,7 @@ class RedisClient:
             message: Message to publish
         """
         import json
+
         client = await self.get_client()
         await client.publish(channel, json.dumps(message))
 

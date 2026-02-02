@@ -9,11 +9,7 @@ router = APIRouter()
 
 
 def _escape(s: str) -> str:
-    return (
-        s.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-    )
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 @router.get("/plan/{job_id}", response_class=HTMLResponse)

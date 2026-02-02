@@ -1,7 +1,6 @@
 """Unit tests for SupportEngineer agent."""
 
 import pytest
-import json
 from unittest.mock import AsyncMock, MagicMock
 
 from src.agents.support_engineer import SupportEngineer
@@ -21,7 +20,7 @@ def mock_context():
     context.anthropic_client = AsyncMock()
     context.skills_manager = MagicMock()
     context.config = {}
-    
+
     return context
 
 
@@ -38,7 +37,7 @@ async def test_support_engineer_capabilities(mock_context):
     """Test SupportEngineer defines expected capabilities."""
     agent = SupportEngineer(mock_context)
     capabilities = agent.define_capabilities()
-    
+
     assert capabilities["can_generate_support_docs"] is True
     assert "faq" in capabilities["doc_types"]
     assert "runbook" in capabilities["doc_types"]
@@ -51,12 +50,13 @@ async def test_support_engineer_capabilities(mock_context):
 async def test_support_engineer_execute_success(mock_context):
     """Test SupportEngineer successful execution."""
     agent = SupportEngineer(mock_context)
-    
+
     # Mock the methods
     agent.save_artifact = AsyncMock(return_value="artifact-support-123")
     agent.log_event = AsyncMock()
     agent.notify_completion = AsyncMock()
-    agent.query_llm = AsyncMock(return_value="""# Support Documentation
+    agent.query_llm = AsyncMock(
+        return_value="""# Support Documentation
 
 ## Frequently Asked Questions (FAQ)
 
@@ -136,8 +136,9 @@ async def test_support_engineer_execute_success(mock_context):
 - **Level 2 Support:** tech-support@example.com
 - **Engineering On-Call:** oncall@example.com
 - **Security Team:** security@example.com
-""")
-    
+"""
+    )
+
     task = AgentTask(
         task_id="task-123",
         task_type="support_docs",
@@ -146,15 +147,15 @@ async def test_support_engineer_execute_success(mock_context):
             "architecture": "System architecture design",
             "qa": "QA strategy with test plans",
             "security": "Security audit results",
-            "prd": "Product requirements document"
+            "prd": "Product requirements document",
         },
         dependencies=[],
         priority=5,
-        metadata={}
+        metadata={},
     )
-    
+
     result = await agent.execute(task)
-    
+
     assert result.success is True
     assert result.task_id == "task-123"
     assert result.agent_id == "support_engineer"
@@ -163,12 +164,12 @@ async def test_support_engineer_execute_success(mock_context):
     assert result.output["artifact_id"] == "artifact-support-123"
     assert len(result.artifacts) > 0
     assert result.artifacts[0] == "artifact-support-123"
-    
+
     # Verify support documentation content
     support_content = result.output["support_docs"]
     assert "FAQ" in support_content or "Troubleshooting" in support_content
     assert result.output["next_stage"] == "pm_review"
-    
+
     # Verify save_artifact was called
     agent.save_artifact.assert_called_once()
     call_args = agent.save_artifact.call_args
@@ -180,23 +181,23 @@ async def test_support_engineer_execute_success(mock_context):
 async def test_support_engineer_execute_handles_empty_input(mock_context):
     """Test SupportEngineer handles empty input gracefully."""
     agent = SupportEngineer(mock_context)
-    
+
     agent.save_artifact = AsyncMock(return_value="artifact-support-456")
     agent.log_event = AsyncMock()
     agent.notify_completion = AsyncMock()
     agent.query_llm = AsyncMock(return_value="# Minimal Support Docs\n\nNo input provided.")
-    
+
     task = AgentTask(
         task_id="task-456",
         task_type="support_docs",
         input_data={},
         dependencies=[],
         priority=5,
-        metadata={}
+        metadata={},
     )
-    
+
     result = await agent.execute(task)
-    
+
     # Should still succeed with minimal documentation
     assert result.success is True
     assert "support_docs" in result.output
@@ -207,24 +208,22 @@ async def test_support_engineer_execute_handles_empty_input(mock_context):
 async def test_support_engineer_execute_failure(mock_context):
     """Test SupportEngineer handles execution failure."""
     agent = SupportEngineer(mock_context)
-    
+
     agent.log_event = AsyncMock()
     agent.notify_completion = AsyncMock()
     agent.query_llm = AsyncMock(side_effect=Exception("LLM query failed"))
-    
+
     task = AgentTask(
         task_id="task-789",
         task_type="support_docs",
-        input_data={
-            "development": "Development plan"
-        },
+        input_data={"development": "Development plan"},
         dependencies=[],
         priority=5,
-        metadata={}
+        metadata={},
     )
-    
+
     result = await agent.execute(task)
-    
+
     assert result.success is False
     assert result.error is not None
     assert "LLM query failed" in result.error
@@ -235,7 +234,7 @@ async def test_support_engineer_execute_failure(mock_context):
 async def test_support_engineer_count_sections(mock_context):
     """Test the _count_sections helper method."""
     agent = SupportEngineer(mock_context)
-    
+
     content = """# Support Guide
 
 ## FAQ
@@ -248,7 +247,7 @@ async def test_support_engineer_count_sections(mock_context):
 
 # Runbook
 """
-    
+
     sections = agent._count_sections(content)
     assert sections == 6  # All lines starting with #
 
@@ -258,25 +257,23 @@ async def test_support_engineer_count_sections(mock_context):
 async def test_support_engineer_metadata(mock_context):
     """Test SupportEngineer includes metadata in result."""
     agent = SupportEngineer(mock_context)
-    
+
     agent.save_artifact = AsyncMock(return_value="artifact-support-999")
     agent.log_event = AsyncMock()
     agent.notify_completion = AsyncMock()
     agent.query_llm = AsyncMock(return_value="# Support\n## FAQ\n## Troubleshooting")
-    
+
     task = AgentTask(
         task_id="task-999",
         task_type="support_docs",
-        input_data={
-            "development": "Dev content"
-        },
+        input_data={"development": "Dev content"},
         dependencies=[],
         priority=5,
-        metadata={}
+        metadata={},
     )
-    
+
     result = await agent.execute(task)
-    
+
     assert result.success is True
     assert "sections" in result.metadata
     assert result.metadata["sections"] == 3  # Three headers in the mock response

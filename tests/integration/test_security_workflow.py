@@ -1,4 +1,5 @@
 """Integration test for Security workflow stage - E2E API test."""
+
 import pytest
 
 import os
@@ -62,7 +63,13 @@ def test_security_stage_in_workflow():
         lambda j: j.get("workflow_stage") == "waiting_for_approval",
         timeout_s=120,
     )
-    assert job.get("status") in {"waiting_for_approval", "in_progress", "orchestrating", "queued", "approved"}
+    assert job.get("status") in {
+        "waiting_for_approval",
+        "in_progress",
+        "orchestrating",
+        "queued",
+        "approved",
+    }
 
     # Approve
     status, _ = http(
@@ -88,7 +95,7 @@ def test_security_stage_in_workflow():
     # Security artifact exists
     _, security = http("GET", f"{BASE_URL}/api/projects/{job_id}/security", timeout=10)
     assert security.get("content") or security.get("output_data")
-    
+
     # Verify Security artifact contains expected structure
     security_content = security.get("content")
     if security_content:
@@ -96,15 +103,18 @@ def test_security_stage_in_workflow():
             security_data = json.loads(security_content)
         else:
             security_data = security_content
-        
+
         # Verify security audit structure
-        assert "security_audit" in security_data or "vulnerabilities" in security_data, \
-            "Security artifact should contain security_audit or vulnerabilities"
-        
+        assert (
+            "security_audit" in security_data or "vulnerabilities" in security_data
+        ), "Security artifact should contain security_audit or vulnerabilities"
+
         # Verify vulnerabilities exist
         if "vulnerabilities" in security_data:
-            assert len(security_data["vulnerabilities"]) > 0, "Should have identified vulnerabilities"
-            
+            assert (
+                len(security_data["vulnerabilities"]) > 0
+            ), "Should have identified vulnerabilities"
+
             # Check first vulnerability has required fields
             vuln = security_data["vulnerabilities"][0]
             assert "vulnerability_id" in vuln
@@ -117,7 +127,7 @@ def test_security_stage_in_workflow():
 def test_security_api_endpoint():
     """Test the security endpoint returns 404 for non-existent job."""
     fake_job_id = f"fake_job_{uuid.uuid4().hex[:10]}"
-    
+
     try:
         status, _ = http("GET", f"{BASE_URL}/api/projects/{fake_job_id}/security", timeout=10)
         # Should not reach here

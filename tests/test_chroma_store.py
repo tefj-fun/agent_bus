@@ -1,6 +1,5 @@
 """Tests for ChromaDB vector store."""
 
-import os
 import tempfile
 import pytest
 from src.memory.chroma_store import ChromaDBStore
@@ -79,13 +78,13 @@ class TestChromaDBStore:
             ("doc2", "Machine learning algorithms and neural networks", {"type": "ml"}),
             ("doc3", "JavaScript web development framework", {"type": "code"}),
         ]
-        
+
         for doc_id, text, metadata in docs:
             await chroma_store.upsert_document(doc_id, text, metadata)
 
         # Query for ML-related content
         results = await chroma_store.query_similar("deep learning", top_k=2)
-        
+
         assert len(results) <= 2
         assert all("id" in r for r in results)
         assert all("text" in r for r in results)
@@ -104,15 +103,13 @@ class TestChromaDBStore:
             ("doc2", "ML tutorial", {"pattern_type": "documentation"}),
             ("doc3", "Neural networks", {"pattern_type": "documentation"}),
         ]
-        
+
         for doc_id, text, metadata in docs:
             await chroma_store.upsert_document(doc_id, text, metadata)
 
         # Query with filter
         results = await chroma_store.query_similar(
-            "machine learning",
-            top_k=5,
-            pattern_type="documentation"
+            "machine learning", top_k=5, pattern_type="documentation"
         )
 
         # Should only return documentation type
@@ -126,7 +123,7 @@ class TestChromaDBStore:
         metadata = {"key": "value"}
 
         await chroma_store.upsert_document(doc_id, text, metadata)
-        
+
         doc = await chroma_store.get_document(doc_id)
         assert doc is not None
         assert doc["id"] == doc_id
@@ -172,7 +169,7 @@ class TestChromaDBStore:
     async def test_health_check(self, chroma_store):
         """Test health check."""
         health = await chroma_store.health()
-        
+
         assert health["backend"] == "chromadb"
         assert health["mode"] == "local"
         assert health["collection"] == "test_collection"
@@ -198,9 +195,7 @@ class TestChromaDBStore:
         text = "Test document"
         embedding = [0.1] * 384  # Typical sentence-transformer dimension
 
-        result_id = await chroma_store.upsert_document(
-            doc_id, text, embedding=embedding
-        )
+        result_id = await chroma_store.upsert_document(doc_id, text, embedding=embedding)
         assert result_id == doc_id
 
         # Verify it was stored
@@ -215,9 +210,7 @@ class TestChromaDBStore:
         # Query with custom embedding
         query_embedding = [0.1] * 384
         results = await chroma_store.query_similar(
-            "dummy query",  # Text won't be used
-            top_k=1,
-            query_embedding=query_embedding
+            "dummy query", top_k=1, query_embedding=query_embedding  # Text won't be used
         )
 
         # Should return results based on embedding similarity

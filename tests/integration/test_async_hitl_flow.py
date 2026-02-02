@@ -61,7 +61,13 @@ def test_async_hitl_flow_end_to_end():
         lambda j: j.get("workflow_stage") == "waiting_for_approval",
         timeout_s=120,
     )
-    assert job.get("status") in {"waiting_for_approval", "in_progress", "orchestrating", "queued", "approved"}
+    assert job.get("status") in {
+        "waiting_for_approval",
+        "in_progress",
+        "orchestrating",
+        "queued",
+        "approved",
+    }
 
     # PRD exists
     _, prd = http("GET", f"{BASE_URL}/api/projects/{job_id}/prd", timeout=10)

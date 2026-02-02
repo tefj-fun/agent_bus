@@ -1,7 +1,6 @@
 """Tests for ArchitectAgent."""
 
 import pytest
-import json
 
 from src.agents.base import AgentContext, AgentTask
 from src.agents.architect_agent import ArchitectAgent
@@ -85,7 +84,7 @@ async def test_architect_agent_capabilities(tmp_path):
     ctx = _make_context(tmp_path)
     agent = ArchitectAgent(ctx)
     caps = agent.capabilities
-    
+
     assert caps["can_design_architecture"] is True
     assert caps["can_parse_prd"] is True
     assert caps["can_parse_plan"] is True
@@ -98,29 +97,26 @@ async def test_architect_agent_execute_mock_mode(tmp_path):
     """Test ArchitectAgent execution in mock mode."""
     ctx = _make_context(tmp_path)
     agent = ArchitectAgent(ctx)
-    
+
     task = AgentTask(
         task_id="task_123",
         task_type="architecture_design",
-        input_data={
-            "prd": "# PRD\nBuild a simple web app",
-            "plan": '{"milestones": []}'
-        },
+        input_data={"prd": "# PRD\nBuild a simple web app", "plan": '{"milestones": []}'},
         dependencies=[],
         priority=5,
-        metadata={}
+        metadata={},
     )
-    
+
     # Execute in mock mode (default)
     result = await agent.execute(task)
-    
+
     assert result.success is True
     assert result.agent_id == "architect_agent"
     assert result.task_id == "task_123"
     assert "architecture" in result.output
     assert "artifact_id" in result.output
     assert len(result.artifacts) > 0
-    
+
     # Verify architecture structure in mock mode
     architecture = result.output["architecture"]
     assert "system_overview" in architecture
@@ -128,7 +124,7 @@ async def test_architect_agent_execute_mock_mode(tmp_path):
     assert "data_flows" in architecture
     assert "technology_stack" in architecture
     assert "deployment" in architecture
-    
+
     # Verify components
     assert len(architecture["components"]) > 0
     comp = architecture["components"][0]
@@ -143,18 +139,18 @@ async def test_architect_agent_missing_prd(tmp_path):
     """Test ArchitectAgent fails gracefully when PRD is missing."""
     ctx = _make_context(tmp_path)
     agent = ArchitectAgent(ctx)
-    
+
     task = AgentTask(
         task_id="task_456",
         task_type="architecture_design",
         input_data={},  # Missing PRD
         dependencies=[],
         priority=5,
-        metadata={}
+        metadata={},
     )
-    
+
     result = await agent.execute(task)
-    
+
     assert result.success is False
     assert "Missing PRD content" in result.error
 
@@ -165,21 +161,18 @@ async def test_architect_agent_saves_artifact(tmp_path):
     ctx = _make_context(tmp_path)
     pool = ctx.db_pool
     agent = ArchitectAgent(ctx)
-    
+
     task = AgentTask(
         task_id="task_789",
         task_type="architecture_design",
-        input_data={
-            "prd": "# PRD\nBuild an API service",
-            "plan": ""
-        },
+        input_data={"prd": "# PRD\nBuild an API service", "plan": ""},
         dependencies=[],
         priority=5,
-        metadata={}
+        metadata={},
     )
-    
+
     result = await agent.execute(task)
-    
+
     assert result.success is True
     assert len(pool.artifacts) > 0
 
@@ -189,21 +182,18 @@ async def test_architect_agent_metadata(tmp_path):
     """Test that ArchitectAgent includes metadata in result."""
     ctx = _make_context(tmp_path)
     agent = ArchitectAgent(ctx)
-    
+
     task = AgentTask(
         task_id="task_999",
         task_type="architecture_design",
-        input_data={
-            "prd": "# PRD\nShort PRD",
-            "plan": '{"milestones": [{"id": "m1"}]}'
-        },
+        input_data={"prd": "# PRD\nShort PRD", "plan": '{"milestones": [{"id": "m1"}]}'},
         dependencies=[],
         priority=5,
-        metadata={}
+        metadata={},
     )
-    
+
     result = await agent.execute(task)
-    
+
     assert result.success is True
     assert result.metadata is not None
     assert "component_count" in result.metadata
@@ -214,9 +204,9 @@ async def test_architect_agent_metadata(tmp_path):
 def test_architect_agent_in_worker_registry():
     """Test that ArchitectAgent is registered in worker."""
     from src.workers.worker import AgentWorker
-    
+
     worker = AgentWorker()
     registry = worker.agent_registry
-    
+
     assert "architect_agent" in registry
     assert registry["architect_agent"] == ArchitectAgent

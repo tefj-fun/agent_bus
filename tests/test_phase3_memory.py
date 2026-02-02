@@ -31,7 +31,7 @@ class FakePool:
                 # Only JSON-decode metadata when it looks like JSON.
                 if isinstance(metadata, str):
                     s = metadata.strip()
-                    if s.startswith('{') or s.startswith('['):
+                    if s.startswith("{") or s.startswith("["):
                         metadata = json.loads(metadata)
                     else:
                         # treat as plain string (not JSON)

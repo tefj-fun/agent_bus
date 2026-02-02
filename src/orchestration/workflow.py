@@ -29,63 +29,27 @@ class WorkflowStateMachine:
 
     # Define valid transitions between stages
     TRANSITIONS: Dict[WorkflowStage, List[WorkflowStage]] = {
-        WorkflowStage.INITIALIZATION: [
-            WorkflowStage.PRD_GENERATION,
-            WorkflowStage.FAILED
-        ],
-        WorkflowStage.PRD_GENERATION: [
-            WorkflowStage.WAITING_FOR_APPROVAL,
-            WorkflowStage.FAILED
-        ],
-        WorkflowStage.WAITING_FOR_APPROVAL: [
-            WorkflowStage.PLAN_GENERATION,
-            WorkflowStage.FAILED
-        ],
-        WorkflowStage.PLAN_GENERATION: [
-            WorkflowStage.ARCHITECTURE_DESIGN,
-            WorkflowStage.FAILED
-        ],
-        WorkflowStage.ARCHITECTURE_DESIGN: [
-            WorkflowStage.UIUX_DESIGN,
-            WorkflowStage.FAILED
-        ],
-        WorkflowStage.UIUX_DESIGN: [
-            WorkflowStage.DEVELOPMENT,
-            WorkflowStage.FAILED
-        ],
+        WorkflowStage.INITIALIZATION: [WorkflowStage.PRD_GENERATION, WorkflowStage.FAILED],
+        WorkflowStage.PRD_GENERATION: [WorkflowStage.WAITING_FOR_APPROVAL, WorkflowStage.FAILED],
+        WorkflowStage.WAITING_FOR_APPROVAL: [WorkflowStage.PLAN_GENERATION, WorkflowStage.FAILED],
+        WorkflowStage.PLAN_GENERATION: [WorkflowStage.ARCHITECTURE_DESIGN, WorkflowStage.FAILED],
+        WorkflowStage.ARCHITECTURE_DESIGN: [WorkflowStage.UIUX_DESIGN, WorkflowStage.FAILED],
+        WorkflowStage.UIUX_DESIGN: [WorkflowStage.DEVELOPMENT, WorkflowStage.FAILED],
         WorkflowStage.DEVELOPMENT: [
             WorkflowStage.QA_TESTING,
             WorkflowStage.SECURITY_REVIEW,
             WorkflowStage.DOCUMENTATION,
             WorkflowStage.SUPPORT_DOCS,
-            WorkflowStage.FAILED
+            WorkflowStage.FAILED,
         ],
-        WorkflowStage.QA_TESTING: [
-            WorkflowStage.SECURITY_REVIEW,
-            WorkflowStage.FAILED
-        ],
-        WorkflowStage.SECURITY_REVIEW: [
-            WorkflowStage.PM_REVIEW,
-            WorkflowStage.FAILED
-        ],
-        WorkflowStage.DOCUMENTATION: [
-            WorkflowStage.PM_REVIEW,
-            WorkflowStage.FAILED
-        ],
-        WorkflowStage.SUPPORT_DOCS: [
-            WorkflowStage.PM_REVIEW,
-            WorkflowStage.FAILED
-        ],
-        WorkflowStage.PM_REVIEW: [
-            WorkflowStage.DELIVERY,
-            WorkflowStage.FAILED
-        ],
-        WorkflowStage.DELIVERY: [
-            WorkflowStage.COMPLETED,
-            WorkflowStage.FAILED
-        ],
+        WorkflowStage.QA_TESTING: [WorkflowStage.SECURITY_REVIEW, WorkflowStage.FAILED],
+        WorkflowStage.SECURITY_REVIEW: [WorkflowStage.PM_REVIEW, WorkflowStage.FAILED],
+        WorkflowStage.DOCUMENTATION: [WorkflowStage.PM_REVIEW, WorkflowStage.FAILED],
+        WorkflowStage.SUPPORT_DOCS: [WorkflowStage.PM_REVIEW, WorkflowStage.FAILED],
+        WorkflowStage.PM_REVIEW: [WorkflowStage.DELIVERY, WorkflowStage.FAILED],
+        WorkflowStage.DELIVERY: [WorkflowStage.COMPLETED, WorkflowStage.FAILED],
         WorkflowStage.COMPLETED: [],
-        WorkflowStage.FAILED: []
+        WorkflowStage.FAILED: [],
     }
 
     # Map stages to required agents
@@ -108,7 +72,7 @@ class WorkflowStateMachine:
         WorkflowStage.QA_TESTING,
         WorkflowStage.SECURITY_REVIEW,
         WorkflowStage.DOCUMENTATION,
-        WorkflowStage.SUPPORT_DOCS
+        WorkflowStage.SUPPORT_DOCS,
     }
 
     def __init__(self):
@@ -178,6 +142,6 @@ class WorkflowStateMachine:
                 WorkflowStage.QA_TESTING,
                 WorkflowStage.SECURITY_REVIEW,
                 WorkflowStage.DOCUMENTATION,
-                WorkflowStage.SUPPORT_DOCS
+                WorkflowStage.SUPPORT_DOCS,
             ]
         return []

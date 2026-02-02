@@ -8,11 +8,8 @@ from pydantic import ValidationError
 
 from src.skills import (
     SkillRegistry,
-    SkillMetadata,
     SkillMetadataSchema,
     SkillsRegistrySchema,
-    SkillRegistryError,
-    SkillValidationError,
     EXAMPLE_SKILL_METADATA,
 )
 
@@ -33,7 +30,7 @@ class TestSkillMetadataSchema:
             "name": "test-skill",
             "version": "1.0.0",
             "description": "A test skill",
-            "author": "Test Author"
+            "author": "Test Author",
         }
         schema = SkillMetadataSchema(**minimal)
         assert schema.name == "test-skill"
@@ -46,7 +43,7 @@ class TestSkillMetadataSchema:
             "name": "test-skill",
             "version": "not-a-version",
             "description": "Test",
-            "author": "Test"
+            "author": "Test",
         }
         with pytest.raises(ValidationError) as exc_info:
             SkillMetadataSchema(**invalid)
@@ -58,7 +55,7 @@ class TestSkillMetadataSchema:
             "name": "Test-Skill",
             "version": "1.0.0",
             "description": "Test",
-            "author": "Test"
+            "author": "Test",
         }
         with pytest.raises(ValidationError) as exc_info:
             SkillMetadataSchema(**invalid)
@@ -70,7 +67,7 @@ class TestSkillMetadataSchema:
             "name": "test@skill!",
             "version": "1.0.0",
             "description": "Test",
-            "author": "Test"
+            "author": "Test",
         }
         with pytest.raises(ValidationError) as exc_info:
             SkillMetadataSchema(**invalid)
@@ -78,12 +75,7 @@ class TestSkillMetadataSchema:
 
     def test_empty_skill_name(self):
         """Test that empty skill name fails validation."""
-        invalid = {
-            "name": "",
-            "version": "1.0.0",
-            "description": "Test",
-            "author": "Test"
-        }
+        invalid = {"name": "", "version": "1.0.0", "description": "Test", "author": "Test"}
         with pytest.raises(ValidationError) as exc_info:
             SkillMetadataSchema(**invalid)
         assert "cannot be empty" in str(exc_info.value)
@@ -95,7 +87,7 @@ class TestSkillMetadataSchema:
             "version": "1.0.0",
             "description": "Test",
             "author": "Test",
-            "min_python_version": "not-a-version"
+            "min_python_version": "not-a-version",
         }
         with pytest.raises(ValidationError) as exc_info:
             SkillMetadataSchema(**invalid)
@@ -108,7 +100,7 @@ class TestSkillMetadataSchema:
             "version": "1.0.0",
             "description": "Test",
             "author": "Test",
-            "unknown_field": "value"
+            "unknown_field": "value",
         }
         with pytest.raises(ValidationError) as exc_info:
             SkillMetadataSchema(**invalid)
@@ -127,10 +119,10 @@ class TestSkillsRegistrySchema:
                     "name": "test-skill",
                     "version": "1.0.0",
                     "description": "Test",
-                    "author": "Test"
+                    "author": "Test",
                 }
             },
-            "updated_at": "2026-02-01T12:00:00Z"
+            "updated_at": "2026-02-01T12:00:00Z",
         }
         schema = SkillsRegistrySchema(**registry)
         assert schema.version == "1.0.0"
@@ -138,10 +130,7 @@ class TestSkillsRegistrySchema:
 
     def test_empty_registry(self):
         """Test empty registry is valid."""
-        registry = {
-            "version": "1.0.0",
-            "skills": {}
-        }
+        registry = {"version": "1.0.0", "skills": {}}
         schema = SkillsRegistrySchema(**registry)
         assert schema.skills == {}
 
@@ -162,31 +151,27 @@ class TestSkillRegistry:
             # Create skill directory with skill.json
             skill_dir = Path(tmpdir) / "test-skill"
             skill_dir.mkdir()
-            
+
             skill_json = {
                 "name": "test-skill",
                 "version": "1.0.0",
                 "description": "A test skill",
                 "author": "Test Author",
-                "capabilities": [
-                    {"name": "testing", "description": "Testing capability"}
-                ],
-                "required_tools": [
-                    {"name": "shell", "required": True}
-                ],
-                "tags": ["test"]
+                "capabilities": [{"name": "testing", "description": "Testing capability"}],
+                "required_tools": [{"name": "shell", "required": True}],
+                "tags": ["test"],
             }
-            
+
             with open(skill_dir / "skill.json", "w") as f:
                 json.dump(skill_json, f)
-            
+
             # Create entry point
             with open(skill_dir / "skill.md", "w") as f:
                 f.write("# Test Skill")
-            
+
             # Load registry
             registry = SkillRegistry(tmpdir)
-            
+
             # Verify skill loaded
             assert registry.has_skill("test-skill")
             skill = registry.get_skill("test-skill")
@@ -203,13 +188,13 @@ class TestSkillRegistry:
             # Create skill directory without skill.json
             skill_dir = Path(tmpdir) / "fallback-skill"
             skill_dir.mkdir()
-            
+
             with open(skill_dir / "README.md", "w") as f:
                 f.write("# Fallback Skill")
-            
+
             # Load registry
             registry = SkillRegistry(tmpdir)
-            
+
             # Verify skill loaded with defaults
             assert registry.has_skill("fallback-skill")
             skill = registry.get_skill("fallback-skill")
@@ -222,11 +207,11 @@ class TestSkillRegistry:
         with tempfile.TemporaryDirectory() as tmpdir:
             skill_dir = Path(tmpdir) / "invalid-skill"
             skill_dir.mkdir()
-            
+
             # Write invalid JSON
             with open(skill_dir / "skill.json", "w") as f:
                 f.write("{invalid json")
-            
+
             # Registry should load but skip this skill
             registry = SkillRegistry(tmpdir)
             assert not registry.has_skill("invalid-skill")
@@ -236,17 +221,17 @@ class TestSkillRegistry:
         with tempfile.TemporaryDirectory() as tmpdir:
             skill_dir = Path(tmpdir) / "invalid-schema"
             skill_dir.mkdir()
-            
+
             # Write JSON with invalid schema
             invalid = {
                 "name": "Invalid@Name",
                 "version": "not-a-version",
                 "description": "Test",
-                "author": "Test"
+                "author": "Test",
             }
             with open(skill_dir / "skill.json", "w") as f:
                 json.dump(invalid, f)
-            
+
             # Registry should load but skip this skill
             registry = SkillRegistry(tmpdir)
             assert not registry.has_skill("invalid-schema")
@@ -256,22 +241,22 @@ class TestSkillRegistry:
         with tempfile.TemporaryDirectory() as tmpdir:
             skill_dir = Path(tmpdir) / "correct-name"
             skill_dir.mkdir()
-            
+
             # skill.json has different name
             skill_json = {
                 "name": "wrong-name",
                 "version": "1.0.0",
                 "description": "Test",
-                "author": "Test"
+                "author": "Test",
             }
             with open(skill_dir / "skill.json", "w") as f:
                 json.dump(skill_json, f)
-            
+
             with open(skill_dir / "skill.md", "w") as f:
                 f.write("Test")
-            
+
             registry = SkillRegistry(tmpdir)
-            
+
             # Should use directory name
             assert registry.has_skill("correct-name")
             skill = registry.get_skill("correct-name")
@@ -282,7 +267,7 @@ class TestSkillRegistry:
         with tempfile.TemporaryDirectory() as tmpdir:
             registry = SkillRegistry(tmpdir)
             assert len(registry.list_skills()) == 0
-            
+
             # Add a new skill
             skill_dir = Path(tmpdir) / "new-skill"
             skill_dir.mkdir()
@@ -290,16 +275,16 @@ class TestSkillRegistry:
                 "name": "new-skill",
                 "version": "1.0.0",
                 "description": "Test",
-                "author": "Test"
+                "author": "Test",
             }
             with open(skill_dir / "skill.json", "w") as f:
                 json.dump(skill_json, f)
             with open(skill_dir / "skill.md", "w") as f:
                 f.write("Test")
-            
+
             # Reload
             registry.reload()
-            
+
             assert registry.has_skill("new-skill")
 
     def test_save_registry(self):
@@ -312,24 +297,24 @@ class TestSkillRegistry:
                 "name": "test-skill",
                 "version": "1.0.0",
                 "description": "Test",
-                "author": "Test"
+                "author": "Test",
             }
             with open(skill_dir / "skill.json", "w") as f:
                 json.dump(skill_json, f)
             with open(skill_dir / "skill.md", "w") as f:
                 f.write("Test")
-            
+
             registry = SkillRegistry(tmpdir)
             registry.save_registry()
-            
+
             # Verify skills.json was created
             registry_file = Path(tmpdir) / "skills.json"
             assert registry_file.exists()
-            
+
             # Verify content
             with open(registry_file) as f:
                 data = json.load(f)
-            
+
             assert data["version"] == "1.0.0"
             assert "test-skill" in data["skills"]
             assert "updated_at" in data
@@ -345,15 +330,15 @@ class TestSkillRegistry:
                 "version": "1.0.0",
                 "description": "Test",
                 "author": "Test",
-                "capabilities": [{"name": "testing"}]
+                "capabilities": [{"name": "testing"}],
             }
             with open(skill_dir / "skill.json", "w") as f:
                 json.dump(skill_json, f)
             with open(skill_dir / "skill.md", "w") as f:
                 f.write("Test")
-            
+
             registry = SkillRegistry(tmpdir)
-            
+
             skills = registry.get_skills_by_capability("testing")
             assert len(skills) == 1
             assert skills[0].name == "test-skill"
@@ -369,15 +354,15 @@ class TestSkillRegistry:
                 "version": "1.0.0",
                 "description": "Test",
                 "author": "Test",
-                "tags": ["testing", "automation"]
+                "tags": ["testing", "automation"],
             }
             with open(skill_dir / "skill.json", "w") as f:
                 json.dump(skill_json, f)
             with open(skill_dir / "skill.md", "w") as f:
                 f.write("Test")
-            
+
             registry = SkillRegistry(tmpdir)
-            
+
             skills = registry.get_skills_by_tag("testing")
             assert len(skills) == 1
             assert skills[0].name == "test-skill"
@@ -387,21 +372,21 @@ class TestSkillRegistry:
         with tempfile.TemporaryDirectory() as tmpdir:
             skill_dir = Path(tmpdir) / "test-skill"
             skill_dir.mkdir()
-            
+
             skill_json = {
                 "name": "test-skill",
                 "version": "1.0.0",
                 "description": "Test",
-                "author": "Test"
+                "author": "Test",
             }
             with open(skill_dir / "skill.json", "w") as f:
                 json.dump(skill_json, f)
             with open(skill_dir / "skill.md", "w") as f:
                 f.write("Test")
-            
+
             registry = SkillRegistry(tmpdir)
             is_valid, error = registry.validate_skill_directory(skill_dir)
-            
+
             assert is_valid
             assert error is None
 
@@ -410,19 +395,19 @@ class TestSkillRegistry:
         with tempfile.TemporaryDirectory() as tmpdir:
             skill_dir = Path(tmpdir) / "test-skill"
             skill_dir.mkdir()
-            
+
             skill_json = {
                 "name": "test-skill",
                 "version": "1.0.0",
                 "description": "Test",
-                "author": "Test"
+                "author": "Test",
             }
             with open(skill_dir / "skill.json", "w") as f:
                 json.dump(skill_json, f)
-            
+
             registry = SkillRegistry(tmpdir)
             is_valid, error = registry.validate_skill_directory(skill_dir)
-            
+
             assert not is_valid
             assert "No entry point file found" in error
 
@@ -431,15 +416,15 @@ class TestSkillRegistry:
         with tempfile.TemporaryDirectory() as tmpdir:
             skill_dir = Path(tmpdir) / "test-skill"
             skill_dir.mkdir()
-            
+
             with open(skill_dir / "skill.json", "w") as f:
                 f.write("{invalid}")
             with open(skill_dir / "skill.md", "w") as f:
                 f.write("Test")
-            
+
             registry = SkillRegistry(tmpdir)
             is_valid, error = registry.validate_skill_directory(skill_dir)
-            
+
             assert not is_valid
             assert "Invalid skill.json" in error
 
@@ -449,7 +434,7 @@ class TestSkillRegistry:
             # Create hidden directory
             hidden_dir = Path(tmpdir) / ".hidden"
             hidden_dir.mkdir()
-            
+
             registry = SkillRegistry(tmpdir)
             assert not registry.has_skill(".hidden")
 
@@ -458,6 +443,6 @@ class TestSkillRegistry:
         with tempfile.TemporaryDirectory() as tmpdir:
             cache_dir = Path(tmpdir) / "__pycache__"
             cache_dir.mkdir()
-            
+
             registry = SkillRegistry(tmpdir)
             assert not registry.has_skill("__pycache__")

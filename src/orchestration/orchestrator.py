@@ -11,7 +11,6 @@ This ensures jobs continue even if the API process restarts.
 """
 
 import asyncio
-from typing import Optional
 
 from .master_agent import MasterAgent
 from ..infrastructure.redis_client import redis_client
@@ -35,16 +34,22 @@ class OrchestratorService:
         await redis_client.connect()
         await postgres_client.connect()
         print(f"[Orchestrator] Connected to Redis at {settings.redis_host}:{settings.redis_port}")
-        print(f"[Orchestrator] Connected to PostgreSQL at {settings.postgres_host}:{settings.postgres_port}")
+        print(
+            f"[Orchestrator] Connected to PostgreSQL at {settings.postgres_host}:{settings.postgres_port}"
+        )
 
         while True:
             try:
                 # Prefer newly queued jobs; if none, pick up approved jobs (plan stage)
-                job = await postgres_client.claim_next_job(from_status='queued', to_status='orchestrating')
-                job_kind = 'queued'
+                job = await postgres_client.claim_next_job(
+                    from_status="queued", to_status="orchestrating"
+                )
+                job_kind = "queued"
                 if not job:
-                    job = await postgres_client.claim_next_job(from_status='approved', to_status='orchestrating_plan')
-                    job_kind = 'approved'
+                    job = await postgres_client.claim_next_job(
+                        from_status="approved", to_status="orchestrating_plan"
+                    )
+                    job_kind = "approved"
 
                 if not job:
                     await asyncio.sleep(self.poll_secs)
@@ -58,20 +63,23 @@ class OrchestratorService:
                 if isinstance(metadata, str):
                     try:
                         import json
+
                         metadata = json.loads(metadata)
                     except Exception:
                         metadata = {}
 
-                if job_kind == 'approved':
+                if job_kind == "approved":
                     print(f"[Orchestrator] Claimed APPROVED job {job_id} project={project_id}")
                     await self.master.continue_after_approval(job_id)
                     continue
 
                 # queued job: run PRD stage
-                requirements = metadata.get('requirements') if isinstance(metadata, dict) else None
+                requirements = metadata.get("requirements") if isinstance(metadata, dict) else None
                 if not requirements:
                     print(f"[Orchestrator] Job {job_id} missing requirements; failing")
-                    await postgres_client.update_job_status(job_id, status="failed", workflow_stage="failed")
+                    await postgres_client.update_job_status(
+                        job_id, status="failed", workflow_stage="failed"
+                    )
                     continue
 
                 print(f"[Orchestrator] Claimed job {job_id} project={project_id}")
