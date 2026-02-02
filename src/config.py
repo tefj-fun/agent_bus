@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     # API
     api_host: str = Field(default="0.0.0.0", env="API_HOST")
     api_port: int = Field(default=8000, env="API_PORT")
+    api_base_url: str = Field(
+        default="/", env="API_BASE_URL"
+    )  # Base URL for Swagger UI (use "/" for relative paths)
 
     # LLM
     llm_mode: str = Field(default="real", env="LLM_MODE")  # real|mock

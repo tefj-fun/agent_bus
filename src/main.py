@@ -48,11 +48,13 @@ async def lifespan(app: FastAPI):
 
 
 # Create FastAPI app
+# Configure servers for Swagger UI - uses relative path by default so it works on any host
 app = FastAPI(
     title="Agent Bus API",
     description="Multi-agent SWE engineering system",
     version="0.1.0",
     lifespan=lifespan,
+    servers=[{"url": settings.api_base_url, "description": "API Server"}],
 )
 
 # Setup standardized error handlers
