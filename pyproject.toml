@@ -71,3 +71,7 @@ disallow_untyped_defs = true
 asyncio_mode = "auto"
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
+markers = [
+    "slow: marks tests as slow (deselected with '-m \"not slow\"')",
+    "skipif: skip tests conditionally",
+]
