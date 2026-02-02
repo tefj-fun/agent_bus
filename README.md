@@ -236,9 +236,11 @@ agent_bus/
 │   ├── infrastructure/      # Redis, PostgreSQL, LLM clients
 │   ├── memory/              # ChromaDB store, embeddings, retention, evaluation
 │   ├── skills/              # Skills manager, registry, allowlist
+│   ├── storage/             # Artifact storage (file-based outputs)
 │   └── api/
 │       └── routes/          # Projects, patterns, skills, metrics, events, auth
 ├── skills/                  # Local Claude Skills directory
+├── outputs/                 # Generated artifacts (portable, gitignored)
 ├── scripts/                 # Release, seed templates, smoke tests
 ├── tests/                   # Unit + integration test suites
 ├── docs/                    # Architecture, skills, release, API docs
@@ -471,6 +473,8 @@ Environment variables (see `.env.example`):
 - `REDIS_HOST/PORT` - Redis connection
 - `POSTGRES_HOST/PORT` - PostgreSQL connection
 - `SKILLS_DIRECTORY` - Path to skills directory
+- `ARTIFACT_STORAGE_BACKEND` - `file` (portable) or `postgres` (legacy)
+- `ARTIFACT_OUTPUT_DIR` - Directory for file-based outputs (default: `./outputs`)
 
 ## License
 
@@ -607,14 +611,28 @@ curl -N http://localhost:8000/api/events/stream
 
 Once complete, download all deliverables:
 ```bash
-# Get PRD
+# Get individual artifacts
 curl http://localhost:8000/api/projects/job_abc123/prd > prd.md
-
-# Get Architecture
 curl http://localhost:8000/api/projects/job_abc123/architecture > architecture.md
-
-# Get Plan
 curl http://localhost:8000/api/projects/job_abc123/plan > plan.json
+
+# Download ALL artifacts as a ZIP bundle (recommended)
+curl http://localhost:8000/api/artifacts/job/job_abc123/export > artifacts.zip
+
+# Or copy directly from the outputs directory
+cp -r ./outputs/job_abc123 /path/to/destination
+```
+
+**Output Directory Structure** (when using file-based storage):
+```
+outputs/
+└── job_abc123/
+    ├── manifest.json      # Index of all artifacts
+    ├── prd.md            # Product Requirements Document
+    ├── architecture.md   # System architecture
+    ├── development.md    # Development plan
+    ├── qa.md             # QA strategy
+    └── ...
 ```
 
 ### Memory System Usage

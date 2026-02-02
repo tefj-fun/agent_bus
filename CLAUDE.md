@@ -68,6 +68,10 @@ agent_bus/
 │   │   ├── manager.py           # Skill loading, caching, git installation
 │   │   └── allowlist.py         # Skill capability allowlisting
 │   │
+│   ├── storage/                  # Artifact storage system
+│   │   ├── __init__.py          # Module exports
+│   │   └── artifact_store.py    # FileArtifactStore for portable outputs
+│   │
 │   ├── workers/                 # Task execution
 │   │   └── worker.py            # Worker process for agent task execution
 │   │
@@ -77,6 +81,8 @@ agent_bus/
 │
 ├── skills/                       # Local Claude Skills directory
 │   └── weather-toolkit/         # Reference implementation example
+│
+├── outputs/                      # Generated artifacts (portable, gitignored)
 │
 ├── tests/                        # Comprehensive test suite (30+ test files)
 ├── scripts/                     # Automation scripts
@@ -295,6 +301,8 @@ Key environment variables (see `.env.example` for full list):
 | `POSTGRES_PASSWORD` | PostgreSQL password | (required) |
 | `CHROMA_PERSIST_DIRECTORY` | ChromaDB data path | `./data/chroma` |
 | `SKILLS_DIRECTORY` | Skills directory path | `./skills` |
+| `ARTIFACT_STORAGE_BACKEND` | `file` (portable) or `postgres` (legacy) | `file` |
+| `ARTIFACT_OUTPUT_DIR` | Directory for file-based artifact storage | `./outputs` |
 
 ## API Endpoints
 
@@ -310,6 +318,9 @@ Key environment variables (see `.env.example` for full list):
 | `POST` | `/api/patterns/store` | Store a pattern |
 | `POST` | `/api/patterns/query` | Search patterns |
 | `POST` | `/api/patterns/suggest` | Get template suggestions |
+| `GET` | `/api/artifacts/jobs` | List all jobs with artifacts |
+| `GET` | `/api/artifacts/job/{job_id}` | List artifacts for a job |
+| `GET` | `/api/artifacts/job/{job_id}/export` | Download ZIP bundle of all outputs |
 | `GET` | `/api/events/stream` | SSE event stream |
 | `GET` | `/api/metrics` | Prometheus metrics |
 
