@@ -12,6 +12,7 @@ from .api.routes import ui, ui_jobs
 from .api.routes import ui_prd
 from .api.routes import ui_prd_actions
 from .api.routes import ui_plan
+from .api.routes import api_documents
 from .api.error_handling import setup_error_handlers
 from .config import settings
 
@@ -69,6 +70,7 @@ app.include_router(ui_jobs.router, prefix="/ui", tags=["ui"])
 app.include_router(ui_prd.router, prefix="/ui", tags=["ui"])
 app.include_router(ui_prd_actions.router, prefix="/ui", tags=["ui"])
 app.include_router(ui_plan.router, prefix="/ui", tags=["ui"])
+app.include_router(api_documents.router, tags=["api-documents"])
 
 
 @app.get("/")
