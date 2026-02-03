@@ -1,9 +1,11 @@
 """API routes for artifact management and export."""
 
 import os
+import shutil
 import tempfile
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
 from pydantic import BaseModel
 from typing import List, Optional
 
@@ -20,9 +22,11 @@ class ArtifactInfo(BaseModel):
     id: str
     job_id: str
     type: str
+    content: Optional[str] = None
     agent_id: Optional[str] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
+    metadata: Optional[dict] = None
 
 
 class JobArtifactsResponse(BaseModel):
@@ -89,9 +93,11 @@ async def get_job_artifacts(job_id: str):
                     id=a.get("id", ""),
                     job_id=job_id,
                     type=a.get("type", ""),
+                    content=a.get("content"),
                     agent_id=a.get("agent_id"),
                     created_at=a.get("created_at"),
                     updated_at=a.get("updated_at"),
+                    metadata=a.get("metadata"),
                 )
                 for a in artifacts
             ],
@@ -160,19 +166,20 @@ async def export_job_artifacts(job_id: str):
         if not isinstance(store, FileArtifactStore):
             raise HTTPException(status_code=500, detail="Invalid store type")
 
-        # Create temp directory for the zip file
-        with tempfile.TemporaryDirectory() as tmpdir:
-            zip_path = os.path.join(tmpdir, f"{job_id}.zip")
-            await store.create_bundle(job_id, zip_path)
+        # Create temp directory for the zip file and clean it up after response is sent
+        tmpdir = tempfile.mkdtemp(prefix="agent_bus_export_")
+        zip_path = os.path.join(tmpdir, f"{job_id}.zip")
+        await store.create_bundle(job_id, zip_path)
 
-            if not os.path.exists(zip_path):
-                raise HTTPException(status_code=500, detail="Failed to create export bundle")
+        if not os.path.exists(zip_path):
+            raise HTTPException(status_code=500, detail="Failed to create export bundle")
 
-            return FileResponse(
-                path=zip_path,
-                filename=f"{job_id}_artifacts.zip",
-                media_type="application/zip",
-            )
+        return FileResponse(
+            path=zip_path,
+            filename=f"{job_id}_artifacts.zip",
+            media_type="application/zip",
+            background=BackgroundTask(shutil.rmtree, tmpdir, ignore_errors=True),
+        )
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"No artifacts found for job {job_id}")
     except HTTPException:

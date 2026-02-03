@@ -4,8 +4,10 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from typing import Any, Dict, Optional
 
-from ...memory.chroma_store import ChromaDBStore
 from ...config import settings
+from ...infrastructure.postgres_client import postgres_client
+from ...memory import create_memory_store, HybridMemoryStore
+from ...memory.base import MemoryStoreBase
 
 
 router = APIRouter(prefix="/api/patterns", tags=["patterns"])
@@ -37,20 +39,42 @@ class SuggestTemplatesRequest(BaseModel):
     min_score: float = Field(0.5, ge=0.0, le=1.0, description="Minimum combined score")
 
 
-# Dependency to get ChromaDB store
-def get_chroma_store() -> ChromaDBStore:
-    """Get ChromaDB store instance."""
-    return ChromaDBStore(
-        collection_name="agent_bus_patterns",
-        persist_directory=settings.chroma_persist_directory,
-        auto_embed=True,
-    )
+_memory_store: Optional[MemoryStoreBase] = None
+_memory_store_synced: bool = False
+
+
+async def get_memory_store() -> MemoryStoreBase:
+    """Get memory store instance (hybrid by default)."""
+    global _memory_store, _memory_store_synced
+    if _memory_store is None:
+        pool = await postgres_client.get_pool()
+        _memory_store = create_memory_store(
+            settings.memory_backend,
+            db_pool=pool,
+            pattern_type_default="general",
+            collection_name=settings.chroma_collection_name,
+            persist_directory=settings.chroma_persist_directory,
+            host=settings.chroma_host,
+            port=settings.chroma_port,
+        )
+
+    if (
+        settings.memory_auto_sync
+        and not _memory_store_synced
+        and isinstance(_memory_store, HybridMemoryStore)
+    ):
+        try:
+            await _memory_store.sync_from_postgres()
+        finally:
+            _memory_store_synced = True
+
+    return _memory_store
 
 
 @router.post("/store")
 async def store_pattern(
     request: StorePatternRequest,
-    store: ChromaDBStore = Depends(get_chroma_store),
+    store: MemoryStoreBase = Depends(get_memory_store),
 ):
     """
     Store a new pattern or update existing one.
@@ -96,7 +120,7 @@ async def store_pattern(
 @router.post("/query")
 async def query_patterns(
     request: QueryPatternsRequest,
-    store: ChromaDBStore = Depends(get_chroma_store),
+    store: MemoryStoreBase = Depends(get_memory_store),
 ):
     """
     Query for similar patterns using semantic search.
@@ -108,10 +132,11 @@ async def query_patterns(
         List of similar patterns
     """
     try:
-        results = await store.query_similar(
+        filters = {"pattern_type": request.pattern_type} if request.pattern_type else None
+        results = await store.search(
             query=request.query,
             top_k=request.top_k,
-            pattern_type=request.pattern_type,
+            filters=filters,
         )
 
         return {
@@ -129,7 +154,7 @@ async def query_patterns(
 @router.post("/suggest")
 async def suggest_templates(
     request: SuggestTemplatesRequest,
-    store: ChromaDBStore = Depends(get_chroma_store),
+    store: MemoryStoreBase = Depends(get_memory_store),
 ):
     """
     Suggest templates based on requirements.
@@ -142,10 +167,10 @@ async def suggest_templates(
     """
     try:
         # Query for similar templates
-        candidates = await store.query_similar(
+        candidates = await store.search(
             query=request.requirements,
             top_k=request.top_k * 2,
-            pattern_type="template",
+            filters={"pattern_type": "template"},
         )
 
         # Rank by combined score
@@ -188,7 +213,7 @@ async def suggest_templates(
 
 
 @router.get("/types")
-async def list_pattern_types(store: ChromaDBStore = Depends(get_chroma_store)):
+async def list_pattern_types(store: MemoryStoreBase = Depends(get_memory_store)):
     """
     List available pattern types with counts.
 
@@ -222,10 +247,38 @@ async def list_pattern_types(store: ChromaDBStore = Depends(get_chroma_store)):
         raise HTTPException(status_code=500, detail=str(exc))
 
 
+@router.get("/health")
+async def patterns_health(store: MemoryStoreBase = Depends(get_memory_store)):
+    """
+    Get health status of pattern storage system.
+
+    Returns:
+        Health information
+    """
+    try:
+        health = await store.health()
+        return {
+            "status": "success",
+            **health,
+        }
+
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.post("/sync")
+async def sync_patterns(store: MemoryStoreBase = Depends(get_memory_store)):
+    """Backfill vector index from Postgres memory_patterns (hybrid backend only)."""
+    if hasattr(store, "sync_from_postgres"):
+        migrated = await store.sync_from_postgres()
+        return {"status": "success", "migrated": migrated}
+    raise HTTPException(status_code=400, detail="Sync not supported for this backend")
+
+
 @router.post("/{pattern_id}/increment-usage")
 async def increment_usage(
     pattern_id: str,
-    store: ChromaDBStore = Depends(get_chroma_store),
+    store: MemoryStoreBase = Depends(get_memory_store),
 ):
     """
     Increment usage count for a pattern.
@@ -238,7 +291,7 @@ async def increment_usage(
     """
     try:
         # Get document
-        doc = await store.get_document(pattern_id)
+        doc = await store.retrieve(pattern_id)
         if not doc:
             raise HTTPException(status_code=404, detail=f"Pattern {pattern_id} not found")
 
@@ -265,7 +318,7 @@ async def increment_usage(
 @router.get("/{pattern_id}")
 async def get_pattern(
     pattern_id: str,
-    store: ChromaDBStore = Depends(get_chroma_store),
+    store: MemoryStoreBase = Depends(get_memory_store),
 ):
     """
     Get a specific pattern by ID.
@@ -277,7 +330,7 @@ async def get_pattern(
         Pattern data
     """
     try:
-        doc = await store.get_document(pattern_id)
+        doc = await store.retrieve(pattern_id)
         if not doc:
             raise HTTPException(status_code=404, detail=f"Pattern {pattern_id} not found")
 
@@ -295,7 +348,7 @@ async def get_pattern(
 @router.delete("/{pattern_id}")
 async def delete_pattern(
     pattern_id: str,
-    store: ChromaDBStore = Depends(get_chroma_store),
+    store: MemoryStoreBase = Depends(get_memory_store),
 ):
     """
     Delete a pattern.
@@ -307,7 +360,7 @@ async def delete_pattern(
         Deletion status
     """
     try:
-        success = await store.delete_document(pattern_id)
+        success = await store.delete(pattern_id)
         if not success:
             raise HTTPException(status_code=404, detail=f"Pattern {pattern_id} not found")
 
@@ -319,24 +372,5 @@ async def delete_pattern(
 
     except HTTPException:
         raise
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
-
-
-@router.get("/health")
-async def patterns_health(store: ChromaDBStore = Depends(get_chroma_store)):
-    """
-    Get health status of pattern storage system.
-
-    Returns:
-        Health information
-    """
-    try:
-        health = await store.health()
-        return {
-            "status": "success",
-            **health,
-        }
-
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))

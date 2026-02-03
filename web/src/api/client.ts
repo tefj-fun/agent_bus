@@ -75,15 +75,33 @@ export const api = {
 
   async getArtifacts(jobId: string) {
     const response = await fetch(`${API_BASE}/artifacts/job/${jobId}`);
-    return handleResponse<{
+    const data = await handleResponse<{
       artifacts: Array<{
-        artifact_id: string;
-        artifact_type: string;
-        content: string;
-        created_at: string;
+        artifact_id?: string;
+        artifact_type?: string;
+        id?: string;
+        type?: string;
+        content?: string;
+        created_at?: string;
+        updated_at?: string;
         metadata?: Record<string, unknown>;
       }>;
     }>(response);
+    const normalizeType = (type?: string) => {
+      if (!type) return 'unknown';
+      if (type === 'ui_ux') return 'uiux';
+      if (type === 'support_docs') return 'support';
+      return type;
+    };
+    return {
+      artifacts: (data.artifacts || []).map((artifact) => ({
+        artifact_id: artifact.artifact_id ?? artifact.id ?? '',
+        artifact_type: normalizeType(artifact.artifact_type ?? artifact.type),
+        content: artifact.content ?? '',
+        created_at: artifact.created_at ?? artifact.updated_at ?? '',
+        metadata: artifact.metadata,
+      })),
+    };
   },
 
   async approvePrd(jobId: string, notes?: string) {

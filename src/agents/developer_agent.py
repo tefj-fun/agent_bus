@@ -1,4 +1,6 @@
 """Developer Agent - Creates code structure from UI/UX design with TDD approach."""
+from __future__ import annotations
+
 
 import json
 from typing import Any, Dict
@@ -197,7 +199,10 @@ class DeveloperAgent(BaseAgent):
                 development_content = json.dumps(development_payload, indent=2)
             else:
                 response_text = await self.query_llm(
-                    prompt=user_prompt, system=system_prompt, thinking_budget=2048, max_tokens=8192
+                    prompt=user_prompt,
+                    system=system_prompt,
+                    thinking_budget=2048,
+                    max_tokens=settings.anthropic_max_tokens,
                 )
 
                 # Try to parse as JSON, fallback to raw text

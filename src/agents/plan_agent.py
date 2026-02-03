@@ -1,4 +1,6 @@
 """Plan Agent - Generates project plans from PRDs."""
+from __future__ import annotations
+
 
 import json
 from typing import Any, Dict
@@ -108,7 +110,7 @@ class PlanAgent(BaseAgent):
                 prompt=user_prompt,
                 system=system_prompt,
                 thinking_budget=1536,
-                max_tokens=4096,
+                max_tokens=settings.anthropic_max_tokens,
             )
 
         plan_payload: Dict[str, Any]

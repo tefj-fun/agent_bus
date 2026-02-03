@@ -1,4 +1,6 @@
 """Agent registry exports."""
+from __future__ import annotations
+
 
 from .base import BaseAgent, AgentContext, AgentResult, AgentTask
 from .prd_agent import PRDAgent

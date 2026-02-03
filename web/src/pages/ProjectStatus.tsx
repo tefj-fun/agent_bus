@@ -36,6 +36,7 @@ export function ProjectStatus() {
   // Refresh job data when events arrive
   const handleEvent = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['job', jobId] });
+    queryClient.invalidateQueries({ queryKey: ['artifacts', jobId] });
   }, [queryClient, jobId]);
 
   const { events, connected, error: sseError } = useEventStream({
@@ -45,7 +46,7 @@ export function ProjectStatus() {
 
   const isCompleted = job?.status === 'completed';
   const isFailed = job?.status === 'failed';
-  const isWaitingApproval = job?.status === 'waiting_approval';
+  const isWaitingApproval = job?.status === 'waiting_for_approval';
   const isActive = !isCompleted && !isFailed;
 
   const currentStage = (job?.stage || 'initialization') as WorkflowStage;
@@ -316,7 +317,7 @@ function StatusBadge({ status }: { status: string }) {
   const variants: Record<string, { variant: 'success' | 'warning' | 'error' | 'info' | 'default'; dot: boolean; pulse: boolean }> = {
     queued: { variant: 'default', dot: true, pulse: false },
     running: { variant: 'info', dot: true, pulse: true },
-    waiting_approval: { variant: 'warning', dot: true, pulse: true },
+    waiting_for_approval: { variant: 'warning', dot: true, pulse: true },
     completed: { variant: 'success', dot: false, pulse: false },
     failed: { variant: 'error', dot: false, pulse: false },
   };

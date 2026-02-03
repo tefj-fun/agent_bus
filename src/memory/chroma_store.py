@@ -9,6 +9,7 @@ import chromadb
 from chromadb.config import Settings
 
 from .embedding_generator import EmbeddingGenerator
+from .base import MemoryStoreBase
 
 
 class ChromaDBStore:
@@ -308,3 +309,88 @@ class ChromaDBStore:
         except Exception as exc:
             self.last_error = str(exc)
             raise
+
+
+class ChromaDBMemoryStore(MemoryStoreBase):
+    """MemoryStoreBase wrapper for ChromaDBStore."""
+
+    def __init__(
+        self,
+        collection_name: str = "agent_bus_patterns",
+        persist_directory: str = "./data/chroma",
+        host: Optional[str] = None,
+        port: Optional[int] = None,
+        embedding_model: str = "all-MiniLM-L6-v2",
+        auto_embed: bool = True,
+        pattern_type_default: str = "document",
+        **_kwargs,
+    ):
+        self._store = ChromaDBStore(
+            collection_name=collection_name,
+            persist_directory=persist_directory,
+            host=host,
+            port=port,
+            embedding_model=embedding_model,
+            auto_embed=auto_embed,
+        )
+        self.pattern_type_default = pattern_type_default
+        self.backend = "chromadb"
+        self.last_error: Optional[str] = None
+
+    async def store(
+        self, doc_id: str, text: str, metadata: Optional[Dict[str, Any]] = None
+    ) -> str:
+        meta = metadata or {}
+        meta.setdefault("pattern_type", self.pattern_type_default)
+        return await self._store.upsert_document(doc_id, text, meta)
+
+    async def retrieve(self, doc_id: str) -> Optional[Dict[str, Any]]:
+        return await self._store.get_document(doc_id)
+
+    async def search(
+        self, query: str, top_k: int = 5, filters: Optional[Dict[str, Any]] = None
+    ) -> List[Dict[str, Any]]:
+        pattern_type = filters.get("pattern_type") if filters else None
+        return await self._store.query_similar(
+            query=query, top_k=top_k, pattern_type=pattern_type
+        )
+
+    async def update(
+        self,
+        doc_id: str,
+        text: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> bool:
+        existing = await self.retrieve(doc_id)
+        if not existing:
+            return False
+        new_text = text if text is not None else existing.get("text", "")
+        new_meta = existing.get("metadata", {})
+        if metadata:
+            new_meta = {**new_meta, **metadata}
+        await self._store.upsert_document(doc_id, new_text, new_meta)
+        return True
+
+    async def delete(self, doc_id: str) -> bool:
+        return await self._store.delete_document(doc_id)
+
+    async def count(self, filters: Optional[Dict[str, Any]] = None) -> int:
+        # Chroma doesn't support filtered counts directly; return total
+        return await self._store.count()
+
+    async def health(self) -> Dict[str, Any]:
+        return await self._store.health()
+
+    async def clear(self, filters: Optional[Dict[str, Any]] = None) -> int:
+        try:
+            count = await self._store.count()
+            if filters and filters.get("pattern_type"):
+                self._store.collection.delete(where={"pattern_type": filters.get("pattern_type")})
+                return count
+            self._store.collection.delete(where={})
+            return count
+        except Exception:
+            return 0
+
+    async def migrate_from_postgres(self, postgres_store) -> int:
+        return await self._store.migrate_from_postgres(postgres_store)

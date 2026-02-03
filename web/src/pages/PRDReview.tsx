@@ -28,7 +28,7 @@ export function PRDReview() {
   const [showChangesDialog, setShowChangesDialog] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const isWaitingApproval = job?.status === 'waiting_approval';
+  const isWaitingApproval = job?.status === 'waiting_for_approval';
   const isLoading = jobLoading || prdLoading;
   const requirements =
     (job?.metadata as Record<string, unknown> | undefined)?.requirements;
@@ -253,7 +253,7 @@ export function PRDReview() {
                 <dd>
                   <Badge
                     variant={
-                      job?.status === 'waiting_approval'
+                      job?.status === 'waiting_for_approval'
                         ? 'warning'
                         : job?.status === 'completed'
                         ? 'success'

@@ -150,3 +150,29 @@ class MemoryStoreBase(ABC):
             Number of documents deleted
         """
         pass
+
+    async def upsert_document(
+        self,
+        doc_id: str,
+        text: str,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        """Upsert a document (store or update).
+
+        Default implementation uses retrieve + update/store.
+        """
+        existing = await self.retrieve(doc_id)
+        if existing:
+            await self.update(doc_id, text=text, metadata=metadata)
+            return doc_id
+        return await self.store(doc_id, text, metadata)
+
+    async def query_similar(
+        self,
+        query: str,
+        top_k: int = 5,
+        pattern_type: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Backward compatibility alias for search()."""
+        filters = {"pattern_type": pattern_type} if pattern_type else None
+        return await self.search(query, top_k, filters)

@@ -1,11 +1,14 @@
 """Memory Agent - Stores and retrieves project knowledge."""
+from __future__ import annotations
+
 
 import json
 import uuid
 from typing import Any, Dict
 
 from .base import BaseAgent, AgentResult, AgentTask
-from ..memory import MemoryStore
+from ..memory import create_memory_store
+from ..config import settings
 
 
 class MemoryAgent(BaseAgent):
@@ -13,7 +16,14 @@ class MemoryAgent(BaseAgent):
 
     def __init__(self, context):
         # initialize store before BaseAgent calls define_capabilities()
-        self.store = MemoryStore(db_pool=context.db_pool)
+        self.store = create_memory_store(
+            settings.memory_backend,
+            db_pool=context.db_pool,
+            collection_name=settings.chroma_collection_name,
+            persist_directory=settings.chroma_persist_directory,
+            host=settings.chroma_host,
+            port=settings.chroma_port,
+        )
         super().__init__(context)
 
     def get_agent_id(self) -> str:

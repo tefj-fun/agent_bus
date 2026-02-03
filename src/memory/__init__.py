@@ -22,6 +22,7 @@ from .base import MemoryStoreBase
 from .postgres_store import PostgresMemoryStore
 from .memory_store import InMemoryStore
 from .factory import MemoryStoreRegistry, create_memory_store
+from .hybrid_store import HybridMemoryStore
 
 # Lazy import for ChromaDB (optional dependency)
 try:
@@ -42,6 +43,7 @@ __all__ = [
     "PostgresMemoryStore",
     "InMemoryStore",
     "ChromaDBMemoryStore",  # May be None if chromadb not installed
+    "HybridMemoryStore",
     # Factory
     "MemoryStoreRegistry",
     "create_memory_store",

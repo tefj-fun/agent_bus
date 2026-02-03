@@ -25,11 +25,12 @@ export function WorkflowProgress({
     if (stage.id === 'completed') return currentStage === 'completed';
     return true;
   });
+  const uniqueStages = Array.from(new Map(baseStages.map(stage => [stage.id, stage])).values());
 
   // For display, we show a simplified set of stages
   const displayStages = compact
-    ? baseStages.filter((_, i) => i % 2 === 0 || i === baseStages.length - 1)
-    : baseStages;
+    ? uniqueStages.filter((_, i) => i % 2 === 0 || i === uniqueStages.length - 1)
+    : uniqueStages;
 
   const getStageStatus = (stage: StageInfo, _index: number): 'completed' | 'active' | 'failed' | 'pending' => {
     const stageIndex = getStageIndex(stage.id);
@@ -70,8 +71,8 @@ export function WorkflowProgress({
   }
 
   return (
-    <div className="w-full">
-      <div className="flex items-center justify-between">
+    <div className="w-full overflow-x-auto">
+      <div className="flex items-center justify-between flex-nowrap min-w-max">
         {displayStages.map((stage, i) => {
           const status = getStageStatus(stage, i);
           const isLast = i === displayStages.length - 1;

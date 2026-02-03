@@ -10,6 +10,7 @@ from typing import Optional
 from ...infrastructure.postgres_client import postgres_client
 from ...config import settings
 from ...storage.artifact_store import get_artifact_store, FileArtifactStore
+from .artifacts import export_job_artifacts as export_job_artifacts_handler
 
 
 async def _get_artifact_from_file_store(job_id: str, artifact_type: str) -> Optional[dict]:
@@ -241,6 +242,12 @@ async def delete_job(job_id: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{job_id}/export")
+async def export_job_artifacts(job_id: str):
+    """Export all artifacts for a job as a downloadable ZIP file."""
+    return await export_job_artifacts_handler(job_id)
 
 
 @router.get("/{job_id}/prd")

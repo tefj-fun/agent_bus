@@ -1,9 +1,12 @@
 """Product Manager Agent - Reviews outputs and makes product decisions."""
+from __future__ import annotations
+
 
 import json
 from typing import Any, Dict
 
 from .base import BaseAgent, AgentResult, AgentTask
+from ..config import settings
 
 
 class ProductManager(BaseAgent):
@@ -33,7 +36,7 @@ class ProductManager(BaseAgent):
                 prompt=user_prompt,
                 system=system_prompt,
                 thinking_budget=1536,
-                max_tokens=4096,
+                max_tokens=settings.anthropic_max_tokens,
             )
 
             artifact_id = await self.save_artifact(

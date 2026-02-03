@@ -9,6 +9,7 @@ import {
   Deliverables,
   Memory,
   Metrics,
+  Settings,
 } from './pages';
 
 const queryClient = new QueryClient({
@@ -45,6 +46,9 @@ function App() {
 
             {/* Metrics */}
             <Route path="/metrics" element={<Metrics />} />
+
+            {/* Settings */}
+            <Route path="/settings" element={<Settings />} />
 
             {/* Redirects for old UI routes */}
             <Route path="/ui" element={<Navigate to="/" replace />} />
