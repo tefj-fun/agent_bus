@@ -32,7 +32,24 @@ export function useEventStream({ jobId, onEvent, maxEvents = 50 }: UseEventStrea
 
     es.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data) as AgentEvent;
+        const raw = JSON.parse(event.data);
+        // Transform to AgentEvent format with unique id
+        const rawType = raw.type || 'info';
+        const errorText = raw.data?.error || raw.data?.reason;
+        const fallbackMessage = raw.data?.message || `${rawType}: ${raw.data?.stage || raw.data?.job_id || ''}`;
+        const message = (rawType === 'job_failed' || rawType === 'task_failed' || rawType === 'failed')
+          ? (errorText ? `Failed: ${errorText}` : fallbackMessage)
+          : fallbackMessage;
+
+        const data: AgentEvent = {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          type: rawType,
+          message,
+          timestamp: raw.timestamp || new Date().toISOString(),
+          agent: raw.data?.agent,
+          job_id: raw.data?.job_id,
+          metadata: raw.data,
+        };
         setEvents((prev) => {
           const newEvents = [data, ...prev].slice(0, maxEvents);
           return newEvents;

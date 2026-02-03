@@ -47,6 +47,13 @@ export const api = {
     return handleResponse<{ jobs: Job[] }>(response);
   },
 
+  async deleteJob(jobId: string) {
+    const response = await fetch(`${API_BASE}/projects/${jobId}`, {
+      method: 'DELETE',
+    });
+    return handleResponse<{ message: string }>(response);
+  },
+
   async getPrd(jobId: string) {
     const response = await fetch(`${API_BASE}/projects/${jobId}/prd`);
     return handleResponse<{
@@ -95,6 +102,13 @@ export const api = {
       body: JSON.stringify({ notes }),
     });
     return handleResponse<{ status: string; message: string }>(response);
+  },
+
+  async restartJob(jobId: string) {
+    const response = await fetch(`${API_BASE}/projects/${jobId}/restart`, {
+      method: 'POST',
+    });
+    return handleResponse<{ job_id: string; status: string }>(response);
   },
 
   // Memory / Patterns
@@ -149,8 +163,10 @@ export const api = {
 
 // SSE Event Stream
 export function createEventSource(jobId?: string): EventSource {
+  // Use direct connection to API for SSE (bypass Vite proxy which may buffer)
+  const sseBase = import.meta.env.VITE_API_URL || 'http://localhost:8000';
   const url = jobId
-    ? `${API_BASE}/events/stream?job_id=${jobId}`
-    : `${API_BASE}/events/stream`;
+    ? `${sseBase}/api/events/stream?job_id=${jobId}`
+    : `${sseBase}/api/events/stream`;
   return new EventSource(url);
 }

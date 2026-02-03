@@ -47,6 +47,9 @@ export function useArtifacts(jobId: string | undefined) {
     queryKey: ['artifacts', jobId],
     queryFn: () => api.getArtifacts(jobId!),
     enabled: !!jobId,
+    retry: false, // Don't retry if artifacts don't exist yet
+    // Return empty array on 404 (no artifacts yet)
+    throwOnError: false,
   });
 }
 
@@ -56,7 +59,21 @@ export function useCreateProject() {
   return useMutation({
     mutationFn: api.createProject,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['jobs'], exact: false });
+    },
+  });
+}
+
+export function useDeleteJob() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (jobId: string) => api.deleteJob(jobId),
+    onSuccess: (_data, jobId) => {
+      // Invalidate all job queries (including those with limit param)
+      queryClient.invalidateQueries({ queryKey: ['jobs'], exact: false });
+      // Also remove the specific job from cache
+      queryClient.removeQueries({ queryKey: ['job', jobId] });
     },
   });
 }
@@ -81,6 +98,18 @@ export function useRequestChanges(jobId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['job', jobId] });
       queryClient.invalidateQueries({ queryKey: ['prd', jobId] });
+    },
+  });
+}
+
+export function useRestartJob() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (jobId: string) => api.restartJob(jobId),
+    onSuccess: (_data, jobId) => {
+      queryClient.invalidateQueries({ queryKey: ['job', jobId] });
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
     },
   });
 }

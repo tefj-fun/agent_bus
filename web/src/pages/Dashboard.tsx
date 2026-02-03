@@ -1,22 +1,51 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PageLayout, PageHeader } from '../components/layout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { SkeletonCard } from '../components/ui/Skeleton';
-import { useJobs } from '../hooks/useProject';
+import { useJobs, useDeleteJob, useRestartJob } from '../hooks/useProject';
 import { formatRelativeTime } from '../utils/utils';
-import { Plus, AlertCircle, Clock, CheckCircle, XCircle, ArrowRight } from 'lucide-react';
+import { Plus, AlertCircle, Clock, CheckCircle, XCircle, ArrowRight, Trash2 } from 'lucide-react';
 import type { Job } from '../types';
 
 export function Dashboard() {
   const { data, isLoading, error } = useJobs();
+  const deleteJob = useDeleteJob();
+  const restartJob = useRestartJob();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [restartingId, setRestartingId] = useState<string | null>(null);
+
+  const handleDelete = async (jobId: string, projectId: string) => {
+    if (!confirm(`Delete project "${projectId}"? This cannot be undone.`)) {
+      return;
+    }
+    setDeletingId(jobId);
+    try {
+      await deleteJob.mutateAsync(jobId);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleRestart = async (jobId: string, projectId: string) => {
+    if (!confirm(`Restart failed project "${projectId}" from the beginning?`)) {
+      return;
+    }
+    setRestartingId(jobId);
+    try {
+      await restartJob.mutateAsync(jobId);
+    } finally {
+      setRestartingId(null);
+    }
+  };
 
   const jobs = data?.jobs || [];
 
   // Categorize jobs
   const pendingReview = jobs.filter(j => j.status === 'waiting_approval');
-  const activeJobs = jobs.filter(j => j.status === 'running' || j.status === 'queued');
+  const activeJobs = jobs.filter(j => j.status === 'running' || j.status === 'queued' || j.status === 'in_progress');
   const completedJobs = jobs.filter(j => j.status === 'completed').slice(0, 5);
   const failedJobs = jobs.filter(j => j.status === 'failed').slice(0, 3);
 
@@ -155,11 +184,22 @@ export function Dashboard() {
                       Completed {formatRelativeTime(job.updated_at)}
                     </span>
                   </div>
-                  <Link to={`/project/${job.job_id}/deliverables`}>
-                    <Button variant="ghost" size="sm">
-                      View Artifacts
+                  <div className="flex items-center gap-2">
+                    <Link to={`/project/${job.job_id}/deliverables`}>
+                      <Button variant="ghost" size="sm">
+                        View Artifacts
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDelete(job.job_id, job.project_id)}
+                      disabled={deletingId === job.job_id}
+                      className="text-gray-400 hover:text-error-600 hover:bg-error-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </Button>
-                  </Link>
+                  </div>
                 </div>
               </Card>
             ))}
@@ -182,15 +222,40 @@ export function Dashboard() {
                     <Badge variant="error">Failed</Badge>
                     <span className="font-medium text-gray-900">{job.project_id}</span>
                     <span className="text-sm text-gray-500">
-                      at {job.stage}
+                      at {getFailureStageLabel(job)}
                     </span>
                   </div>
-                  <Link to={`/project/${job.job_id}`}>
-                    <Button variant="ghost" size="sm">
-                      View Details
+                  <div className="flex items-center gap-2">
+                    <Link to={`/project/${job.job_id}`}>
+                      <Button variant="ghost" size="sm">
+                        View Details
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRestart(job.job_id, job.project_id)}
+                      disabled={restartingId === job.job_id}
+                      className="text-error-600 hover:text-error-700 hover:bg-error-50"
+                    >
+                      Restart
                     </Button>
-                  </Link>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDelete(job.job_id, job.project_id)}
+                      disabled={deletingId === job.job_id}
+                      className="text-error-600 hover:text-error-700 hover:bg-error-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
+                {getFailureReasonLabel(job) && (
+                  <p className="text-sm text-error-700 mt-2">
+                    {getFailureReasonLabel(job)}
+                  </p>
+                )}
               </Card>
             ))}
           </div>
@@ -198,6 +263,28 @@ export function Dashboard() {
       )}
     </PageLayout>
   );
+}
+
+function getFailureReasonLabel(job: Job): string | null {
+  const metadata = job.metadata as Record<string, unknown> | undefined;
+  if (!metadata) return null;
+  const metaError = metadata.error || metadata.failure_reason || metadata.reason;
+  if (typeof metaError === 'string' && metaError.trim().length > 0) {
+    return metaError;
+  }
+  return null;
+}
+
+function getFailureStageLabel(job: Job): string {
+  const metadata = job.metadata as Record<string, unknown> | undefined;
+  const metaStage = metadata?.failed_stage;
+  if (typeof metaStage === 'string' && metaStage.trim().length > 0) {
+    return metaStage.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  }
+  if (job.stage && job.stage !== 'failed') {
+    return job.stage.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  }
+  return 'unknown stage';
 }
 
 function StatCard({

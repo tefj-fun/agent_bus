@@ -1,4 +1,6 @@
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { PageLayout, PageHeader } from '../components/layout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -6,9 +8,9 @@ import { Badge } from '../components/ui/Badge';
 import { SkeletonWorkflow, SkeletonText } from '../components/ui/Skeleton';
 import { WorkflowProgress } from '../components/domain/WorkflowProgress';
 import { ActivityFeed } from '../components/domain/ActivityFeed';
-import { useJob, useArtifacts } from '../hooks/useProject';
+import { useJob, useArtifacts, useRestartJob } from '../hooks/useProject';
 import { useEventStream } from '../hooks/useEventStream';
-import { formatRelativeTime, formatDuration } from '../utils/utils';
+import { formatDuration, formatRelativeTime } from '../utils/utils';
 import {
   Clock,
   CheckCircle,
@@ -23,25 +25,71 @@ import type { WorkflowStage } from '../types';
 
 export function ProjectStatus() {
   const { jobId } = useParams<{ jobId: string }>();
+  const queryClient = useQueryClient();
   const { data: job, isLoading: jobLoading, error: jobError } = useJob(jobId);
   const { data: artifactsData } = useArtifacts(jobId);
-  const { events, connected, error: sseError } = useEventStream({ jobId });
+  const restartMutation = useRestartJob();
+
+  // Live timer state
+  const [elapsed, setElapsed] = useState<number | null>(null);
+
+  // Refresh job data when events arrive
+  const handleEvent = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['job', jobId] });
+  }, [queryClient, jobId]);
+
+  const { events, connected, error: sseError } = useEventStream({
+    jobId,
+    onEvent: handleEvent,
+  });
 
   const isCompleted = job?.status === 'completed';
   const isFailed = job?.status === 'failed';
   const isWaitingApproval = job?.status === 'waiting_approval';
+  const isActive = !isCompleted && !isFailed;
 
   const currentStage = (job?.stage || 'initialization') as WorkflowStage;
+  const failureReason = getFailureReason(job?.metadata, events);
+  const failedStageId = getFailedStageId(job?.metadata);
+  const stageForProgress = (isFailed && failedStageId ? failedStageId : currentStage) as WorkflowStage;
+  const failureStage = getFailureStage(job?.metadata, stageForProgress);
 
-  // Calculate elapsed time
-  const getElapsedTime = () => {
-    if (!job?.created_at) return null;
-    const start = new Date(job.created_at).getTime();
-    const end = job.updated_at ? new Date(job.updated_at).getTime() : Date.now();
-    return Math.round((end - start) / 1000);
-  };
+  // Live timer effect
+  useEffect(() => {
+    if (!job?.created_at) {
+      setElapsed(null);
+      return;
+    }
 
-  const elapsed = getElapsedTime();
+    const restartAt =
+      typeof job?.metadata?.restarted_at === 'string'
+        ? job.metadata.restarted_at
+        : undefined;
+    const start = new Date(restartAt || job.created_at || job.updated_at).getTime();
+    const serverNow = new Date(job.updated_at || restartAt || job.created_at).getTime();
+    const clientStart = Date.now();
+    const baseElapsed = Math.max(0, Math.round((serverNow - start) / 1000));
+
+    const updateElapsed = () => {
+      if (isCompleted || isFailed) {
+        // Use updated_at for completed/failed jobs
+        const end = job.updated_at ? new Date(job.updated_at).getTime() : Date.now();
+        setElapsed(Math.max(0, Math.round((end - start) / 1000)));
+      } else {
+        // Live timer for running jobs
+        const liveElapsed = baseElapsed + Math.floor((Date.now() - clientStart) / 1000);
+        setElapsed(Math.max(0, liveElapsed));
+      }
+    };
+
+    updateElapsed();
+
+    // Only run interval for active jobs
+    if (isActive) {
+      const interval = setInterval(updateElapsed, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [job?.created_at, job?.updated_at, isCompleted, isFailed, isActive]);
 
   if (jobLoading) {
     return (
@@ -79,7 +127,7 @@ export function ProjectStatus() {
         description={
           <div className="flex items-center gap-3 mt-1">
             <StatusBadge status={job.status} />
-            {elapsed && (
+            {elapsed !== null && (
               <span className="text-sm text-gray-500">
                 {isCompleted || isFailed ? 'Total time' : 'Elapsed'}: {formatDuration(elapsed)}
               </span>
@@ -152,8 +200,8 @@ export function ProjectStatus() {
           <Card>
             <h3 className="font-semibold text-gray-900 mb-4">Workflow Progress</h3>
             <WorkflowProgress
-              currentStage={currentStage}
-              failedStage={isFailed ? currentStage : undefined}
+              currentStage={stageForProgress}
+              failedStage={isFailed ? stageForProgress : undefined}
             />
 
             {/* Current Stage Details */}
@@ -165,7 +213,7 @@ export function ProjectStatus() {
                   </div>
                   <div>
                     <p className="font-medium text-gray-900">
-                      {currentStage.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      {stageForProgress.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                     </p>
                     <p className="text-sm text-gray-500">
                       {isWaitingApproval ? 'Waiting for your approval' : 'In progress...'}
@@ -196,11 +244,20 @@ export function ProjectStatus() {
                 <div className="flex items-center gap-3 text-error-600">
                   <XCircle className="w-6 h-6" />
                   <div>
-                    <p className="font-medium">Pipeline failed at {currentStage.replace(/_/g, ' ')}</p>
+                    <p className="font-medium">Pipeline failed at {failureStage}</p>
                     <p className="text-sm text-gray-500">
-                      Check the activity feed for error details
+                      {failureReason || 'Check the activity feed for error details'}
                     </p>
                   </div>
+                </div>
+                <div className="mt-4 flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => jobId && restartMutation.mutate(jobId)}
+                    loading={restartMutation.isPending}
+                  >
+                    Restart Workflow
+                  </Button>
                 </div>
               </div>
             )}
@@ -271,4 +328,48 @@ function StatusBadge({ status }: { status: string }) {
       {status.replace(/_/g, ' ')}
     </Badge>
   );
+}
+
+function getFailureReason(
+  metadata: Record<string, unknown> | undefined,
+  events: { type: string; message: string; metadata?: Record<string, unknown> }[]
+): string | null {
+  if (metadata) {
+    const metaError = metadata.error || metadata.failure_reason || metadata.reason;
+    if (typeof metaError === 'string' && metaError.trim().length > 0) {
+      return metaError;
+    }
+  }
+
+  const failedEvent = events.find((event) =>
+    event.type === 'job_failed' || event.type === 'task_failed' || event.type === 'failed'
+  );
+  if (failedEvent?.metadata) {
+    const eventError = failedEvent.metadata.error || failedEvent.metadata.reason;
+    if (typeof eventError === 'string' && eventError.trim().length > 0) {
+      return eventError;
+    }
+  }
+  if (failedEvent?.message && failedEvent.message.toLowerCase().includes('failed')) {
+    return failedEvent.message;
+  }
+  return null;
+}
+
+function getFailureStage(
+  metadata: Record<string, unknown> | undefined,
+  fallbackStage: WorkflowStage
+): string {
+  if (fallbackStage && fallbackStage !== 'failed') {
+    return fallbackStage.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  }
+  return 'unknown stage';
+}
+
+function getFailedStageId(metadata: Record<string, unknown> | undefined): WorkflowStage | null {
+  const metaStage = metadata?.failed_stage;
+  if (typeof metaStage === 'string' && metaStage.trim().length > 0) {
+    return metaStage as WorkflowStage;
+  }
+  return null;
 }

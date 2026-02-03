@@ -421,6 +421,26 @@ class BaseAgent(ABC):
                 json.dumps(data or {}),
             )
 
+        # Also publish to the SSE event stream for live UI updates
+        try:
+            from datetime import datetime, timezone
+
+            payload = {
+                "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                "type": "agent_event",
+                "data": {
+                    "job_id": self.context.job_id,
+                    "agent": self.agent_id,
+                    "message": message,
+                    "level": event_type,
+                    "extra": data or {},
+                },
+            }
+            await self.context.redis_client.publish_event("agent_bus:events", payload)
+        except Exception:
+            # Avoid breaking core flow if event publication fails
+            pass
+
         # Also keep a lightweight Redis log stream
         await self.context.redis_client.lpush(
             f"agent_bus:logs:{self.context.job_id}", json.dumps(event)

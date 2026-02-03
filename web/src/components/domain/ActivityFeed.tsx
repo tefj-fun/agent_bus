@@ -86,12 +86,16 @@ function getEventDisplay(type: EventType): { icon: typeof Rocket; color: string 
       return { icon: CheckCircle, color: 'text-success-500' };
     case 'hitl_requested':
       return { icon: AlertCircle, color: 'text-warning-500' };
+    case 'agent_event':
+      return { icon: Clock, color: 'text-blue-500' };
+    case 'job_failed':
+    case 'task_failed':
+    case 'failed':
+      return { icon: XCircle, color: 'text-error-500' };
     case 'approved':
       return { icon: ThumbsUp, color: 'text-success-500' };
     case 'rejected':
       return { icon: ThumbsDown, color: 'text-warning-500' };
-    case 'failed':
-      return { icon: XCircle, color: 'text-error-500' };
     default:
       return { icon: Clock, color: 'text-gray-400' };
   }

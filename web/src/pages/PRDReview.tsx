@@ -30,6 +30,8 @@ export function PRDReview() {
 
   const isWaitingApproval = job?.status === 'waiting_approval';
   const isLoading = jobLoading || prdLoading;
+  const requirements =
+    (job?.metadata as Record<string, unknown> | undefined)?.requirements;
 
   const handleCopy = async () => {
     if (prd?.content) {
@@ -152,6 +154,17 @@ export function PRDReview() {
                 <span className="text-primary-800 font-medium">
                   PRD approved - Pipeline is running
                 </span>
+              </div>
+            )}
+
+            {typeof requirements === 'string' && requirements.trim().length > 0 && (
+              <div className="mb-4 p-4 border border-gray-200 rounded-lg bg-white">
+                <h4 className="text-sm font-semibold text-gray-900 mb-2">
+                  Input Requirements
+                </h4>
+                <pre className="whitespace-pre-wrap text-sm text-gray-700 bg-gray-50 rounded-md p-3">
+                  {requirements}
+                </pre>
               </div>
             )}
 

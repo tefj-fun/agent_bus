@@ -16,16 +16,24 @@ export function WorkflowProgress({
   orientation = 'horizontal',
   compact = false,
 }: WorkflowProgressProps) {
+  const isTerminalCompleted = currentStage === 'completed';
   const currentIndex = getStageIndex(currentStage);
   const failedIndex = failedStage ? getStageIndex(failedStage) : -1;
 
+  const baseStages = WORKFLOW_STAGES.filter(stage => {
+    if (stage.id === 'failed') return currentStage === 'failed' || failedStage === 'failed';
+    if (stage.id === 'completed') return currentStage === 'completed';
+    return true;
+  });
+
   // For display, we show a simplified set of stages
   const displayStages = compact
-    ? WORKFLOW_STAGES.filter((_, i) => i % 2 === 0 || i === WORKFLOW_STAGES.length - 1)
-    : WORKFLOW_STAGES;
+    ? baseStages.filter((_, i) => i % 2 === 0 || i === baseStages.length - 1)
+    : baseStages;
 
   const getStageStatus = (stage: StageInfo, _index: number): 'completed' | 'active' | 'failed' | 'pending' => {
     const stageIndex = getStageIndex(stage.id);
+    if (isTerminalCompleted) return 'completed';
     if (failedIndex >= 0 && stageIndex === failedIndex) return 'failed';
     if (stageIndex < currentIndex) return 'completed';
     if (stageIndex === currentIndex) return 'active';

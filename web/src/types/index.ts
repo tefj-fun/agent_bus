@@ -12,6 +12,7 @@ export interface Job {
 export type JobStatus =
   | 'queued'
   | 'running'
+  | 'in_progress'
   | 'waiting_approval'
   | 'completed'
   | 'failed';
@@ -82,8 +83,15 @@ export interface AgentEvent {
 
 export type EventType =
   | 'job_created'
+  | 'job_started'
+  | 'job_completed'
+  | 'job_failed'
   | 'stage_started'
   | 'stage_completed'
+  | 'task_started'
+  | 'task_completed'
+  | 'agent_event'
+  | 'task_failed'
   | 'hitl_requested'
   | 'approved'
   | 'rejected'
@@ -126,7 +134,9 @@ export interface StageInfo {
 
 // Workflow stage metadata
 export const WORKFLOW_STAGES: StageInfo[] = [
+  { id: 'initialization', name: 'Init', agent: 'system', status: 'pending', icon: '⚙️', color: 'stage-plan' },
   { id: 'prd_generation', name: 'PRD', agent: 'prd_agent', status: 'pending', icon: '📝', color: 'stage-prd' },
+  { id: 'waiting_for_approval', name: 'Approval', agent: 'prd_agent', status: 'pending', icon: '🧾', color: 'stage-prd' },
   { id: 'plan_generation', name: 'Plan', agent: 'plan_agent', status: 'pending', icon: '📋', color: 'stage-plan' },
   { id: 'architecture_design', name: 'Architecture', agent: 'architect_agent', status: 'pending', icon: '🏗️', color: 'stage-arch' },
   { id: 'uiux_design', name: 'UI/UX', agent: 'uiux_agent', status: 'pending', icon: '🎨', color: 'stage-uiux' },
@@ -134,8 +144,11 @@ export const WORKFLOW_STAGES: StageInfo[] = [
   { id: 'qa_testing', name: 'QA', agent: 'qa_agent', status: 'pending', icon: '✅', color: 'stage-qa' },
   { id: 'security_review', name: 'Security', agent: 'security_agent', status: 'pending', icon: '🔒', color: 'stage-security' },
   { id: 'documentation', name: 'Docs', agent: 'tech_writer', status: 'pending', icon: '📚', color: 'stage-docs' },
+  { id: 'support_docs', name: 'Support', agent: 'support_engineer', status: 'pending', icon: '🧰', color: 'stage-docs' },
   { id: 'pm_review', name: 'PM Review', agent: 'product_manager', status: 'pending', icon: '👔', color: 'stage-prd' },
   { id: 'delivery', name: 'Delivery', agent: 'delivery_agent', status: 'pending', icon: '📦', color: 'stage-dev' },
+  { id: 'completed', name: 'Completed', agent: 'system', status: 'pending', icon: '🏁', color: 'stage-qa' },
+  { id: 'failed', name: 'Failed', agent: 'system', status: 'pending', icon: '🛑', color: 'stage-security' },
 ];
 
 // Helper to get stage index

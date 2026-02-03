@@ -1,6 +1,7 @@
 """API routes for project management."""
 
 import uuid
+import json
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -76,7 +77,20 @@ async def list_projects(limit: int = 50, offset: int = 0):
                 limit,
                 offset,
             )
-            return [dict(row) for row in rows]
+            # Transform to match frontend expected format
+            jobs = []
+            for row in rows:
+                job = dict(row)
+                job["job_id"] = job.pop("id")
+                job["stage"] = job.pop("workflow_stage")
+                metadata = job.get("metadata")
+                if isinstance(metadata, str):
+                    try:
+                        job["metadata"] = json.loads(metadata)
+                    except Exception:
+                        job["metadata"] = {}
+                jobs.append(job)
+            return {"jobs": jobs}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -150,6 +164,14 @@ async def get_job_status(job_id: str):
                 raise HTTPException(status_code=404, detail="Job not found")
 
             job = dict(row)
+            job["job_id"] = job.pop("id")
+            job["stage"] = job.pop("workflow_stage")
+            metadata = job.get("metadata")
+            if isinstance(metadata, str):
+                try:
+                    job["metadata"] = json.loads(metadata)
+                except Exception:
+                    job["metadata"] = {}
 
             task_row = await conn.fetchrow(
                 """
@@ -165,6 +187,55 @@ async def get_job_status(job_id: str):
                 job["latest_task"] = dict(task_row)
 
             return job
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/{job_id}")
+async def delete_job(job_id: str):
+    """
+    Delete a job and its associated data.
+
+    Args:
+        job_id: Job identifier
+
+    Returns:
+        Confirmation message
+    """
+    try:
+        pool = await postgres_client.get_pool()
+        async with pool.acquire() as conn:
+            # Check if job exists
+            row = await conn.fetchrow(
+                "SELECT id, status FROM jobs WHERE id = $1",
+                job_id,
+            )
+
+            if not row:
+                raise HTTPException(status_code=404, detail="Job not found")
+
+            # Delete associated tasks first (foreign key constraint)
+            await conn.execute(
+                "DELETE FROM tasks WHERE job_id = $1",
+                job_id,
+            )
+
+            # Delete associated artifacts
+            await conn.execute(
+                "DELETE FROM artifacts WHERE job_id = $1",
+                job_id,
+            )
+
+            # Delete the job
+            await conn.execute(
+                "DELETE FROM jobs WHERE id = $1",
+                job_id,
+            )
+
+            return {"message": f"Job {job_id} deleted successfully"}
 
     except HTTPException:
         raise
@@ -702,5 +773,49 @@ async def request_changes(job_id: str, request: ApprovalRequest):
             },
         )
         return {"job_id": job_id, "status": "changes_requested"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{job_id}/restart")
+async def restart_job(job_id: str):
+    """Restart a failed job from initialization."""
+    try:
+        pool = await postgres_client.get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT status FROM jobs WHERE id = $1",
+                job_id,
+            )
+            if not row:
+                raise HTTPException(status_code=404, detail="Job not found")
+            if row["status"] != "failed":
+                raise HTTPException(status_code=409, detail="Only failed jobs can be restarted")
+
+            # Clear prior tasks and artifacts for a clean restart
+            await conn.execute("DELETE FROM tasks WHERE job_id = $1", job_id)
+            await conn.execute("DELETE FROM artifacts WHERE job_id = $1", job_id)
+
+            await conn.execute(
+                """
+                UPDATE jobs
+                SET status = 'queued',
+                    workflow_stage = 'initialization',
+                    updated_at = NOW(),
+                    created_at = NOW(),
+                    completed_at = NULL
+                WHERE id = $1
+                """,
+                job_id,
+            )
+
+        await postgres_client.update_job_metadata(
+            job_id=job_id,
+            metadata={"restarted_at": datetime.now(timezone.utc).isoformat()},
+        )
+
+        return {"job_id": job_id, "status": "queued"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

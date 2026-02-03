@@ -1,4 +1,4 @@
-"""KAN-71: Job/task event stream endpoint."""
+"""KAN-71: Job/task event stream endpoint with Redis pub/sub."""
 
 from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
@@ -7,15 +7,15 @@ import asyncio
 import json
 from datetime import datetime
 
+from ...infrastructure.redis_client import redis_client
+
 router = APIRouter(prefix="/events", tags=["events"])
 
-
-# In-memory event buffer (in production, use Redis Streams or Kafka)
-event_buffer = asyncio.Queue(maxsize=1000)
+EVENTS_CHANNEL = "agent_bus:events"
 
 
 async def publish_event(event_type: str, data: dict) -> None:
-    """Publish an event to the stream.
+    """Publish an event to Redis pub/sub.
 
     Args:
         event_type: Type of event (job_created, task_started, etc.)
@@ -28,21 +28,18 @@ async def publish_event(event_type: str, data: dict) -> None:
     }
 
     try:
-        event_buffer.put_nowait(event)
-    except asyncio.QueueFull:
-        # Drop oldest event if buffer is full
-        try:
-            event_buffer.get_nowait()
-            event_buffer.put_nowait(event)
-        except Exception:
-            pass
+        client = await redis_client.get_client()
+        result = await client.publish(EVENTS_CHANNEL, json.dumps(event))
+        print(f"[Events] Published {event_type} to {result} subscribers")
+    except Exception as e:
+        print(f"[Events] Failed to publish event: {e}")
 
 
 async def event_generator(
     job_id: Optional[str] = None,
     event_types: Optional[list[str]] = None,
 ) -> AsyncGenerator[str, None]:
-    """Generate SSE events.
+    """Generate SSE events from Redis pub/sub.
 
     Args:
         job_id: Filter events by job ID
@@ -51,34 +48,50 @@ async def event_generator(
     Yields:
         SSE-formatted event strings
     """
-    # Create a new queue for this client
-    client_queue = asyncio.Queue(maxsize=100)
-
-    # Subscribe to events (simplified - in production use pub/sub)
     try:
+        client = await redis_client.get_client()
+        pubsub = client.pubsub()
+        await pubsub.subscribe(EVENTS_CHANNEL)
+
         while True:
             try:
-                # Get event with timeout
-                event = await asyncio.wait_for(event_buffer.get(), timeout=30.0)
+                # Get message with timeout for keepalive
+                message = await asyncio.wait_for(
+                    pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0),
+                    timeout=30.0
+                )
 
-                # Apply filters
-                if job_id and event.get("data", {}).get("job_id") != job_id:
+                if message is None:
+                    # Send keepalive
+                    yield ": keepalive\n\n"
                     continue
 
-                if event_types and event.get("type") not in event_types:
-                    continue
+                if message["type"] == "message":
+                    event = json.loads(message["data"])
 
-                # Format as SSE
-                data = json.dumps(event)
-                yield f"data: {data}\n\n"
+                    # Apply filters
+                    if job_id and event.get("data", {}).get("job_id") != job_id:
+                        continue
+
+                    if event_types and event.get("type") not in event_types:
+                        continue
+
+                    # Format as SSE
+                    data = json.dumps(event)
+                    yield f"data: {data}\n\n"
 
             except asyncio.TimeoutError:
-                # Send keepalive
-                yield f": keepalive\n\n"
+                # Send keepalive on timeout
+                yield ": keepalive\n\n"
 
     except asyncio.CancelledError:
-        # Client disconnected
         pass
+    finally:
+        try:
+            await pubsub.unsubscribe(EVENTS_CHANNEL)
+            await pubsub.close()
+        except Exception:
+            pass
 
 
 @router.get("/stream")
@@ -96,21 +109,12 @@ async def stream_events(
     - `job_started`: Job execution started
     - `job_completed`: Job finished successfully
     - `job_failed`: Job execution failed
+    - `stage_started`: Workflow stage started
+    - `stage_completed`: Workflow stage completed
     - `task_started`: Task execution started
     - `task_completed`: Task finished
     - `task_failed`: Task execution failed
     - `hitl_requested`: Human-in-the-loop intervention requested
-
-    **Example:**
-    ```python
-    import requests
-
-    with requests.get('http://localhost:8000/events/stream', stream=True) as r:
-        for line in r.iter_lines():
-            if line.startswith(b'data:'):
-                event = json.loads(line[5:])
-                print(event)
-    ```
 
     Args:
         job_id: Optional job ID to filter events
@@ -130,7 +134,7 @@ async def stream_events(
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",  # Disable nginx buffering
+            "X-Accel-Buffering": "no",
         },
     )
 
@@ -141,13 +145,6 @@ async def get_event_history(
     limit: int = Query(100, ge=1, le=1000, description="Maximum events to return"),
 ) -> dict:
     """Get historical events (not real-time).
-
-    This is a placeholder that would query a persistent event store
-    (e.g., PostgreSQL, Elasticsearch) in production.
-
-    Args:
-        job_id: Optional job ID filter
-        limit: Maximum number of events
 
     Returns:
         Dictionary with events list
@@ -160,9 +157,9 @@ async def get_event_history(
 
 # Helper functions for publishing common events
 
-async def publish_job_created(job_id: str, job_data: dict) -> None:
+async def publish_job_created(job_id: str, project_id: str, **kwargs) -> None:
     """Publish job created event."""
-    await publish_event("job_created", {"job_id": job_id, **job_data})
+    await publish_event("job_created", {"job_id": job_id, "project_id": project_id, **kwargs})
 
 
 async def publish_job_started(job_id: str) -> None:
@@ -170,14 +167,29 @@ async def publish_job_started(job_id: str) -> None:
     await publish_event("job_started", {"job_id": job_id})
 
 
-async def publish_job_completed(job_id: str, result: dict) -> None:
+async def publish_job_completed(job_id: str, result: dict = None) -> None:
     """Publish job completed event."""
-    await publish_event("job_completed", {"job_id": job_id, "result": result})
+    await publish_event("job_completed", {"job_id": job_id, "result": result or {}})
 
 
 async def publish_job_failed(job_id: str, error: str) -> None:
     """Publish job failed event."""
     await publish_event("job_failed", {"job_id": job_id, "error": error})
+
+
+async def publish_job_aborted(job_id: str, reason: str = "Aborted by user") -> None:
+    """Publish job aborted event."""
+    await publish_event("job_aborted", {"job_id": job_id, "reason": reason})
+
+
+async def publish_stage_started(job_id: str, stage: str, agent: str = None) -> None:
+    """Publish stage started event."""
+    await publish_event("stage_started", {"job_id": job_id, "stage": stage, "agent": agent})
+
+
+async def publish_stage_completed(job_id: str, stage: str) -> None:
+    """Publish stage completed event."""
+    await publish_event("stage_completed", {"job_id": job_id, "stage": stage})
 
 
 async def publish_task_started(job_id: str, task_id: str) -> None:
