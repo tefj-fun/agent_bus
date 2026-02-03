@@ -84,6 +84,18 @@ agent_bus/
 ├── skills/                       # Local Claude Skills directory
 │   └── weather-toolkit/         # Reference implementation example
 │
+├── web/                          # React frontend (Vite + TypeScript + TailwindCSS)
+│   ├── src/
+│   │   ├── api/                 # API client with typed fetch wrapper
+│   │   ├── components/          # UI, domain, and layout components
+│   │   ├── hooks/               # React Query hooks (useProject, useMemory, useEventStream)
+│   │   ├── pages/               # Route pages (Dashboard, CreateProject, PRDReview, etc.)
+│   │   ├── styles/              # TailwindCSS design tokens
+│   │   ├── types/               # TypeScript definitions
+│   │   └── utils/               # Utility functions
+│   ├── package.json
+│   └── vite.config.ts
+│
 ├── tests/                        # Comprehensive test suite (30+ test files)
 ├── scripts/                     # Automation scripts
 ├── docs/                        # Documentation
@@ -92,6 +104,8 @@ agent_bus/
 ```
 
 ## Tech Stack
+
+### Backend
 
 | Component | Technology | Version |
 |-----------|------------|---------|
@@ -106,6 +120,18 @@ agent_bus/
 | Migrations | Alembic | ^1.13.0 |
 | Metrics | prometheus-client | ^0.19.0 |
 | Container | Docker + docker-compose V2 |
+
+### Frontend (web/)
+
+| Component | Technology | Version |
+|-----------|------------|---------|
+| Framework | React | ^18.x |
+| Language | TypeScript | ^5.x |
+| Build Tool | Vite | ^7.x |
+| Styling | TailwindCSS | ^4.x |
+| State | TanStack Query | ^5.x |
+| Routing | React Router | ^6.x |
+| Icons | Lucide React | ^0.x |
 
 ## Development Commands
 
@@ -179,6 +205,28 @@ agent-bus-skills list
 agent-bus-skills info <skill-name>
 agent-bus-skills install <github-url> --name <skill-name>
 agent-bus-skills update <skill-name>
+```
+
+### Web UI Development
+
+```bash
+# Navigate to web directory
+cd web
+
+# Install dependencies
+npm install
+
+# Start development server (http://localhost:3000)
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+
+# Type checking
+npm run build  # runs tsc -b first
 ```
 
 ### Release Process
@@ -333,9 +381,9 @@ Key environment variables (see `.env.example` for full list):
 | `GET` | `/api/api-documents/{doc_id}` | Get specific API document |
 | `DELETE` | `/api/api-documents/{doc_id}` | Delete an API document |
 
-### Web UI Endpoints
+### Web UI (Legacy Server-Rendered)
 
-Minimal server-rendered HTML interface for browser-based interaction:
+Minimal server-rendered HTML interface:
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -347,9 +395,24 @@ Minimal server-rendered HTML interface for browser-based interaction:
 | `POST` | `/ui/prd/{job_id}/request_changes` | Request changes to PRD |
 | `GET` | `/ui/plan/{job_id}` | View project plan |
 
+### Web UI (React Frontend)
+
+Modern React-based interface at `http://localhost:3000/`:
+
+| Route | Description |
+|-------|-------------|
+| `/` | Dashboard - stats, pending reviews, project lists |
+| `/new` | Create project with memory-assisted suggestions |
+| `/project/:jobId` | Workflow progress with real-time SSE updates |
+| `/prd/:jobId` | PRD review with approve/request changes (HITL gate) |
+| `/project/:jobId/deliverables` | Download generated artifacts |
+
+See `web/README.md` for setup instructions.
+
 ### API Documentation
 
-- Web UI: `http://localhost:8000/ui/`
+- React Web UI: `http://localhost:3000/` (requires `cd web && npm run dev`)
+- Legacy Web UI: `http://localhost:8000/ui/`
 - Swagger UI: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
 
@@ -392,6 +455,8 @@ The system processes jobs through these stages:
 |----------|----------|---------|
 | README | `README.md` | Quick start and overview |
 | Architecture | `docs/ARCHITECTURE.md` | Service split details |
+| UI/UX Plan | `docs/UIUX_PLAN.md` | Design system and component specs |
+| Web UI | `web/README.md` | React frontend setup and development |
 | Skills System | `docs/SKILLS_SYSTEM.md` | Skill implementation guide |
 | Memory Store | `docs/MEMORY_STORE.md` | Memory system architecture |
 | API Doc Processing | `docs/API_DOCUMENT_PROCESSING.md` | External API document ingestion |

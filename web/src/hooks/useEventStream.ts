@@ -1,0 +1,91 @@
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { createEventSource } from '../api/client';
+import type { AgentEvent } from '../types';
+
+interface UseEventStreamOptions {
+  jobId?: string;
+  onEvent?: (event: AgentEvent) => void;
+  maxEvents?: number;
+}
+
+export function useEventStream({ jobId, onEvent, maxEvents = 50 }: UseEventStreamOptions = {}) {
+  const [events, setEvents] = useState<AgentEvent[]>([]);
+  const [connected, setConnected] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const reconnectTimeoutRef = useRef<number | null>(null);
+  const reconnectAttempts = useRef(0);
+
+  const connect = useCallback(() => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+    }
+
+    const es = createEventSource(jobId);
+    eventSourceRef.current = es;
+
+    es.onopen = () => {
+      setConnected(true);
+      setError(null);
+      reconnectAttempts.current = 0;
+    };
+
+    es.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data) as AgentEvent;
+        setEvents((prev) => {
+          const newEvents = [data, ...prev].slice(0, maxEvents);
+          return newEvents;
+        });
+        onEvent?.(data);
+      } catch (e) {
+        console.error('Failed to parse SSE event:', e);
+      }
+    };
+
+    es.onerror = () => {
+      setConnected(false);
+      setError('Connection lost');
+      es.close();
+
+      // Reconnect with exponential backoff
+      const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
+      reconnectAttempts.current += 1;
+
+      if (reconnectAttempts.current < 10) {
+        reconnectTimeoutRef.current = window.setTimeout(connect, delay);
+      } else {
+        setError('Connection failed after multiple attempts');
+      }
+    };
+  }, [jobId, onEvent, maxEvents]);
+
+  const disconnect = useCallback(() => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+    setConnected(false);
+  }, []);
+
+  useEffect(() => {
+    connect();
+    return disconnect;
+  }, [connect, disconnect]);
+
+  const clearEvents = useCallback(() => {
+    setEvents([]);
+  }, []);
+
+  return {
+    events,
+    connected,
+    error,
+    clearEvents,
+    reconnect: connect,
+  };
+}
