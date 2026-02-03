@@ -50,6 +50,37 @@ class ProjectResponse(BaseModel):
     message: str
 
 
+@router.get("/")
+async def list_projects(limit: int = 50, offset: int = 0):
+    """
+    List all projects/jobs.
+
+    Args:
+        limit: Maximum number of jobs to return
+        offset: Number of jobs to skip
+
+    Returns:
+        List of jobs with their status
+    """
+    try:
+        pool = await postgres_client.get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT id, project_id, status, workflow_stage, created_at, updated_at,
+                       completed_at, metadata
+                FROM jobs
+                ORDER BY created_at DESC
+                LIMIT $1 OFFSET $2
+                """,
+                limit,
+                offset,
+            )
+            return [dict(row) for row in rows]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/", response_model=ProjectResponse)
 async def create_project(request: ProjectRequest):
     """
