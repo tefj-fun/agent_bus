@@ -15,11 +15,17 @@ The agent_bus platform is designed as a distributed system with three primary se
 - Request validation
 
 **Endpoints:**
-- `POST /jobs` - Submit new job
-- `GET /jobs/{id}` - Get job status
-- `GET /jobs/{id}/results` - Retrieve results
-- `POST /memory/store` - Store memory
-- `GET /memory/search` - Search memory
+- `GET /api/projects/` - List all jobs
+- `POST /api/projects/` - Submit new job
+- `GET /api/projects/{id}` - Get job status
+- `DELETE /api/projects/{id}` - Delete a job
+- `GET /api/projects/{id}/{artifact}` - Retrieve artifact (prd, plan, architecture, etc.)
+- `GET /api/projects/{id}/export` - Export all artifacts as ZIP
+- `POST /api/projects/{id}/approve` - Approve PRD
+- `POST /api/projects/{id}/restart` - Restart failed job
+- `POST /api/patterns/store` - Store pattern
+- `POST /api/patterns/query` - Search patterns
+- `GET /api/events/stream` - SSE event stream
 
 **Deployment:**
 - Stateless (can scale horizontally)
@@ -136,10 +142,12 @@ The agent_bus platform is designed as a distributed system with three primary se
 - ✅ Worker skeleton exists (`src/workers/`)
 - ✅ Orchestrator logic exists (`src/orchestration/`)
 - ✅ Service separation is logical and enforced via docker-compose
+- ✅ Circuit breaker pattern implemented (`src/infrastructure/circuit_breaker.py`)
+- ✅ Dependency injection container (`src/infrastructure/container.py`)
+- ✅ Artifact storage abstraction (`src/storage/artifact_store.py`)
 
 ## Next Steps
 
 1. Enforce service boundaries with clear interfaces
 2. Implement inter-service authentication
-3. Add circuit breakers for resilience
-4. Deploy monitoring per service
+3. Deploy monitoring per service
