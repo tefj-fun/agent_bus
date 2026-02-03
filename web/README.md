@@ -1,73 +1,154 @@
-# React + TypeScript + Vite
+# Agent Bus Web UI
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Modern React-based web interface for Agent Bus - the multi-agent SWE planning system.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Framework**: React 18 + TypeScript
+- **Build Tool**: Vite
+- **Styling**: TailwindCSS with custom design tokens
+- **State Management**: TanStack Query (React Query) + Zustand
+- **Routing**: React Router v6
+- **Icons**: Lucide React
 
-## React Compiler
+## Quick Start
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Prerequisites
 
-## Expanding the ESLint configuration
+- Node.js 18+
+- Agent Bus backend running on `http://localhost:8000`
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Development
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+```bash
+# Install dependencies
+npm install
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Start development server
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Access the app at http://localhost:3000/
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Production Build
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
+```bash
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+```
+
+## Project Structure
+
+```
+web/
+├── src/
+│   ├── api/
+│   │   └── client.ts          # Typed API client
+│   ├── components/
+│   │   ├── ui/                # Base UI components
+│   │   │   ├── Button.tsx
+│   │   │   ├── Card.tsx
+│   │   │   ├── Badge.tsx
+│   │   │   ├── Input.tsx
+│   │   │   ├── Textarea.tsx
+│   │   │   ├── Modal.tsx
+│   │   │   ├── Toast.tsx
+│   │   │   └── Skeleton.tsx
+│   │   ├── domain/            # Domain-specific components
+│   │   │   ├── WorkflowProgress.tsx
+│   │   │   ├── MemoryHitCard.tsx
+│   │   │   ├── ActivityFeed.tsx
+│   │   │   └── ArtifactViewer.tsx
+│   │   └── layout/            # Layout components
+│   │       ├── Header.tsx
+│   │       └── PageLayout.tsx
+│   ├── hooks/
+│   │   ├── useProject.ts      # Project/job queries
+│   │   ├── useMemory.ts       # Memory/pattern queries
+│   │   └── useEventStream.ts  # SSE connection
+│   ├── pages/
+│   │   ├── Dashboard.tsx      # Home - stats & project list
+│   │   ├── CreateProject.tsx  # New project form
+│   │   ├── PRDReview.tsx      # HITL approval gate
+│   │   ├── ProjectStatus.tsx  # Workflow progress
+│   │   └── Deliverables.tsx   # Artifact downloads
+│   ├── styles/
+│   │   └── tokens.css         # TailwindCSS design tokens
+│   ├── types/
+│   │   └── index.ts           # TypeScript definitions
+│   ├── utils/
+│   │   └── utils.ts           # Utility functions
+│   ├── App.tsx                # Router setup
+│   └── main.tsx               # Entry point
+├── package.json
+├── vite.config.ts
+└── tsconfig.json
+```
+
+## Pages & Routes
+
+| Route | Page | Description |
+|-------|------|-------------|
+| `/` | Dashboard | Overview stats, pending reviews, active/completed projects |
+| `/new` | CreateProject | Form with memory-assisted suggestions |
+| `/project/:jobId` | ProjectStatus | Workflow progress with real-time SSE updates |
+| `/prd/:jobId` | PRDReview | View PRD, approve/request changes (HITL gate) |
+| `/project/:jobId/deliverables` | Deliverables | Download individual or all artifacts |
+
+## Features
+
+### Dashboard
+- Project statistics (total, pending review, in progress, completed)
+- Pending reviews requiring attention
+- Active and completed project lists
+- Quick actions to create new projects
+
+### Project Creation
+- Requirements input with rich textarea
+- Memory-assisted suggestions based on past patterns
+- Template suggestions from similar projects
+
+### PRD Review (HITL Gate)
+- Full PRD document display
+- Approve or Request Changes actions
+- Notes/feedback field for change requests
+
+### Workflow Progress
+- Visual pipeline with 10 stages
+- Real-time status updates via SSE
+- Activity feed showing agent events
+- Stage completion indicators
+
+### Deliverables
+- List of all generated artifacts
+- Individual artifact viewing
+- Download individual files
+- Download all as ZIP
+
+## Configuration
+
+The app proxies API requests to the backend. Configure in `vite.config.ts`:
+
+```typescript
+server: {
+  port: 3000,
+  proxy: {
+    '/api': {
+      target: 'http://localhost:8000',
+      changeOrigin: true,
     },
   },
-])
+},
 ```
+
+## Design System
+
+See [UIUX_PLAN.md](../docs/UIUX_PLAN.md) for the complete design specification including:
+- Color palette and design tokens
+- Typography scale
+- Component specifications
+- Page layouts and wireframes
+- Accessibility guidelines

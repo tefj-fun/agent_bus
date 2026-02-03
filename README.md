@@ -65,7 +65,8 @@ curl http://localhost:8000/health    # Returns {"status":"healthy"}
 
 ### Access
 
-- **Web UI**: http://localhost:8000/ui/
+- **Web UI (Legacy)**: http://localhost:8000/ui/
+- **Web UI (React)**: http://localhost:3000/ (see [Web UI Setup](#web-ui-react))
 - **API Docs**: http://localhost:8000/docs
 - **Health**: http://localhost:8000/health
 - **Metrics**: http://localhost:8000/api/metrics
@@ -74,9 +75,31 @@ curl http://localhost:8000/health    # Returns {"status":"healthy"}
 
 ## Basic Usage
 
-### Web UI
+### Web UI (React)
 
-The simplest way to use Agent Bus is through the web interface at http://localhost:8000/ui/
+The modern React-based web interface provides the best experience for managing projects.
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+Access at http://localhost:3000/
+
+| Route | Description |
+|-------|-------------|
+| `/` | Dashboard - overview, pending reviews, active projects |
+| `/new` | Create new project with memory-assisted suggestions |
+| `/project/:jobId` | Monitor workflow progress with real-time updates |
+| `/prd/:jobId` | Review and approve/reject PRD (HITL gate) |
+| `/project/:jobId/deliverables` | Download generated artifacts |
+
+See [web/README.md](web/README.md) for detailed setup and development instructions.
+
+### Web UI (Legacy)
+
+A minimal server-rendered interface is also available at http://localhost:8000/ui/
 
 | Route | Description |
 |-------|-------------|
@@ -130,6 +153,14 @@ agent_bus/
 │   ├── memory/           # ChromaDB vector store
 │   ├── skills/           # Claude Skills system
 │   └── api/              # FastAPI routes
+├── web/                  # React frontend (Vite + TypeScript + TailwindCSS)
+│   ├── src/
+│   │   ├── components/   # UI and domain components
+│   │   ├── pages/        # Route pages
+│   │   ├── hooks/        # React Query hooks
+│   │   ├── api/          # API client
+│   │   └── types/        # TypeScript definitions
+│   └── package.json
 ├── skills/               # Local skills directory
 ├── tests/                # Test suites
 └── docker-compose.yml
