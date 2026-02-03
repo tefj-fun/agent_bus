@@ -7,6 +7,7 @@ import {
   PRDReview,
   ProjectStatus,
   Deliverables,
+  Memory,
 } from './pages';
 
 const queryClient = new QueryClient({
@@ -37,6 +38,9 @@ function App() {
 
             {/* PRD Review */}
             <Route path="/prd/:jobId" element={<PRDReview />} />
+
+            {/* Memory */}
+            <Route path="/memory" element={<Memory />} />
 
             {/* Redirects for old UI routes */}
             <Route path="/ui" element={<Navigate to="/" replace />} />
