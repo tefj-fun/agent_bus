@@ -79,7 +79,8 @@ agent_bus/
 │   │
 │   ├── config.py                # Pydantic Settings for environment configuration
 │   ├── cli.py                   # Skills CLI (agent-bus-skills command)
-│   └── cli_memory.py            # Memory CLI (agent-bus-memory command)
+│   ├── cli_memory.py            # Memory CLI (agent-bus-memory command)
+│   └── cli_jobs.py              # Jobs CLI (agent-bus-jobs command)
 │
 ├── skills/                       # Local Claude Skills directory
 │   └── weather-toolkit/         # Reference implementation example
@@ -268,6 +269,18 @@ agent-bus-skills install <github-url> --name <skill-name>
 agent-bus-skills update <skill-name>
 ```
 
+### Job Management (CLI)
+
+```bash
+# CLI commands
+agent-bus-jobs list                     # List all jobs
+agent-bus-jobs status <job_id>          # Show detailed job status
+agent-bus-jobs watch <job_id>           # Watch job progress in real-time
+agent-bus-jobs result <job_id>          # View all job artifacts
+agent-bus-jobs result <job_id> -a prd   # View specific artifact (prd, plan, architecture, etc.)
+agent-bus-jobs approve <job_id>         # Approve PRD to continue workflow
+```
+
 ### Web UI Development
 
 ```bash
@@ -418,14 +431,23 @@ Key environment variables (see `.env.example` for full list):
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/health` | Health check |
+| `GET` | `/api/projects/` | List all jobs |
 | `POST` | `/api/projects/` | Create new project |
 | `GET` | `/api/projects/{job_id}` | Get job status |
+| `DELETE` | `/api/projects/{job_id}` | Delete a job |
 | `GET` | `/api/projects/{job_id}/prd` | Get PRD artifact |
-| `POST` | `/api/projects/{job_id}/approve` | Approve/reject PRD (HITL) |
+| `GET` | `/api/projects/{job_id}/plan` | Get project plan artifact |
+| `GET` | `/api/projects/{job_id}/architecture` | Get architecture artifact |
+| `GET` | `/api/projects/{job_id}/export` | Export all artifacts as ZIP |
+| `GET` | `/api/projects/{job_id}/memory_hits` | Get memory pattern hits from PRD generation |
+| `POST` | `/api/projects/{job_id}/approve` | Approve PRD (HITL) |
+| `POST` | `/api/projects/{job_id}/request_changes` | Request changes to PRD |
+| `POST` | `/api/projects/{job_id}/restart` | Restart a failed job |
 | `POST` | `/api/patterns/store` | Store a pattern |
 | `POST` | `/api/patterns/query` | Search patterns |
 | `POST` | `/api/patterns/suggest` | Get template suggestions |
 | `GET` | `/api/events/stream` | SSE event stream |
+| `GET` | `/api/events/history` | Get event history |
 | `GET` | `/api/metrics` | Prometheus metrics |
 
 ### API Document Processing Endpoints
@@ -467,6 +489,7 @@ Modern React-based interface at `http://localhost:3000/`:
 | `/project/:jobId` | Workflow progress with real-time SSE updates |
 | `/prd/:jobId` | PRD review with approve/request changes (HITL gate) |
 | `/project/:jobId/deliverables` | Download generated artifacts |
+| `/memory` | Search and browse stored patterns |
 
 See `web/README.md` for setup instructions.
 

@@ -94,6 +94,7 @@ Access at http://localhost:3000/
 | `/project/:jobId` | Monitor workflow progress with real-time updates |
 | `/prd/:jobId` | Review and approve/reject PRD (HITL gate) |
 | `/project/:jobId/deliverables` | Download generated artifacts |
+| `/memory` | Search and browse stored patterns |
 
 See [web/README.md](web/README.md) for detailed setup and development instructions.
 
@@ -138,6 +139,28 @@ curl -X POST http://localhost:8000/api/projects/{job_id}/approve \
 ```
 
 For detailed API usage, event streaming, and artifact downloads, see the [User Guide](docs/USER_GUIDE.md).
+
+### CLI Tools
+
+Agent Bus provides CLI tools for common operations:
+
+```bash
+# Job management
+agent-bus-jobs list                    # List all jobs
+agent-bus-jobs status <job_id>         # Show job status
+agent-bus-jobs watch <job_id>          # Watch job progress in real-time
+agent-bus-jobs result <job_id>         # Get job artifacts
+agent-bus-jobs approve <job_id>        # Approve PRD
+
+# Memory/pattern management
+agent-bus-memory query "search term"   # Search patterns
+agent-bus-memory list                  # List all patterns
+agent-bus-memory health                # Check memory system health
+
+# Skills management
+agent-bus-skills list                  # List installed skills
+agent-bus-skills install <github-url>  # Install skill from GitHub
+```
 
 ---
 

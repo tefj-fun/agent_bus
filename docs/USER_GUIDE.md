@@ -63,9 +63,10 @@ curl http://localhost:8000/health
 # Should return: {"status":"healthy"}
 ```
 
-**Via Web UI** (coming soon):
+**Via Web UI**:
+- Start the React frontend: `cd web && npm install && npm run dev`
 - Navigate to `http://localhost:3000`
-- Log in with your credentials
+- Or use the legacy UI at `http://localhost:8000/ui/`
 
 ### Step 2: Submit Your Project
 
@@ -111,6 +112,32 @@ Once complete, download your artifacts:
 ```bash
 curl http://localhost:8000/api/projects/job_abc123/prd > prd.md
 curl http://localhost:8000/api/projects/job_abc123/architecture > architecture.md
+```
+
+Or export all artifacts at once:
+```bash
+curl http://localhost:8000/api/projects/job_abc123/export -o artifacts.zip
+```
+
+### Using the CLI (Optional)
+
+Agent Bus provides a CLI for common operations:
+
+```bash
+# List all jobs
+agent-bus-jobs list
+
+# Watch a job's progress in real-time
+agent-bus-jobs watch job_abc123
+
+# View job status
+agent-bus-jobs status job_abc123
+
+# Get artifacts
+agent-bus-jobs result job_abc123
+
+# Approve PRD
+agent-bus-jobs approve job_abc123
 ```
 
 ---
@@ -488,7 +515,18 @@ A: The project stays in "waiting_approval" status until you approve or reject it
 
 **Q: Can I cancel a project?**
 
-A: Contact your administrator. Currently there's no self-service cancellation.
+A: You can delete a job using the API:
+```bash
+curl -X DELETE http://localhost:8000/api/projects/job_abc123
+```
+
+**Q: What happens if a job fails?**
+
+A: Failed jobs can be restarted from the beginning:
+```bash
+curl -X POST http://localhost:8000/api/projects/job_abc123/restart
+```
+This clears all previous tasks and artifacts, then restarts from initialization.
 
 **Q: What languages/frameworks does it support?**
 
@@ -608,6 +646,20 @@ A: Yes, Agent Bus is open-source. See the main README for deployment instruction
 1. Verify project status is `completed`
 2. Check if specific stages failed
 3. Contact administrator for failed stages
+
+### Job Failed
+
+**Symptoms:** Job status shows `failed`.
+
+**Causes:**
+- LLM API errors
+- Timeout during processing
+- Internal agent errors
+
+**Solutions:**
+1. Check job status for error details: `curl http://localhost:8000/api/projects/{job_id}`
+2. Restart the job: `curl -X POST http://localhost:8000/api/projects/{job_id}/restart`
+3. If the issue persists, check logs: `docker compose logs -f worker`
 
 ### Getting Help
 
