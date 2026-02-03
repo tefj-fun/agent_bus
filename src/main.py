@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from .infrastructure.container import container
 from .infrastructure.redis_client import redis_client
 from .infrastructure.postgres_client import postgres_client
-from .api.routes import projects, memory, skills, artifacts
+from .api.routes import projects, memory, skills, artifacts, patterns
 from .api.routes import ui, ui_jobs
 from .api.routes import ui_prd
 from .api.routes import ui_prd_actions
@@ -80,6 +80,7 @@ app.include_router(ui_prd.router, prefix="/ui", tags=["ui"])
 app.include_router(ui_prd_actions.router, prefix="/ui", tags=["ui"])
 app.include_router(ui_plan.router, prefix="/ui", tags=["ui"])
 app.include_router(api_documents.router, tags=["api-documents"])
+app.include_router(patterns.router)
 
 
 @app.get("/")
