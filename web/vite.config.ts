@@ -8,6 +8,17 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
+      '/api/events': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        // SSE requires no buffering
+        configure: (proxy) => {
+          proxy.on('proxyRes', (proxyRes) => {
+            proxyRes.headers['cache-control'] = 'no-cache';
+            proxyRes.headers['x-accel-buffering'] = 'no';
+          });
+        },
+      },
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,

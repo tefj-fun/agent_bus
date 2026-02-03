@@ -40,7 +40,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
     packaging==23.0 \
     pyyaml==6.0 \
     black==24.1.0 \
-    ruff==0.2.0
+    ruff==0.2.0 \
+    psutil==5.9.8
 
 # Copy application code last (invalidates only when source changes)
 COPY src/ ./src/

@@ -8,6 +8,7 @@ import {
   ProjectStatus,
   Deliverables,
   Memory,
+  Metrics,
 } from './pages';
 
 const queryClient = new QueryClient({
@@ -41,6 +42,9 @@ function App() {
 
             {/* Memory */}
             <Route path="/memory" element={<Memory />} />
+
+            {/* Metrics */}
+            <Route path="/metrics" element={<Metrics />} />
 
             {/* Redirects for old UI routes */}
             <Route path="/ui" element={<Navigate to="/" replace />} />

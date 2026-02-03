@@ -22,7 +22,7 @@ export function Badge({
     success: 'bg-success-50 text-success-700',
     warning: 'bg-warning-50 text-warning-700',
     error: 'bg-error-50 text-error-700',
-    info: 'bg-blue-50 text-blue-700',
+    info: 'bg-info-50 text-info-700',
     purple: 'bg-purple-50 text-purple-700',
   };
 
@@ -31,7 +31,7 @@ export function Badge({
     success: 'bg-success-500',
     warning: 'bg-warning-500',
     error: 'bg-error-500',
-    info: 'bg-blue-500',
+    info: 'bg-info-500',
     purple: 'bg-purple-500',
   };
 

@@ -78,8 +78,9 @@ async def get_job_artifacts(job_id: str):
         store = get_artifact_store()
         artifacts = await store.get_by_job(job_id)
 
+        # Return empty list if no artifacts yet (don't 404)
         if not artifacts:
-            raise HTTPException(status_code=404, detail=f"No artifacts found for job {job_id}")
+            artifacts = []
 
         return JobArtifactsResponse(
             job_id=job_id,

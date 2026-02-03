@@ -133,6 +133,67 @@ agent_bus/
 | Routing | React Router | ^6.x |
 | Icons | Lucide React | ^0.x |
 
+### UI Design System
+
+**IMPORTANT**: All UI components must follow the design system defined in `docs/UIUX_PLAN.md` and use the tokens from `web/src/styles/tokens.css`.
+
+#### Design Tokens Location
+
+| File | Purpose |
+|------|---------|
+| `web/src/styles/tokens.css` | CSS custom properties for colors, typography, animations |
+| `docs/UIUX_PLAN.md` | Complete design system specification |
+
+#### Color Palette
+
+```css
+/* Brand - Primary Blue */
+--color-primary-500: #3b82f6;    /* Main actions, links */
+--color-primary-600: #2563eb;    /* Hover states */
+--color-primary-700: #1d4ed8;    /* Active states */
+
+/* Semantic Colors */
+--color-success-500: #22c55e;    /* Completed, approved */
+--color-warning-500: #f59e0b;    /* Pending review, caution */
+--color-error-500: #ef4444;      /* Failed, rejected */
+
+/* Workflow Stage Colors (each agent has a distinct color) */
+--color-stage-prd: #8b5cf6;      /* Purple - PRD */
+--color-stage-plan: #ec4899;     /* Pink - Planning */
+--color-stage-arch: #f97316;     /* Orange - Architecture */
+--color-stage-uiux: #14b8a6;     /* Teal - UI/UX */
+--color-stage-dev: #3b82f6;      /* Blue - Development */
+--color-stage-qa: #22c55e;       /* Green - QA */
+--color-stage-security: #ef4444; /* Red - Security */
+--color-stage-docs: #6366f1;     /* Indigo - Documentation */
+```
+
+#### UI Component Guidelines
+
+1. **Use Tailwind utilities** with the custom color tokens (e.g., `bg-primary-500`, `text-error-600`)
+2. **Base components** are in `web/src/components/ui/` (Button, Card, Badge, etc.)
+3. **Domain components** are in `web/src/components/domain/` (WorkflowProgress, ActivityFeed, etc.)
+4. **Always use semantic colors** for status indicators:
+   - Success states: `success-*` colors (green)
+   - Warning/pending: `warning-*` colors (amber)
+   - Error/failed: `error-*` colors (red)
+   - Info/active: `primary-*` colors (blue)
+
+#### Typography
+
+```css
+--font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+--font-mono: 'JetBrains Mono', ui-monospace, monospace;
+```
+
+#### Animation Tokens
+
+```css
+--duration-fast: 150ms;    /* Hover effects, small transitions */
+--duration-normal: 250ms;  /* Modal/toast animations */
+--duration-slow: 400ms;    /* Page transitions */
+```
+
 ## Development Commands
 
 ### Quick Start
