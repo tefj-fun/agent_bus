@@ -26,6 +26,19 @@ def _get_chroma_store() -> Type[MemoryStoreBase]:
         )
 
 
+def _get_hybrid_store() -> Type[MemoryStoreBase]:
+    """Lazy import hybrid store to avoid import errors if chromadb isn't installed."""
+    try:
+        from .hybrid_store import HybridMemoryStore
+
+        return HybridMemoryStore
+    except ImportError as exc:
+        raise ImportError(
+            "Hybrid backend requires chromadb to be installed. "
+            "Install it with: pip install chromadb"
+        ) from exc
+
+
 class MemoryStoreRegistry:
     """Registry for memory store backend implementations.
 
@@ -54,6 +67,7 @@ class MemoryStoreRegistry:
     _lazy_backends: Dict[str, Callable[[], Type[MemoryStoreBase]]] = {
         "chromadb": _get_chroma_store,
         "chroma": _get_chroma_store,  # Alias
+        "hybrid": _get_hybrid_store,
     }
 
     @classmethod

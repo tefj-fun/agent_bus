@@ -17,7 +17,7 @@ class InMemoryStore(MemoryStoreBase):
     Data is lost when the process exits.
     """
 
-    def __init__(self):
+    def __init__(self, **_kwargs):
         self.backend = "in_memory"
         self.last_error: Optional[str] = None
         self._documents: Dict[str, Dict[str, Any]] = {}

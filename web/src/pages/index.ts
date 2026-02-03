@@ -5,3 +5,4 @@ export { ProjectStatus } from './ProjectStatus';
 export { Deliverables } from './Deliverables';
 export { Memory } from './Memory';
 export { Metrics } from './Metrics';
+export { Settings } from './Settings';

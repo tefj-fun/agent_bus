@@ -27,10 +27,10 @@ class Settings(BaseSettings):
     # Anthropic Claude (only required when LLM_PROVIDER=anthropic and LLM_MODE=real)
     anthropic_api_key: str = Field(default="", env="ANTHROPIC_API_KEY")
     anthropic_model: str = Field(default="claude-sonnet-4-5-20250929", env="ANTHROPIC_MODEL")
-    anthropic_max_tokens: int = Field(default=8192, env="ANTHROPIC_MAX_TOKENS")
+    anthropic_max_tokens: int = Field(default=20000, env="ANTHROPIC_MAX_TOKENS")
 
     # PRD-specific token limit (PRDs tend to be longer documents)
-    prd_max_tokens: int = Field(default=16384, env="PRD_MAX_TOKENS")
+    prd_max_tokens: int = Field(default=20000, env="PRD_MAX_TOKENS")
 
     # OpenAI (only required when LLM_PROVIDER=openai and LLM_MODE=real)
     openai_api_key: str = Field(default="", env="OPENAI_API_KEY")
@@ -51,6 +51,15 @@ class Settings(BaseSettings):
 
     # ChromaDB
     chroma_persist_directory: str = Field(default="./data/chroma", env="CHROMA_PERSIST_DIRECTORY")
+    chroma_host: Optional[str] = Field(default=None, env="CHROMA_HOST")
+    chroma_port: Optional[int] = Field(default=None, env="CHROMA_PORT")
+    chroma_collection_name: str = Field(
+        default="agent_bus_patterns", env="CHROMA_COLLECTION_NAME"
+    )
+
+    # Memory Store
+    memory_backend: str = Field(default="hybrid", env="MEMORY_BACKEND")
+    memory_auto_sync: bool = Field(default=True, env="MEMORY_AUTO_SYNC")
 
     # Artifact Storage
     artifact_output_dir: str = Field(default="./outputs", env="ARTIFACT_OUTPUT_DIR")

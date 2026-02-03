@@ -1,10 +1,12 @@
 """PRD Agent - Creates Product Requirements Documents."""
 
+from __future__ import annotations
+
 import uuid
 from typing import Dict, Any, List
 from .base import BaseAgent, AgentTask, AgentResult
 from ..config import settings
-from ..memory import MemoryStore
+from ..memory import MemoryStore, create_memory_store
 
 
 class PRDAgent(BaseAgent):
@@ -39,7 +41,15 @@ class PRDAgent(BaseAgent):
 
             sales_requirements = task.input_data.get("requirements", "")
 
-            memory_store = MemoryStore(db_pool=self.context.db_pool, pattern_type_default="prd")
+            memory_store = create_memory_store(
+                settings.memory_backend,
+                db_pool=self.context.db_pool,
+                pattern_type_default="prd",
+                collection_name=settings.chroma_collection_name,
+                persist_directory=settings.chroma_persist_directory,
+                host=settings.chroma_host,
+                port=settings.chroma_port,
+            )
             similar_prds = await self._query_similar_prds(memory_store, sales_requirements)
             memory_hits = [
                 {"id": item.get("id"), "score": item.get("score")}

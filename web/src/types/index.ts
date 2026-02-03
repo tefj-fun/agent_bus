@@ -13,7 +13,7 @@ export type JobStatus =
   | 'queued'
   | 'running'
   | 'in_progress'
-  | 'waiting_approval'
+  | 'waiting_for_approval'
   | 'completed'
   | 'failed';
 

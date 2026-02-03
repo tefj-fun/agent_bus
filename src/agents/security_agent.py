@@ -1,4 +1,6 @@
 """Security Agent - Conducts security review and vulnerability assessment."""
+from __future__ import annotations
+
 
 import json
 from typing import Any, Dict
@@ -287,7 +289,10 @@ class SecurityAgent(BaseAgent):
                 security_content = json.dumps(security_payload, indent=2)
             else:
                 response_text = await self.query_llm(
-                    prompt=user_prompt, system=system_prompt, thinking_budget=2048, max_tokens=8192
+                    prompt=user_prompt,
+                    system=system_prompt,
+                    thinking_budget=2048,
+                    max_tokens=settings.anthropic_max_tokens,
                 )
 
                 # Try to parse as JSON, fallback to raw text

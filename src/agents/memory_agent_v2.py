@@ -1,4 +1,6 @@
 """Memory Agent v2 - Pattern storage and retrieval with ChromaDB."""
+from __future__ import annotations
+
 
 import json
 import uuid

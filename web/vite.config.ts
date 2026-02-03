@@ -8,6 +8,10 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
+      '/health': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
       '/api/events': {
         target: 'http://localhost:8000',
         changeOrigin: true,

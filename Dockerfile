@@ -32,6 +32,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pytest-asyncio==0.21.1 \
     "numpy<2.0" \
     chromadb==0.4.22 \
+    posthog==2.4.0 \
     sentence-transformers==2.3.1 \
     kubernetes==29.0.0 \
     prometheus-client==0.19.0 \

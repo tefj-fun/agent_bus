@@ -1,4 +1,6 @@
 """Base agent class for all specialized agents."""
+from __future__ import annotations
+
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -83,7 +85,7 @@ class BaseAgent(ABC):
         system: str,
         model: Optional[str] = None,
         thinking_budget: int = 1024,
-        max_tokens: int = 8192,
+        max_tokens: Optional[int] = None,
     ) -> str:
         """
         Query Claude with extended thinking support.
@@ -100,6 +102,8 @@ class BaseAgent(ABC):
         """
         # Provider routing
         provider = settings.llm_provider
+        if max_tokens is None:
+            max_tokens = settings.anthropic_max_tokens
 
         if provider == "openai":
             from ..infrastructure.openai_client import openai_chat_complete

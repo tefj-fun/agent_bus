@@ -20,7 +20,12 @@ class PostgresMemoryStore(MemoryStoreBase):
     retrieval and when vector embeddings are not needed.
     """
 
-    def __init__(self, db_pool: asyncpg.Pool, pattern_type_default: str = "document"):
+    def __init__(
+        self,
+        db_pool: asyncpg.Pool,
+        pattern_type_default: str = "document",
+        **_kwargs,
+    ):
         self.db_pool = db_pool
         self.pattern_type_default = pattern_type_default
         self.backend = "postgres_tfidf"

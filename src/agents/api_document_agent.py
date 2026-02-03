@@ -7,6 +7,8 @@ This agent is responsible for:
 4. Storing endpoints and policies in long-term memory
 5. Providing context for development work
 """
+from __future__ import annotations
+
 
 import json
 import uuid

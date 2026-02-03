@@ -1,4 +1,6 @@
 """Delivery Agent - packages and delivers final project artifacts."""
+from __future__ import annotations
+
 
 from .base import BaseAgent, AgentContext, AgentTask, AgentResult
 
