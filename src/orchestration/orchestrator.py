@@ -56,6 +56,11 @@ class OrchestratorService:
                         from_status="approved", to_status="orchestrating_plan"
                     )
                     job_kind = "approved"
+                if not job:
+                    job = await postgres_client.claim_next_job(
+                        from_status="changes_requested", to_status="orchestrating_prd_revision"
+                    )
+                    job_kind = "changes_requested"
 
                 if not job:
                     await asyncio.sleep(self.poll_secs)
@@ -77,6 +82,10 @@ class OrchestratorService:
                 if job_kind == "approved":
                     print(f"[Orchestrator] Claimed APPROVED job {job_id} project={project_id}")
                     await self.master.continue_after_approval(job_id)
+                    continue
+                if job_kind == "changes_requested":
+                    print(f"[Orchestrator] Claimed CHANGES_REQUESTED job {job_id} project={project_id}")
+                    await self.master.continue_after_change_request(job_id)
                     continue
 
                 # queued job: run PRD stage

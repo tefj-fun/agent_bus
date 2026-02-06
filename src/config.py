@@ -27,10 +27,10 @@ class Settings(BaseSettings):
     # Anthropic Claude (only required when LLM_PROVIDER=anthropic and LLM_MODE=real)
     anthropic_api_key: str = Field(default="", env="ANTHROPIC_API_KEY")
     anthropic_model: str = Field(default="claude-sonnet-4-5-20250929", env="ANTHROPIC_MODEL")
-    anthropic_max_tokens: int = Field(default=20000, env="ANTHROPIC_MAX_TOKENS")
+    anthropic_max_tokens: int = Field(default=32000, env="ANTHROPIC_MAX_TOKENS")
 
     # PRD-specific token limit (PRDs tend to be longer documents)
-    prd_max_tokens: int = Field(default=20000, env="PRD_MAX_TOKENS")
+    prd_max_tokens: int = Field(default=32000, env="PRD_MAX_TOKENS")
 
     # OpenAI (only required when LLM_PROVIDER=openai and LLM_MODE=real)
     openai_api_key: str = Field(default="", env="OPENAI_API_KEY")
@@ -66,6 +66,9 @@ class Settings(BaseSettings):
     artifact_storage_backend: str = Field(
         default="file", env="ARTIFACT_STORAGE_BACKEND"
     )  # file|postgres
+    artifact_pdf_output_dir: str = Field(
+        default="./outputs_pdfs", env="ARTIFACT_PDF_OUTPUT_DIR"
+    )
 
     # Skills
     skills_directory: str = Field(default="./skills", env="SKILLS_DIRECTORY")

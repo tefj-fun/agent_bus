@@ -14,6 +14,7 @@ export type JobStatus =
   | 'running'
   | 'in_progress'
   | 'waiting_for_approval'
+  | 'changes_requested'
   | 'completed'
   | 'failed';
 

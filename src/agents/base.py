@@ -251,7 +251,11 @@ class BaseAgent(ABC):
         return await self.context.skills_manager.get_allowed_skills(self.agent_id)
 
     async def save_artifact(
-        self, artifact_type: str, content: str, metadata: Optional[Dict] = None
+        self,
+        artifact_type: str,
+        content: str,
+        metadata: Optional[Dict] = None,
+        artifact_id: Optional[str] = None,
     ) -> str:
         """
         Save agent output as artifact.
@@ -267,7 +271,8 @@ class BaseAgent(ABC):
         Returns:
             Artifact ID
         """
-        artifact_id = f"{self.agent_id}_{artifact_type}_{self.context.job_id}"
+        if not artifact_id:
+            artifact_id = f"{self.agent_id}_{artifact_type}_{self.context.job_id}"
 
         # Use file-based artifact store if configured
         if settings.artifact_storage_backend == "file":

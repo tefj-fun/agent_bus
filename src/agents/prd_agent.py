@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import uuid
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
+import hashlib
 from .base import BaseAgent, AgentTask, AgentResult
 from ..config import settings
 from ..memory import MemoryStore, create_memory_store
@@ -40,6 +41,19 @@ class PRDAgent(BaseAgent):
             await self.log_event("info", "Starting PRD generation")
 
             sales_requirements = task.input_data.get("requirements", "")
+            change_request_notes = task.input_data.get("change_request_notes") or ""
+            change_requested_at = task.input_data.get("change_requested_at") or ""
+            previous_prd = task.input_data.get("previous_prd") or ""
+            previous_prd_artifact_id = task.input_data.get("previous_prd_artifact_id") or ""
+
+            # If previous PRD not provided, attempt to load latest from DB
+            if not previous_prd:
+                previous_prd, previous_prd_artifact_id = await self._load_latest_prd()
+
+            prd_version = await self._next_prd_version()
+            previous_prd_hash = (
+                hashlib.sha256(previous_prd.encode("utf-8")).hexdigest() if previous_prd else None
+            )
 
             memory_store = create_memory_store(
                 settings.memory_backend,
@@ -61,7 +75,12 @@ class PRDAgent(BaseAgent):
             system_prompt = self._build_prd_system_prompt()
 
             # Generate PRD (real LLM or mock)
-            user_prompt = self._build_prd_user_prompt(sales_requirements, similar_prds)
+            user_prompt = self._build_prd_user_prompt(
+                sales_requirements=sales_requirements,
+                similar_prds=similar_prds,
+                previous_prd=previous_prd,
+                change_request_notes=change_request_notes,
+            )
 
             if settings.llm_mode == "mock":
                 prd_content = (
@@ -94,7 +113,13 @@ class PRDAgent(BaseAgent):
                     "prd_length": len(prd_content),
                     "task_id": task.task_id,
                     "memory_hits": memory_hits,
+                    "prd_version": prd_version,
+                    "previous_prd_artifact_id": previous_prd_artifact_id or None,
+                    "previous_prd_hash": previous_prd_hash,
+                    "change_request_notes": change_request_notes or None,
+                    "change_requested_at": change_requested_at or None,
                 },
+                artifact_id=f"{self.agent_id}_v{prd_version}_prd_{self.context.job_id}",
             )
 
             await self.log_event("info", f"PRD generated successfully: {artifact_id}")
@@ -181,9 +206,17 @@ Your role is to transform sales requirements into detailed, actionable PRDs that
 - Consider edge cases and error scenarios
 - Prioritize requirements (Must-have, Should-have, Nice-to-have)
 - Use clear, unambiguous language
-- Include examples where helpful"""
+- Include examples where helpful
+- If change requests are provided, revise the prior PRD rather than starting from scratch.
+  Preserve correct sections and only modify what the change request requires."""
 
-    def _build_prd_user_prompt(self, requirements: str, similar_prds: List[Dict[str, Any]]) -> str:
+    def _build_prd_user_prompt(
+        self,
+        sales_requirements: str,
+        similar_prds: List[Dict[str, Any]],
+        previous_prd: str = "",
+        change_request_notes: str = "",
+    ) -> str:
         """Build user prompt for PRD generation."""
         memory_context = ""
         if similar_prds:
@@ -196,12 +229,66 @@ Your role is to transform sales requirements into detailed, actionable PRDs that
                 joined = "\n\n".join(f"- {snippet}" for snippet in snippets)
                 memory_context = "\n\nRelevant snippets from prior PRDs:\n" f"{joined}\n"
 
+        change_context = ""
+        if change_request_notes:
+            change_context = (
+                "\n\nChange requests from reviewer:\n"
+                f"{change_request_notes}\n"
+                "Please address these changes explicitly.\n"
+            )
+
+        previous_context = ""
+        if previous_prd:
+            previous_context = (
+                "\n\nPrevious PRD (for reference; revise this document):\n"
+                f"{previous_prd}\n"
+            )
+
         return f"""Generate a comprehensive Product Requirements Document based on these sales requirements:
 
-{requirements}
-{memory_context}
+{sales_requirements}
+{memory_context}{change_context}{previous_context}
 
 Please create a detailed PRD following the structure and guidelines provided. Be thorough but concise, ensuring all requirements are clearly specified and actionable for the engineering team."""
+
+    async def _load_latest_prd(self) -> tuple[str, str]:
+        """Load the latest PRD content and artifact ID from the database."""
+        async with self.context.db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT id, content, metadata
+                FROM artifacts
+                WHERE job_id = $1 AND type = 'prd'
+                ORDER BY updated_at DESC, created_at DESC
+                LIMIT 1
+                """,
+                self.context.job_id,
+            )
+            if not row:
+                return "", ""
+            content = row.get("content") or ""
+            metadata = row.get("metadata") or {}
+            if isinstance(content, str) and content.startswith("[file:") and content.endswith("]"):
+                file_path = None
+                if isinstance(metadata, dict):
+                    file_path = metadata.get("_file_path")
+                if file_path:
+                    try:
+                        with open(file_path, "r") as f:
+                            content = f.read()
+                    except Exception:
+                        pass
+            return content, row.get("id") or ""
+
+    async def _next_prd_version(self) -> int:
+        """Compute the next PRD version number for this job."""
+        async with self.context.db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT COUNT(*) AS count FROM artifacts WHERE job_id = $1 AND type = 'prd'",
+                self.context.job_id,
+            )
+        count = int(row["count"]) if row and row.get("count") is not None else 0
+        return count + 1
 
     async def _query_similar_prds(
         self,

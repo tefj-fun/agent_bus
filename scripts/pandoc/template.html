@@ -1,0 +1,60 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    $if(title)$<title>$title$</title>$endif$
+    $for(css)$<link rel="stylesheet" href="$css$" />$endfor$
+  </head>
+  <body>
+    <div class="doc">
+      <header class="doc-header">
+        <div class="doc-header__left">
+          $if(title)$<span class="doc-title">$title$</span>$endif$
+        </div>
+        <div class="doc-header__right">
+          $if(date)$<span class="doc-date">$date$</span>$endif$
+        </div>
+      </header>
+
+      <div class="doc-cover">
+        <div class="doc-cover__accent"></div>
+        <div class="doc-cover__content">
+          $if(title)$<h1 class="doc-cover__title">$title$</h1>$endif$
+          $if(subtitle)$<p class="doc-cover__subtitle">$subtitle$</p>$endif$
+          $if(status)$<span class="doc-cover__status">$status$</span>$endif$
+          $if(date)$<p class="doc-cover__date">Updated: $date$</p>$endif$
+
+          <ul class="meta-list">
+            $if(owner)$
+            <li class="meta-item">
+              <span class="meta-label">Owner</span>
+              <span class="meta-value">$owner$</span>
+            </li>
+            $endif$
+            $if(target_release)$
+            <li class="meta-item">
+              <span class="meta-label">Target Release</span>
+              <span class="meta-value">$target_release$</span>
+            </li>
+            $endif$
+            $if(last_updated)$
+            <li class="meta-item">
+              <span class="meta-label">Last Updated</span>
+              <span class="meta-value">$last_updated$</span>
+            </li>
+            $endif$
+          </ul>
+        </div>
+      </div>
+
+      <main class="doc-body">
+        $body$
+      </main>
+
+      <footer class="doc-footer">
+        <span class="doc-footer__left">$if(footer_left)$$footer_left$$endif$</span>
+        <span class="doc-footer__right">Page <span class="page-number"></span> of <span class="page-total"></span></span>
+      </footer>
+    </div>
+  </body>
+</html>

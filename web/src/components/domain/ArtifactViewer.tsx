@@ -27,6 +27,7 @@ export function ArtifactViewer({
 }: ArtifactViewerProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [copied, setCopied] = useState(false);
+  const [a4View, setA4View] = useState(true);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(content);
@@ -94,6 +95,16 @@ export function ArtifactViewer({
           {!collapsible && (
             <>
               <Button
+                variant={a4View ? 'primary' : 'ghost'}
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setA4View((prev) => !prev);
+                }}
+              >
+                {a4View ? 'A4 View On' : 'A4 View Off'}
+              </Button>
+              <Button
                 variant="ghost"
                 size="sm"
                 icon={copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
@@ -130,10 +141,10 @@ export function ArtifactViewer({
       {/* Content */}
       {expanded && (
         <div className="p-4">
-          <div className="prose prose-sm max-w-none">
-            <pre className="whitespace-pre-wrap text-sm text-gray-700 bg-gray-50 rounded-lg p-4 overflow-x-auto">
-              {content}
-            </pre>
+          <div className="doc-shell">
+            <div className={`doc-page ${a4View ? 'doc-page--a4' : ''}`}>
+              <pre className="doc-markdown">{content}</pre>
+            </div>
           </div>
           {actions && (
             <div className="mt-4 pt-4 border-t border-gray-200">

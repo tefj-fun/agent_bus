@@ -142,6 +142,77 @@ async def get_artifact_content(job_id: str, artifact_type: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/pdf/{artifact_id}")
+async def get_artifact_pdf(artifact_id: str):
+    """Get PDF for a specific artifact by ID (file backend only)."""
+    if settings.artifact_storage_backend != "file":
+        raise HTTPException(
+            status_code=400,
+            detail="PDF preview only available with file storage backend",
+        )
+
+    try:
+        store = get_artifact_store()
+        if not isinstance(store, FileArtifactStore):
+            raise HTTPException(status_code=400, detail="File artifact store not initialized")
+
+        # Fetch artifact metadata from DB (includes job_id and _file_path)
+        from ...infrastructure.postgres_client import postgres_client
+
+        pool = await postgres_client.get_pool()
+        async with pool.acquire() as conn:
+            artifact_row = await conn.fetchrow(
+                """
+                SELECT id, job_id, type, metadata
+                FROM artifacts
+                WHERE id = $1
+                """,
+                artifact_id,
+            )
+
+        if not artifact_row:
+            raise HTTPException(status_code=404, detail="Artifact not found")
+
+        job_id = artifact_row.get("job_id")
+        metadata = artifact_row.get("metadata") or {}
+        if isinstance(metadata, str):
+            try:
+                import json
+
+                metadata = json.loads(metadata)
+            except Exception:
+                metadata = {}
+
+        file_path = metadata.get("_file_path")
+        if not file_path:
+            # fall back to default filename if metadata missing
+            artifact_type = artifact_row.get("type") or "artifact"
+            file_path = f"{artifact_type}.md"
+
+        pdf_name = file_path.rsplit(".", 1)[0] + ".pdf"
+        pdf_path = os.path.join(settings.artifact_pdf_output_dir, job_id, pdf_name)
+
+        if not os.path.exists(pdf_path):
+            raise HTTPException(
+                status_code=404,
+                detail="PDF not generated yet. Run the PDF export script.",
+            )
+
+        headers = {
+            "Content-Disposition": f'inline; filename="{os.path.basename(pdf_path)}"'
+        }
+        return FileResponse(
+            pdf_path,
+            media_type="application/pdf",
+            filename=os.path.basename(pdf_path),
+            headers=headers,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/job/{job_id}/export")
 async def export_job_artifacts(job_id: str):
     """Export all artifacts for a job as a downloadable ZIP file.
