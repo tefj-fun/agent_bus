@@ -161,13 +161,17 @@ class FileArtifactStore(ArtifactStore):
         """Get file extension for artifact type."""
         return self.TYPE_EXTENSIONS.get(artifact_type, ".txt")
 
-    def _get_artifact_filename(self, artifact_type: str) -> str:
+    def _get_artifact_filename(self, artifact_type: str, version: Optional[int] = None) -> str:
         """Get filename for artifact content."""
         ext = self._get_extension(artifact_type)
+        if version is not None:
+            return f"{artifact_type}_v{version}{ext}"
         return f"{artifact_type}{ext}"
 
-    def _get_metadata_filename(self, artifact_type: str) -> str:
+    def _get_metadata_filename(self, artifact_type: str, version: Optional[int] = None) -> str:
         """Get filename for artifact metadata."""
+        if version is not None:
+            return f"{artifact_type}_v{version}.meta.json"
         return f"{artifact_type}.meta.json"
 
     def _load_manifest(self, job_dir: Path) -> Dict[str, Any]:
@@ -202,8 +206,15 @@ class FileArtifactStore(ArtifactStore):
         job_dir = self._get_job_dir(job_id)
         now = datetime.now(timezone.utc).isoformat()
 
+        version = None
+        if isinstance(metadata, dict) and metadata.get("prd_version") is not None:
+            try:
+                version = int(metadata["prd_version"])
+            except Exception:
+                version = None
+
         # Write content file
-        content_filename = self._get_artifact_filename(artifact_type)
+        content_filename = self._get_artifact_filename(artifact_type, version=version)
         content_path = job_dir / content_filename
         with open(content_path, "w") as f:
             f.write(content)
@@ -221,7 +232,7 @@ class FileArtifactStore(ArtifactStore):
         )
 
         # Write metadata file
-        meta_filename = self._get_metadata_filename(artifact_type)
+        meta_filename = self._get_metadata_filename(artifact_type, version=version)
         meta_path = job_dir / meta_filename
         with open(meta_path, "w") as f:
             json.dump(
@@ -241,13 +252,27 @@ class FileArtifactStore(ArtifactStore):
 
         # Update manifest
         manifest = self._load_manifest(job_dir)
-        manifest["artifacts"][artifact_type] = {
+        entry = {
             "id": artifact_id,
             "agent_id": agent_id,
             "file": content_filename,
             "metadata_file": meta_filename,
             "updated_at": now,
         }
+        existing = manifest["artifacts"].get(artifact_type)
+        if existing:
+            entries = existing if isinstance(existing, list) else [existing]
+            replaced = False
+            for idx, item in enumerate(entries):
+                if item.get("id") == artifact_id:
+                    entries[idx] = entry
+                    replaced = True
+                    break
+            if not replaced:
+                entries.append(entry)
+            manifest["artifacts"][artifact_type] = entries[0] if len(entries) == 1 else entries
+        else:
+            manifest["artifacts"][artifact_type] = entry
         self._save_manifest(job_dir, manifest)
 
         return artifact_meta
@@ -267,8 +292,23 @@ class FileArtifactStore(ArtifactStore):
         if not job_dir.exists():
             return None
 
-        content_path = job_dir / self._get_artifact_filename(artifact_type)
-        meta_path = job_dir / self._get_metadata_filename(artifact_type)
+        manifest = self._load_manifest(job_dir)
+        entry = None
+        manifest_entry = manifest.get("artifacts", {}).get(artifact_type)
+        if isinstance(manifest_entry, list):
+            entry = next((item for item in manifest_entry if item.get("id") == artifact_id), None)
+        elif isinstance(manifest_entry, dict):
+            if manifest_entry.get("id") == artifact_id:
+                entry = manifest_entry
+
+        if entry:
+            content_path = job_dir / entry.get("file", self._get_artifact_filename(artifact_type))
+            meta_path = job_dir / entry.get(
+                "metadata_file", self._get_metadata_filename(artifact_type)
+            )
+        else:
+            content_path = job_dir / self._get_artifact_filename(artifact_type)
+            meta_path = job_dir / self._get_metadata_filename(artifact_type)
 
         if not content_path.exists():
             return None
@@ -309,32 +349,36 @@ class FileArtifactStore(ArtifactStore):
             if artifact_type and atype != artifact_type:
                 continue
 
-            content_path = job_dir / info["file"]
-            if not content_path.exists():
-                continue
+            entries = info if isinstance(info, list) else [info]
+            for entry in entries:
+                if not entry:
+                    continue
+                content_path = job_dir / entry.get("file", f"{atype}.txt")
+                if not content_path.exists():
+                    continue
 
-            with open(content_path, "r") as f:
-                content = f.read()
+                with open(content_path, "r") as f:
+                    content = f.read()
 
-            # Load metadata
-            meta_path = job_dir / info.get("metadata_file", f"{atype}.meta.json")
-            metadata = {}
-            if meta_path.exists():
-                with open(meta_path, "r") as f:
-                    metadata = json.load(f)
+                # Load metadata
+                meta_path = job_dir / entry.get("metadata_file", f"{atype}.meta.json")
+                metadata = {}
+                if meta_path.exists():
+                    with open(meta_path, "r") as f:
+                        metadata = json.load(f)
 
-            artifacts.append(
-                {
-                    "id": info["id"],
-                    "content": content,
-                    "metadata": metadata.get("metadata", {}),
-                    "created_at": metadata.get("created_at"),
-                    "updated_at": info.get("updated_at"),
-                    "agent_id": info.get("agent_id"),
-                    "job_id": job_id,
-                    "type": atype,
-                }
-            )
+                artifacts.append(
+                    {
+                        "id": entry.get("id"),
+                        "content": content,
+                        "metadata": metadata.get("metadata", {}),
+                        "created_at": metadata.get("created_at"),
+                        "updated_at": entry.get("updated_at"),
+                        "agent_id": entry.get("agent_id"),
+                        "job_id": job_id,
+                        "type": atype,
+                    }
+                )
 
         return artifacts
 
@@ -361,8 +405,16 @@ class FileArtifactStore(ArtifactStore):
         if not job_dir.exists():
             return False
 
-        content_path = job_dir / self._get_artifact_filename(artifact_type)
-        meta_path = job_dir / self._get_metadata_filename(artifact_type)
+        manifest = self._load_manifest(job_dir)
+        info = manifest.get("artifacts", {}).get(artifact_type)
+        entries = info if isinstance(info, list) else ([info] if info else [])
+
+        entry = next((item for item in entries if item and item.get("id") == artifact_id), None)
+        if not entry:
+            return False
+
+        content_path = job_dir / entry.get("file", self._get_artifact_filename(artifact_type))
+        meta_path = job_dir / entry.get("metadata_file", self._get_metadata_filename(artifact_type))
 
         deleted = False
         if content_path.exists():
@@ -371,10 +423,14 @@ class FileArtifactStore(ArtifactStore):
         if meta_path.exists():
             meta_path.unlink()
 
-        # Update manifest
         if deleted:
-            manifest = self._load_manifest(job_dir)
-            manifest["artifacts"].pop(artifact_type, None)
+            remaining = [item for item in entries if item and item.get("id") != artifact_id]
+            if not remaining:
+                manifest["artifacts"].pop(artifact_type, None)
+            elif len(remaining) == 1:
+                manifest["artifacts"][artifact_type] = remaining[0]
+            else:
+                manifest["artifacts"][artifact_type] = remaining
             self._save_manifest(job_dir, manifest)
 
         return deleted

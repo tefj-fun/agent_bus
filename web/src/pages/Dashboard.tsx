@@ -45,7 +45,13 @@ export function Dashboard() {
 
   // Categorize jobs
   const pendingReview = jobs.filter(j => j.status === 'waiting_for_approval');
-  const activeJobs = jobs.filter(j => j.status === 'running' || j.status === 'queued' || j.status === 'in_progress');
+  const activeJobs = jobs.filter(
+    j =>
+      j.status === 'running' ||
+      j.status === 'queued' ||
+      j.status === 'in_progress' ||
+      j.status === 'changes_requested'
+  );
   const completedJobs = jobs.filter(j => j.status === 'completed').slice(0, 5);
   const failedJobs = jobs.filter(j => j.status === 'failed').slice(0, 3);
 

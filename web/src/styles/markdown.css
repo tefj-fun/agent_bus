@@ -1,0 +1,77 @@
+.doc-shell {
+  background: #f3f4f6;
+  padding: 20px;
+  border-radius: 16px;
+}
+
+.doc-page {
+  background: #ffffff;
+  color: #111827;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 24px;
+  width: 100%;
+}
+
+.doc-page--a4 {
+  max-width: 794px;
+  min-height: 1123px;
+  margin: 0 auto;
+  padding: 56px 64px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.doc-page--pdf {
+  padding: 0;
+  min-height: 0;
+  max-width: 100%;
+  margin: 0;
+}
+
+.doc-page--pdf iframe {
+  display: block;
+}
+
+.doc-markdown {
+  white-space: pre-wrap;
+  font-family: "Spectral", "Georgia", "Times New Roman", serif;
+  font-size: 14px;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+}
+
+.doc-markdown strong {
+  font-weight: 700;
+}
+
+.doc-markdown code {
+  font-family: "JetBrains Mono", "SFMono-Regular", "Consolas", monospace;
+  font-size: 0.95em;
+  background: rgba(15, 23, 42, 0.06);
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+@media print {
+  body {
+    background: white;
+  }
+
+  .doc-shell {
+    padding: 0;
+    background: transparent;
+  }
+
+  .doc-page {
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+  }
+
+  .doc-page--a4 {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0;
+    padding: 18mm 16mm;
+  }
+}

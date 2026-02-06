@@ -182,6 +182,39 @@ class TestFileArtifactStore:
         assert artifact["content"] == "Latest PRD content"
 
     @pytest.mark.asyncio
+    async def test_versioned_prd_artifacts(self, artifact_store, temp_output_dir):
+        """Test storing multiple versioned PRDs."""
+        job_id = "job_versioned"
+
+        await artifact_store.save(
+            artifact_id=f"prd_agent_v1_prd_{job_id}",
+            agent_id="prd_agent",
+            job_id=job_id,
+            artifact_type="prd",
+            content="PRD v1",
+            metadata={"prd_version": 1},
+        )
+        await artifact_store.save(
+            artifact_id=f"prd_agent_v2_prd_{job_id}",
+            agent_id="prd_agent",
+            job_id=job_id,
+            artifact_type="prd",
+            content="PRD v2",
+            metadata={"prd_version": 2},
+        )
+
+        artifacts = await artifact_store.get_by_job(job_id, artifact_type="prd")
+        assert len(artifacts) == 2
+
+        latest = await artifact_store.get_latest_by_type(job_id, "prd")
+        assert latest is not None
+        assert latest["content"] == "PRD v2"
+
+        job_dir = Path(temp_output_dir) / job_id
+        assert (job_dir / "prd_v1.md").exists()
+        assert (job_dir / "prd_v2.md").exists()
+
+    @pytest.mark.asyncio
     async def test_delete_artifact(self, artifact_store, temp_output_dir):
         """Test deleting an artifact."""
         job_id = "job_delete"

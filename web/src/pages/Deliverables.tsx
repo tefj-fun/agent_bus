@@ -21,6 +21,8 @@ export function Deliverables() {
 
   const [downloading, setDownloading] = useState(false);
   const [viewingArtifact, setViewingArtifact] = useState<string | null>(null);
+  const [a4View, setA4View] = useState(true);
+  const [viewMode, setViewMode] = useState<'markdown' | 'pdf'>('markdown');
 
   const isLoading = jobLoading || artifactsLoading;
   const artifacts = artifactsData?.artifacts || [];
@@ -214,7 +216,11 @@ export function Deliverables() {
       {viewingArtifact && (
         <div
           className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
-          onClick={() => setViewingArtifact(null)}
+          onClick={() => {
+            setViewingArtifact(null);
+            setA4View(true);
+            setViewMode('markdown');
+          }}
         >
           <Card
             className="max-w-4xl w-full max-h-[80vh] overflow-auto"
@@ -231,6 +237,28 @@ export function Deliverables() {
                     </h2>
                     <div className="flex items-center gap-2">
                       <Button
+                        variant={viewMode === 'markdown' ? 'primary' : 'outline'}
+                        size="sm"
+                        onClick={() => setViewMode('markdown')}
+                      >
+                        Markdown
+                      </Button>
+                      <Button
+                        variant={viewMode === 'pdf' ? 'primary' : 'outline'}
+                        size="sm"
+                        onClick={() => setViewMode('pdf')}
+                      >
+                        PDF Preview
+                      </Button>
+                      <Button
+                        variant={a4View ? 'primary' : 'outline'}
+                        size="sm"
+                        onClick={() => setA4View((prev) => !prev)}
+                        disabled={viewMode === 'pdf'}
+                      >
+                        {a4View ? 'A4 View On' : 'A4 View Off'}
+                      </Button>
+                      <Button
                         variant="outline"
                         size="sm"
                         icon={<Download className="w-4 h-4" />}
@@ -241,15 +269,40 @@ export function Deliverables() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setViewingArtifact(null)}
+                        onClick={() => {
+                          setViewingArtifact(null);
+                          setA4View(true);
+                          setViewMode('markdown');
+                        }}
                       >
                         Close
                       </Button>
                     </div>
                   </div>
-                  <pre className="whitespace-pre-wrap text-sm text-gray-700 bg-gray-50 rounded-lg p-4 overflow-x-auto">
-                    {artifact.content}
-                  </pre>
+                  {viewMode === 'pdf' ? (
+                    <div className="doc-shell">
+                      <div className="doc-page doc-page--a4 doc-page--pdf">
+                        <iframe
+                          title="PDF preview"
+                          src={(() => {
+                            const url = new URL(
+                              `/api/artifacts/pdf/${artifact.artifact_id}`,
+                              window.location.origin
+                            );
+                            url.searchParams.set('ts', String(Date.now()));
+                            return url.toString();
+                          })()}
+                          className="w-full h-[80vh] border-0"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="doc-shell">
+                      <div className={`doc-page ${a4View ? 'doc-page--a4' : ''}`}>
+                        <pre className="doc-markdown">{artifact.content}</pre>
+                      </div>
+                    </div>
+                  )}
                 </>
               );
             })()}

@@ -98,6 +98,7 @@ export function useRequestChanges(jobId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['job', jobId] });
       queryClient.invalidateQueries({ queryKey: ['prd', jobId] });
+      queryClient.invalidateQueries({ queryKey: ['artifacts', jobId] });
     },
   });
 }

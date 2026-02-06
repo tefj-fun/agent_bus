@@ -770,7 +770,7 @@ async def request_changes(job_id: str, request: ApprovalRequest):
             raise HTTPException(status_code=404, detail="Job not found")
 
         await postgres_client.update_job_status(
-            job_id=job_id, status="changes_requested", workflow_stage="waiting_for_approval"
+            job_id=job_id, status="changes_requested", workflow_stage="prd_generation"
         )
         await postgres_client.update_job_metadata(
             job_id=job_id,

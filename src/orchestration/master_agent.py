@@ -11,6 +11,8 @@ from ..infrastructure.postgres_client import PostgresClient
 from ..infrastructure.anthropic_client import anthropic_client
 from ..skills.manager import SkillsManager
 from ..api.routes.events import publish_stage_started, publish_stage_completed, publish_job_failed, publish_job_started
+from ..config import settings
+from ..storage.artifact_store import get_artifact_store, FileArtifactStore
 
 
 class MasterAgent:
@@ -332,6 +334,74 @@ class MasterAgent:
             )
             return {"job_id": job_id, "status": "failed", "error": str(e)}
 
+    async def continue_after_change_request(self, job_id: str) -> Dict:
+        """
+        Regenerate PRD after a change request.
+
+        Args:
+            job_id: Job identifier
+
+        Returns:
+            Updated job results
+        """
+        try:
+            project_id, requirements, metadata = await self._fetch_job_context(job_id)
+            if not project_id:
+                raise ValueError(f"Job {job_id} not found")
+            if not requirements:
+                raise ValueError(f"Job {job_id} missing requirements")
+
+            prd_content, prd_artifact_id = await self._fetch_latest_prd(job_id)
+            if not prd_content:
+                raise ValueError(f"No prior PRD content available for job {job_id}")
+
+            change_notes = metadata.get("change_request_notes") if isinstance(metadata, dict) else None
+            change_requested_at = (
+                metadata.get("changes_requested_at") if isinstance(metadata, dict) else None
+            )
+
+            prd_result = await self._execute_stage(
+                job_id=job_id,
+                project_id=project_id,
+                stage=WorkflowStage.PRD_GENERATION,
+                inputs={
+                    "requirements": requirements,
+                    "previous_prd": prd_content,
+                    "previous_prd_artifact_id": prd_artifact_id,
+                    "change_request_notes": change_notes,
+                    "change_requested_at": change_requested_at,
+                },
+            )
+
+            await self.postgres.update_job_status(
+                job_id=job_id,
+                status="waiting_for_approval",
+                workflow_stage=WorkflowStage.WAITING_FOR_APPROVAL.value,
+            )
+
+            return {
+                "job_id": job_id,
+                "status": "waiting_for_approval",
+                "results": {"prd": prd_result},
+            }
+        except Exception as e:
+            print(f"[MasterAgent] Job {job_id} failed during PRD revision: {str(e)}")
+            try:
+                await publish_job_failed(job_id, str(e))
+            except Exception as pub_err:
+                print(f"[MasterAgent] Failed to publish job_failed event: {pub_err}")
+            try:
+                await self.postgres.update_job_metadata(
+                    job_id=job_id,
+                    metadata={"error": str(e), "failed_stage": WorkflowStage.PRD_GENERATION.value},
+                )
+            except Exception as meta_err:
+                print(f"[MasterAgent] Failed to persist job error metadata: {meta_err}")
+            await self.postgres.update_job_status(
+                job_id=job_id, status="failed", workflow_stage=WorkflowStage.FAILED.value
+            )
+            return {"job_id": job_id, "status": "failed", "error": str(e)}
+
     async def _fetch_project_and_prd(self, job_id: str) -> tuple[Optional[str], Optional[str]]:
         """Fetch project_id and latest PRD content for a job."""
         pool = await self.postgres.get_pool()
@@ -366,6 +436,65 @@ class MasterAgent:
             prd_content = task_row["prd_content"] if task_row else None
 
         return project_id, prd_content
+
+    async def _fetch_job_context(self, job_id: str) -> tuple[Optional[str], Optional[str], Dict]:
+        """Fetch project_id, requirements, and metadata for a job."""
+        pool = await self.postgres.get_pool()
+        async with pool.acquire() as conn:
+            job_row = await conn.fetchrow(
+                "SELECT project_id, metadata FROM jobs WHERE id = $1",
+                job_id,
+            )
+            if not job_row:
+                return None, None, {}
+            metadata = job_row.get("metadata") or {}
+            if isinstance(metadata, str):
+                try:
+                    import json
+
+                    metadata = json.loads(metadata)
+                except Exception:
+                    metadata = {}
+            requirements = metadata.get("requirements") if isinstance(metadata, dict) else None
+        return job_row.get("project_id"), requirements, metadata
+
+    async def _fetch_latest_prd(self, job_id: str) -> tuple[Optional[str], Optional[str]]:
+        """Fetch latest PRD content and artifact ID for a job."""
+        if settings.artifact_storage_backend == "file":
+            try:
+                store = get_artifact_store()
+                if isinstance(store, FileArtifactStore):
+                    artifact = await store.get_latest_by_type(job_id, "prd")
+                    if artifact:
+                        return artifact.get("content"), artifact.get("id")
+            except RuntimeError:
+                pass
+
+        pool = await self.postgres.get_pool()
+        async with pool.acquire() as conn:
+            prd_row = await conn.fetchrow(
+                """
+                SELECT id, content, metadata
+                FROM artifacts
+                WHERE job_id = $1 AND type = 'prd'
+                ORDER BY updated_at DESC, created_at DESC
+                LIMIT 1
+                """,
+                job_id,
+            )
+            if not prd_row:
+                return None, None
+            content = prd_row.get("content")
+            metadata = prd_row.get("metadata") or {}
+            if isinstance(content, str) and content.startswith("[file:") and content.endswith("]"):
+                file_path = metadata.get("_file_path") if isinstance(metadata, dict) else None
+                if file_path:
+                    try:
+                        with open(file_path, "r") as f:
+                            content = f.read()
+                    except Exception:
+                        pass
+            return content, prd_row.get("id")
 
     async def _fetch_artifact_content(self, job_id: str, artifact_type: str) -> Optional[str]:
         """Fetch artifact content by type for a job."""

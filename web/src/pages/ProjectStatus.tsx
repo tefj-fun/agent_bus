@@ -314,10 +314,15 @@ export function ProjectStatus() {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const variants: Record<string, { variant: 'success' | 'warning' | 'error' | 'info' | 'default'; dot: boolean; pulse: boolean }> = {
+  const variants: Record<
+    string,
+    { variant: 'success' | 'warning' | 'error' | 'info' | 'default'; dot: boolean; pulse: boolean }
+  > = {
     queued: { variant: 'default', dot: true, pulse: false },
     running: { variant: 'info', dot: true, pulse: true },
+    in_progress: { variant: 'info', dot: true, pulse: true },
     waiting_for_approval: { variant: 'warning', dot: true, pulse: true },
+    changes_requested: { variant: 'warning', dot: true, pulse: false },
     completed: { variant: 'success', dot: false, pulse: false },
     failed: { variant: 'error', dot: false, pulse: false },
   };

@@ -38,6 +38,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        WITH_PDF: "1"
+        WITH_MERMAID: "1"
     container_name: agent_bus_api
     environment:
       - PYTHONUNBUFFERED=1
@@ -48,8 +51,8 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - OPENAI_MODEL=${OPENAI_MODEL:-}
-      - ANTHROPIC_MAX_TOKENS=${ANTHROPIC_MAX_TOKENS:-8192}
-      - PRD_MAX_TOKENS=${PRD_MAX_TOKENS:-16384}
+      - ANTHROPIC_MAX_TOKENS=${ANTHROPIC_MAX_TOKENS:-32000}
+      - PRD_MAX_TOKENS=${PRD_MAX_TOKENS:-32000}
       - TIMEOUT_LLM_CALL=${TIMEOUT_LLM_CALL:-180}
       - TIMEOUT_TASK_COMPLETION=${TIMEOUT_TASK_COMPLETION:-3600}
       - REDIS_HOST=redis
@@ -59,12 +62,14 @@ services:
       - POSTGRES_DB=agent_bus
       - POSTGRES_USER=agent_bus
       - POSTGRES_PASSWORD=agent_bus_dev_password
+      - ARTIFACT_PDF_OUTPUT_DIR=/app/outputs_pdfs
     ports:
       - "8000:8000"
     volumes:
       - ./src:/app/src
       - ./skills:/app/skills
       - outputs_data:/app/outputs
+      - outputs_pdfs_data:/app/outputs_pdfs
     depends_on:
       postgres:
         condition: service_healthy
@@ -78,6 +83,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        WITH_PDF: "1"
+        WITH_MERMAID: "1"
     container_name: agent_bus_orchestrator
     environment:
       - PYTHONUNBUFFERED=1
@@ -97,11 +105,13 @@ services:
       - POSTGRES_DB=agent_bus
       - POSTGRES_USER=agent_bus
       - POSTGRES_PASSWORD=agent_bus_dev_password
+      - ARTIFACT_PDF_OUTPUT_DIR=/app/outputs_pdfs
     volumes:
       - ./src:/app/src
       - ./skills:/app/skills
       - worker_workspace:/workspace
       - outputs_data:/app/outputs
+      - outputs_pdfs_data:/app/outputs_pdfs
     depends_on:
       postgres:
         condition: service_healthy
@@ -114,6 +124,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        WITH_PDF: "1"
+        WITH_MERMAID: "1"
     container_name: agent_bus_worker
     environment:
       - PYTHONUNBUFFERED=1
@@ -134,11 +147,13 @@ services:
       - POSTGRES_DB=agent_bus
       - POSTGRES_USER=agent_bus
       - POSTGRES_PASSWORD=agent_bus_dev_password
+      - ARTIFACT_PDF_OUTPUT_DIR=/app/outputs_pdfs
     volumes:
       - ./src:/app/src
       - ./skills:/app/skills
       - worker_workspace:/workspace
       - outputs_data:/app/outputs
+      - outputs_pdfs_data:/app/outputs_pdfs
     depends_on:
       postgres:
         condition: service_healthy
@@ -151,3 +166,4 @@ volumes:
   redis_data:
   worker_workspace:
   outputs_data:
+  outputs_pdfs_data:
