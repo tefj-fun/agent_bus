@@ -26,6 +26,7 @@ class ProjectManager(BaseAgent):
     async def execute(self, task: AgentTask) -> AgentResult:
         """Generate project plans, timelines, and risk tracking."""
         try:
+            self._set_active_task_id(task.task_id)
             await self.log_event("info", "Starting project management planning")
 
             input_payload = json.dumps(task.input_data or {}, indent=2, sort_keys=True)
@@ -80,6 +81,7 @@ class ProjectManager(BaseAgent):
 
     def _build_system_prompt(self) -> str:
         return (
+            f"{self._truth_system_guardrails()}\n"
             "You are a Project Manager. Build delivery timelines, milestones, "
             "dependencies, and risk tracking for the project."
         )
@@ -89,6 +91,7 @@ class ProjectManager(BaseAgent):
             "Create a project plan from the following project context. "
             "Include milestones, timeline estimates, owners, dependencies, "
             "and risks with mitigations.\n\n"
+            "Treat the PRD and user requirements in the payload as the source of truth.\n\n"
             f"Project context:\n{input_payload}"
         )
 

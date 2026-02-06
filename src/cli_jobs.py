@@ -177,13 +177,14 @@ def watch(ctx: click.Context, job_id: str, interval: int) -> None:
 def result(ctx: click.Context, job_id: str, artifact: Optional[str], as_json: bool) -> None:
     """Show results/artifacts for a completed job.
 
-    Artifact types: prd, plan, architecture, ui_ux, development,
+    Artifact types: prd, feature_tree, plan, architecture, ui_ux, development,
     qa, security, documentation, support_docs
     """
     base_url = ctx.obj["base_url"]
 
     artifact_types = [
         "prd",
+        "feature_tree",
         "plan",
         "architecture",
         "ui_ux",

@@ -29,7 +29,10 @@ class PlanAgent(BaseAgent):
         Returns:
             Agent result with plan JSON
         """
+        self._set_active_task_id(task.task_id)
+        requirements = (task.input_data.get("requirements") or "").strip()
         prd_content = task.input_data.get("prd") or task.input_data.get("prd_content") or ""
+        feature_tree_content = task.input_data.get("feature_tree") or ""
         if not prd_content.strip():
             return AgentResult(
                 task_id=task.task_id,
@@ -41,6 +44,7 @@ class PlanAgent(BaseAgent):
             )
 
         system_prompt = (
+            f"{self._truth_system_guardrails()}\n"
             "You are a senior delivery manager. Produce an implementation plan from a PRD.\n"
             "Return ONLY valid JSON with this shape:\n"
             "{\n"
@@ -66,11 +70,7 @@ class PlanAgent(BaseAgent):
             "}\n"
         )
 
-        user_prompt = (
-            "Generate a delivery plan based on this PRD. "
-            "Ensure dependencies are explicit and tasks are actionable.\n\n"
-            f"{prd_content}"
-        )
+        user_prompt = self._build_user_prompt(prd_content, requirements, feature_tree_content)
 
         # Generate plan (real LLM or mock)
         from ..config import settings
@@ -126,6 +126,8 @@ class PlanAgent(BaseAgent):
             content=plan_text,
             metadata={
                 "task_id": task.task_id,
+                "requirements_length": len(requirements),
+                "feature_tree_length": len(feature_tree_content),
                 "parseable_json": "raw_plan" not in plan_payload,
             },
         )
@@ -143,3 +145,22 @@ class PlanAgent(BaseAgent):
                 "parseable_json": "raw_plan" not in plan_payload,
             },
         )
+
+    def _build_user_prompt(
+        self, prd_content: str, requirements: str, feature_tree_content: str
+    ) -> str:
+        prompt = (
+            "Generate a delivery plan based on the sources of truth below. "
+            "Ensure dependencies are explicit and tasks are actionable.\n\n"
+        )
+
+        if requirements:
+            prompt += f"User Requirements (source of truth):\n{requirements}\n\n"
+
+        prompt += f"PRD (source of truth):\n{prd_content}\n\n"
+
+        if feature_tree_content.strip():
+            prompt += f"Feature Tree (derived, for structure only):\n{feature_tree_content}\n\n"
+
+        prompt += "Return JSON only."
+        return prompt

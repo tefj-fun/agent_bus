@@ -3,6 +3,7 @@ import { PageLayout, PageHeader } from '../components/layout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { RefreshCw, Cpu, HardDrive, Clock, Activity, CheckCircle, XCircle, Briefcase } from 'lucide-react';
+import { formatCompactNumber, formatCurrencyUSD } from '../utils/utils';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -25,6 +26,14 @@ interface MetricsData {
     memory_total_bytes: number;
     uptime_seconds: number;
   };
+  usage?: {
+    input_tokens: number;
+    output_tokens: number;
+    total_tokens: number;
+    calls: number;
+    cost_usd: number | null;
+    cost_available?: boolean;
+  } | null;
   timestamp: number;
 }
 
@@ -104,12 +113,12 @@ export function Metrics() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card>
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Cpu className="w-5 h-5 text-blue-600" />
+                <div className="p-2 bg-info-100 rounded-lg">
+                  <Cpu className="w-5 h-5 text-info-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">CPU Usage</p>
-                  <p className="text-2xl font-semibold text-gray-900">
+                  <p className="text-sm text-text-secondary">CPU Usage</p>
+                  <p className="text-2xl font-semibold text-text-primary">
                     {metrics.system.cpu_percent.toFixed(1)}%
                   </p>
                 </div>
@@ -118,15 +127,15 @@ export function Metrics() {
 
             <Card>
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <HardDrive className="w-5 h-5 text-purple-600" />
+                <div className="p-2 bg-primary-100 rounded-lg">
+                  <HardDrive className="w-5 h-5 text-primary-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Memory</p>
-                  <p className="text-2xl font-semibold text-gray-900">
+                  <p className="text-sm text-text-secondary">Memory</p>
+                  <p className="text-2xl font-semibold text-text-primary">
                     {metrics.system.memory_percent.toFixed(1)}%
                   </p>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-text-muted">
                     {formatBytes(metrics.system.memory_used_bytes)} / {formatBytes(metrics.system.memory_total_bytes)}
                   </p>
                 </div>
@@ -135,12 +144,12 @@ export function Metrics() {
 
             <Card>
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <Clock className="w-5 h-5 text-green-600" />
+                <div className="p-2 bg-success-100 rounded-lg">
+                  <Clock className="w-5 h-5 text-success-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Uptime</p>
-                  <p className="text-2xl font-semibold text-gray-900">
+                  <p className="text-sm text-text-secondary">Uptime</p>
+                  <p className="text-2xl font-semibold text-text-primary">
                     {formatUptime(metrics.system.uptime_seconds)}
                   </p>
                 </div>
@@ -149,12 +158,12 @@ export function Metrics() {
 
             <Card>
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-orange-100 rounded-lg">
-                  <Activity className="w-5 h-5 text-orange-600" />
+                <div className="p-2 bg-warning-100 rounded-lg">
+                  <Activity className="w-5 h-5 text-warning-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Requests</p>
-                  <p className="text-2xl font-semibold text-gray-900">
+                  <p className="text-sm text-text-secondary">Requests</p>
+                  <p className="text-2xl font-semibold text-text-primary">
                     {metrics.counters.requests_total}
                   </p>
                 </div>
@@ -164,27 +173,27 @@ export function Metrics() {
 
           {/* Request Stats */}
           <Card>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Request Statistics</h3>
+            <h3 className="text-lg font-semibold text-text-primary mb-4">Request Statistics</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="flex items-center gap-3">
-                <Activity className="w-5 h-5 text-gray-400" />
+                <Activity className="w-5 h-5 text-text-muted" />
                 <div>
-                  <p className="text-sm text-gray-500">Total Requests</p>
+                  <p className="text-sm text-text-secondary">Total Requests</p>
                   <p className="text-xl font-semibold">{metrics.counters.requests_total}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <CheckCircle className="w-5 h-5 text-green-500" />
+                <CheckCircle className="w-5 h-5 text-success-500" />
                 <div>
-                  <p className="text-sm text-gray-500">Successful</p>
-                  <p className="text-xl font-semibold text-green-600">{metrics.counters.requests_success}</p>
+                  <p className="text-sm text-text-secondary">Successful</p>
+                  <p className="text-xl font-semibold text-success-600">{metrics.counters.requests_success}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <XCircle className="w-5 h-5 text-red-500" />
+                <XCircle className="w-5 h-5 text-error-500" />
                 <div>
-                  <p className="text-sm text-gray-500">Errors</p>
-                  <p className="text-xl font-semibold text-red-600">{metrics.counters.requests_error}</p>
+                  <p className="text-sm text-text-secondary">Errors</p>
+                  <p className="text-xl font-semibold text-error-600">{metrics.counters.requests_error}</p>
                 </div>
               </div>
             </div>
@@ -192,27 +201,27 @@ export function Metrics() {
 
           {/* Job Stats */}
           <Card>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Job Statistics</h3>
+            <h3 className="text-lg font-semibold text-text-primary mb-4">Job Statistics</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="flex items-center gap-3">
-                <Briefcase className="w-5 h-5 text-blue-500" />
+                <Briefcase className="w-5 h-5 text-info-500" />
                 <div>
-                  <p className="text-sm text-gray-500">Jobs Submitted</p>
+                  <p className="text-sm text-text-secondary">Jobs Submitted</p>
                   <p className="text-xl font-semibold">{metrics.counters.jobs_submitted}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <CheckCircle className="w-5 h-5 text-green-500" />
+                <CheckCircle className="w-5 h-5 text-success-500" />
                 <div>
-                  <p className="text-sm text-gray-500">Completed</p>
-                  <p className="text-xl font-semibold text-green-600">{metrics.counters.jobs_completed}</p>
+                  <p className="text-sm text-text-secondary">Completed</p>
+                  <p className="text-xl font-semibold text-success-600">{metrics.counters.jobs_completed}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <XCircle className="w-5 h-5 text-red-500" />
+                <XCircle className="w-5 h-5 text-error-500" />
                 <div>
-                  <p className="text-sm text-gray-500">Failed</p>
-                  <p className="text-xl font-semibold text-red-600">{metrics.counters.jobs_failed}</p>
+                  <p className="text-sm text-text-secondary">Failed</p>
+                  <p className="text-xl font-semibold text-error-600">{metrics.counters.jobs_failed}</p>
                 </div>
               </div>
             </div>
@@ -220,26 +229,57 @@ export function Metrics() {
 
           {/* Task Stats */}
           <Card>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Task Execution</h3>
+            <h3 className="text-lg font-semibold text-text-primary mb-4">Task Execution</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
-                <p className="text-sm text-gray-500">Total Tasks</p>
+                <p className="text-sm text-text-secondary">Total Tasks</p>
                 <p className="text-xl font-semibold">{metrics.counters.tasks_executed}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">GPU Tasks</p>
+                <p className="text-sm text-text-secondary">GPU Tasks</p>
                 <p className="text-xl font-semibold">{metrics.counters.gpu_tasks_executed}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">CPU Tasks</p>
+                <p className="text-sm text-text-secondary">CPU Tasks</p>
                 <p className="text-xl font-semibold">{metrics.counters.cpu_tasks_executed}</p>
               </div>
             </div>
           </Card>
 
+          {metrics.usage && (
+            <Card>
+              <h3 className="text-lg font-semibold text-text-primary mb-4">LLM Usage & Cost</h3>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div>
+                  <p className="text-sm text-text-secondary">Total Tokens</p>
+                  <p className="text-xl font-semibold">{formatCompactNumber(metrics.usage.total_tokens)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-text-secondary">Input Tokens</p>
+                  <p className="text-xl font-semibold">{formatCompactNumber(metrics.usage.input_tokens)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-text-secondary">Output Tokens</p>
+                  <p className="text-xl font-semibold">{formatCompactNumber(metrics.usage.output_tokens)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-text-secondary">Estimated Cost</p>
+                  <p className="text-xl font-semibold">
+                    {metrics.usage.cost_available ? formatCurrencyUSD(metrics.usage.cost_usd) : '—'}
+                  </p>
+                </div>
+              </div>
+              <p className="text-xs text-text-muted mt-3">
+                {metrics.usage.cost_available
+                  ? `Based on ${metrics.usage.calls} LLM calls.`
+                  : `Pricing not configured. ${metrics.usage.calls} LLM calls tracked.`}
+              </p>
+            </Card>
+          )}
+
           {/* Last Updated */}
           {lastUpdated && (
-            <p className="text-sm text-gray-400 text-center">
+            <p className="text-sm text-text-muted text-center">
               Last updated: {lastUpdated.toLocaleTimeString()}
             </p>
           )}
@@ -249,8 +289,8 @@ export function Metrics() {
       {/* Loading state */}
       {loading && !metrics && (
         <Card className="text-center py-12">
-          <RefreshCw className="w-8 h-8 text-gray-300 mx-auto mb-4 animate-spin" />
-          <p className="text-gray-500">Loading metrics...</p>
+          <RefreshCw className="w-8 h-8 text-text-muted mx-auto mb-4 animate-spin" />
+          <p className="text-text-secondary">Loading metrics...</p>
         </Card>
       )}
     </PageLayout>

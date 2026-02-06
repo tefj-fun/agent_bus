@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from './components/ui/Toast';
 import {
@@ -7,6 +8,8 @@ import {
   PRDReview,
   ProjectStatus,
   Deliverables,
+  FeatureTree,
+  Artifact,
   Memory,
   Metrics,
   Settings,
@@ -22,11 +25,22 @@ const queryClient = new QueryClient({
   },
 });
 
+function ScrollToTop() {
+  const location = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [location.pathname, location.search]);
+
+  return null;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
         <BrowserRouter>
+          <ScrollToTop />
           <Routes>
             {/* Dashboard */}
             <Route path="/" element={<Dashboard />} />
@@ -37,6 +51,8 @@ function App() {
             {/* Project Routes */}
             <Route path="/project/:jobId" element={<ProjectStatus />} />
             <Route path="/project/:jobId/deliverables" element={<Deliverables />} />
+            <Route path="/project/:jobId/feature-tree" element={<FeatureTree />} />
+            <Route path="/project/:jobId/artifact/:type" element={<Artifact />} />
 
             {/* PRD Review */}
             <Route path="/prd/:jobId" element={<PRDReview />} />
@@ -58,10 +74,10 @@ function App() {
             <Route
               path="*"
               element={
-                <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <div className="min-h-screen flex items-center justify-center bg-bg-secondary">
                   <div className="text-center">
-                    <h1 className="text-4xl font-bold text-gray-900 mb-2">404</h1>
-                    <p className="text-gray-600 mb-4">Page not found</p>
+                    <h1 className="text-4xl font-bold text-text-primary mb-2">404</h1>
+                    <p className="text-text-secondary mb-4">Page not found</p>
                     <a
                       href="/"
                       className="text-primary-600 hover:text-primary-700 font-medium"

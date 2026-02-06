@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { PageLayout, PageHeader } from '../components/layout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -16,6 +16,8 @@ export function Dashboard() {
   const restartJob = useRestartJob();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [restartingId, setRestartingId] = useState<string | null>(null);
+  const location = useLocation();
+  const currentPath = `${location.pathname}${location.search}`;
 
   const handleDelete = async (jobId: string, projectId: string) => {
     if (!confirm(`Delete project "${projectId}"? This cannot be undone.`)) {
@@ -53,7 +55,7 @@ export function Dashboard() {
       j.status === 'changes_requested'
   );
   const completedJobs = jobs.filter(j => j.status === 'completed').slice(0, 5);
-  const failedJobs = jobs.filter(j => j.status === 'failed').slice(0, 3);
+  const failedJobs = jobs.filter(j => j.status === 'failed' || j.status === 'canceled').slice(0, 3);
 
   // Stats
   const totalCompleted = jobs.filter(j => j.status === 'completed').length;
@@ -116,7 +118,7 @@ export function Dashboard() {
       {/* Pending Review Section */}
       {pendingReview.length > 0 && (
         <section className="mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-text-primary mb-3 flex items-center gap-2">
             <AlertCircle className="w-5 h-5 text-warning-500" />
             Pending Your Review
           </h2>
@@ -128,12 +130,12 @@ export function Dashboard() {
                     <Badge variant="warning" dot pulse>
                       PRD Ready
                     </Badge>
-                    <span className="font-medium text-gray-900">{job.project_id}</span>
-                    <span className="text-sm text-gray-500">
+                    <span className="font-medium text-text-primary">{job.project_id}</span>
+                    <span className="text-sm text-text-secondary">
                       {formatRelativeTime(job.updated_at)}
                     </span>
                   </div>
-                  <Link to={`/prd/${job.job_id}`}>
+                  <Link to={`/prd/${job.job_id}`} state={{ from: currentPath }}>
                     <Button size="sm">
                       Review PRD
                       <ArrowRight className="w-4 h-4 ml-1" />
@@ -148,7 +150,7 @@ export function Dashboard() {
 
       {/* Active Projects */}
       <section className="mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-3">
+        <h2 className="text-lg font-semibold text-text-primary mb-3">
           Active Projects
         </h2>
         {isLoading ? (
@@ -158,12 +160,12 @@ export function Dashboard() {
         ) : activeJobs.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {activeJobs.map(job => (
-              <ProjectCard key={job.job_id} job={job} />
+              <ProjectCard key={job.job_id} job={job} returnPath={currentPath} />
             ))}
           </div>
         ) : (
           <Card variant="outlined" className="text-center py-8">
-            <p className="text-gray-500 mb-4">No active projects</p>
+            <p className="text-text-secondary mb-4">No active projects</p>
             <Link to="/new">
               <Button variant="outline" icon={<Plus className="w-4 h-4" />}>
                 Create your first project
@@ -176,7 +178,7 @@ export function Dashboard() {
       {/* Recent Completed */}
       {completedJobs.length > 0 && (
         <section className="mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">
+          <h2 className="text-lg font-semibold text-text-primary mb-3">
             Recent Completed
           </h2>
           <div className="space-y-2">
@@ -185,13 +187,13 @@ export function Dashboard() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <CheckCircle className="w-5 h-5 text-success-500" />
-                    <span className="font-medium text-gray-900">{job.project_id}</span>
-                    <span className="text-sm text-gray-500">
+                    <span className="font-medium text-text-primary">{job.project_id}</span>
+                    <span className="text-sm text-text-secondary">
                       Completed {formatRelativeTime(job.updated_at)}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Link to={`/project/${job.job_id}/deliverables`}>
+                    <Link to={`/project/${job.job_id}/deliverables`} state={{ from: currentPath }}>
                       <Button variant="ghost" size="sm">
                         View Artifacts
                       </Button>
@@ -201,7 +203,7 @@ export function Dashboard() {
                       size="sm"
                       onClick={() => handleDelete(job.job_id, job.project_id)}
                       disabled={deletingId === job.job_id}
-                      className="text-gray-400 hover:text-error-600 hover:bg-error-50"
+                      className="text-text-muted hover:text-error-600 hover:bg-error-50"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -216,7 +218,7 @@ export function Dashboard() {
       {/* Failed Jobs */}
       {failedJobs.length > 0 && (
         <section>
-          <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-text-primary mb-3 flex items-center gap-2">
             <XCircle className="w-5 h-5 text-error-500" />
             Failed Jobs
           </h2>
@@ -225,14 +227,16 @@ export function Dashboard() {
               <Card key={job.job_id} variant="outlined" className="border-error-200">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <Badge variant="error">Failed</Badge>
-                    <span className="font-medium text-gray-900">{job.project_id}</span>
-                    <span className="text-sm text-gray-500">
+                    <Badge variant="error">
+                      {job.status === 'canceled' ? 'Canceled' : 'Failed'}
+                    </Badge>
+                    <span className="font-medium text-text-primary">{job.project_id}</span>
+                    <span className="text-sm text-text-secondary">
                       at {getFailureStageLabel(job)}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Link to={`/project/${job.job_id}`}>
+                    <Link to={`/project/${job.job_id}`} state={{ from: currentPath }}>
                       <Button variant="ghost" size="sm">
                         View Details
                       </Button>
@@ -312,18 +316,18 @@ function StatCard({
       <div className="flex items-center gap-3">
         {icon}
         <div>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
-          <p className="text-sm text-gray-500">{label}</p>
+          <p className="text-2xl font-bold text-text-primary">{value}</p>
+          <p className="text-sm text-text-secondary">{label}</p>
         </div>
       </div>
     </Card>
   );
 }
 
-function ProjectCard({ job }: { job: Job }) {
+function ProjectCard({ job, returnPath }: { job: Job; returnPath: string }) {
   const getStageProgress = (stage: string): number => {
     const stages = [
-      'initialization', 'prd_generation', 'waiting_for_approval', 'plan_generation',
+      'initialization', 'prd_generation', 'waiting_for_approval', 'feature_tree', 'plan_generation',
       'architecture_design', 'uiux_design', 'development', 'qa_testing',
       'security_review', 'documentation', 'support_docs', 'pm_review', 'delivery', 'completed'
     ];
@@ -335,12 +339,12 @@ function ProjectCard({ job }: { job: Job }) {
   const stageName = job.stage.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
   return (
-    <Link to={`/project/${job.job_id}`}>
+    <Link to={`/project/${job.job_id}`} state={{ from: returnPath }}>
       <Card variant="interactive">
-        <h3 className="font-medium text-gray-900 mb-2">{job.project_id}</h3>
+        <h3 className="font-medium text-text-primary mb-2">{job.project_id}</h3>
 
         {/* Progress bar */}
-        <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+        <div className="w-full bg-border rounded-full h-2 mb-2">
           <div
             className="bg-primary-500 h-2 rounded-full transition-all duration-300"
             style={{ width: `${progress}%` }}
@@ -348,11 +352,11 @@ function ProjectCard({ job }: { job: Job }) {
         </div>
 
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600">{stageName}</span>
-          <span className="text-gray-500">{progress}%</span>
+          <span className="text-text-secondary">{stageName}</span>
+          <span className="text-text-secondary">{progress}%</span>
         </div>
 
-        <p className="text-xs text-gray-400 mt-2">
+        <p className="text-xs text-text-muted mt-2">
           Started {formatRelativeTime(job.created_at)}
         </p>
       </Card>

@@ -24,7 +24,7 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="block text-sm font-medium text-gray-700"
+            className="block text-sm font-medium text-text-secondary"
           >
             {label}
             {props.required && <span className="text-error-500 ml-1">*</span>}
@@ -34,13 +34,13 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           ref={ref}
           id={inputId}
           className={cn(
-            'block w-full rounded-lg border px-3 py-2 text-sm transition-colors min-h-[120px] resize-y',
-            'placeholder:text-gray-400',
+            'block w-full rounded-lg border bg-bg-primary px-3 py-2 text-sm text-text-primary transition-colors min-h-[120px] resize-y',
+            'placeholder:text-text-muted',
             'focus:outline-none focus:ring-2 focus:ring-offset-0',
             error
-              ? 'border-error-300 focus:border-error-500 focus:ring-error-500/20'
-              : 'border-gray-300 focus:border-primary-500 focus:ring-primary-500/20',
-            'disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed',
+              ? 'border-error-200 focus:border-error-500 focus:ring-error-500/20'
+              : 'border-border focus:border-primary-500 focus:ring-primary-500/20',
+            'disabled:bg-bg-secondary disabled:text-text-muted disabled:cursor-not-allowed',
             className
           )}
           {...props}
@@ -48,7 +48,7 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         <div className="flex justify-between items-center">
           <div>
             {hint && !error && (
-              <p className="text-sm text-gray-500">{hint}</p>
+              <p className="text-sm text-text-secondary">{hint}</p>
             )}
             {error && (
               <p className="text-sm text-error-600">{error}</p>
@@ -58,7 +58,7 @@ const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
             <p
               className={cn(
                 'text-sm',
-                isUnderMin || isOverMax ? 'text-error-600' : 'text-gray-500'
+                isUnderMin || isOverMax ? 'text-error-600' : 'text-text-secondary'
               )}
             >
               {charCount.current}

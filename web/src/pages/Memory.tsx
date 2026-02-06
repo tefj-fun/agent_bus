@@ -110,10 +110,10 @@ export function Memory() {
           <div className="flex items-center gap-4">
             <Database className="w-6 h-6 text-primary-500" />
             <div>
-              <p className="text-lg font-semibold text-gray-900">
+              <p className="text-lg font-semibold text-text-primary">
                 {stats.total_patterns} patterns
               </p>
-              <p className="text-sm text-gray-500">stored in memory</p>
+              <p className="text-sm text-text-secondary">stored in memory</p>
             </div>
           </div>
         </Card>
@@ -129,7 +129,7 @@ export function Memory() {
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               placeholder="Search patterns..."
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className="flex-1 px-4 py-2 border border-border rounded-lg bg-bg-primary text-text-primary placeholder:text-text-muted focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
             <Button
               onClick={handleSearch}
@@ -147,7 +147,7 @@ export function Memory() {
               className={`px-3 py-1 rounded-full text-sm transition-colors ${
                 patternType === null
                   ? 'bg-primary-100 text-primary-700'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  : 'bg-bg-tertiary text-text-secondary hover:bg-border'
               }`}
             >
               All Types
@@ -159,7 +159,7 @@ export function Memory() {
                 className={`px-3 py-1 rounded-full text-sm flex items-center gap-1 transition-colors ${
                   patternType === type
                     ? 'bg-primary-100 text-primary-700'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    : 'bg-bg-tertiary text-text-secondary hover:bg-border'
                 }`}
               >
                 {PATTERN_ICONS[type] || <Database className="w-3 h-3" />}
@@ -180,7 +180,7 @@ export function Memory() {
       {/* Results */}
       {results.length > 0 && (
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-gray-900">
+          <h2 className="text-lg font-semibold text-text-primary">
             {results.length} result{results.length !== 1 ? 's' : ''}
           </h2>
           {results.map((result) => (
@@ -191,19 +191,19 @@ export function Memory() {
                   <Badge variant="default">
                     {result.metadata.pattern_type || 'general'}
                   </Badge>
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-text-secondary">
                     Score: {(result.score * 100).toFixed(1)}%
                   </span>
                 </div>
-                <span className="text-xs text-gray-400 font-mono">{result.id}</span>
+                <span className="text-xs text-text-muted font-mono">{result.id}</span>
               </div>
-              <p className="text-gray-700 whitespace-pre-wrap text-sm">
+              <p className="text-text-secondary whitespace-pre-wrap text-sm">
                 {result.text.length > 500
                   ? `${result.text.slice(0, 500)}...`
                   : result.text}
               </p>
               {result.metadata.usage_count && (
-                <p className="text-xs text-gray-400 mt-2">
+                <p className="text-xs text-text-muted mt-2">
                   Used {result.metadata.usage_count} time{result.metadata.usage_count !== '1' ? 's' : ''}
                 </p>
               )}
@@ -215,9 +215,9 @@ export function Memory() {
       {/* Empty state */}
       {results.length === 0 && !error && !isSearching && (
         <Card variant="outlined" className="text-center py-12">
-          <Search className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500 mb-2">Search for patterns in memory</p>
-          <p className="text-sm text-gray-400">
+          <Search className="w-12 h-12 text-text-muted mx-auto mb-4" />
+          <p className="text-text-secondary mb-2">Search for patterns in memory</p>
+          <p className="text-sm text-text-muted">
             Enter a query to find similar patterns, templates, and solutions
           </p>
         </Card>

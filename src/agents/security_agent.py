@@ -36,12 +36,14 @@ class SecurityAgent(BaseAgent):
             Agent result with security artifact
         """
         try:
+            self._set_active_task_id(task.task_id)
             await self.log_event("info", "Starting security review")
 
             development_content = task.input_data.get("development") or ""
             architecture_content = task.input_data.get("architecture") or ""
             qa_content = task.input_data.get("qa") or ""
             prd_content = task.input_data.get("prd") or ""
+            requirements = (task.input_data.get("requirements") or "").strip()
 
             if not development_content.strip():
                 return AgentResult(
@@ -58,7 +60,7 @@ class SecurityAgent(BaseAgent):
 
             # Generate security audit (real LLM or mock)
             user_prompt = self._build_security_user_prompt(
-                development_content, architecture_content, qa_content, prd_content
+                development_content, architecture_content, qa_content, prd_content, requirements
             )
 
             from ..config import settings
@@ -312,6 +314,7 @@ class SecurityAgent(BaseAgent):
                     "development_length": len(development_content),
                     "architecture_length": len(architecture_content),
                     "qa_length": len(qa_content),
+                    "requirements_length": len(requirements),
                     "parseable_json": "raw_security" not in security_payload,
                 },
             )
@@ -361,7 +364,8 @@ class SecurityAgent(BaseAgent):
 
     def _build_security_system_prompt(self) -> str:
         """Build system prompt for security review."""
-        return """You are an expert Security Engineer and Application Security Specialist with deep expertise in identifying and mitigating security vulnerabilities.
+        return f"""{self._truth_system_guardrails()}
+You are an expert Security Engineer and Application Security Specialist with deep expertise in identifying and mitigating security vulnerabilities.
 
 Your role is to conduct comprehensive security reviews and vulnerability assessments based on development plans, architecture, and QA strategies.
 
@@ -445,10 +449,23 @@ Your role is to conduct comprehensive security reviews and vulnerability assessm
 - Focus on high-impact security improvements"""
 
     def _build_security_user_prompt(
-        self, development_content: str, architecture_content: str, qa_content: str, prd_content: str
+        self,
+        development_content: str,
+        architecture_content: str,
+        qa_content: str,
+        prd_content: str,
+        requirements: str,
     ) -> str:
         """Build user prompt for security review."""
-        prompt = f"""Conduct a comprehensive security review based on this development plan:
+        prompt = "Conduct a comprehensive security review using the sources of truth below.\n\n"
+
+        if requirements:
+            prompt += f"User Requirements (source of truth):\n{requirements}\n\n"
+
+        if prd_content.strip():
+            prompt += f"PRD (source of truth):\n{prd_content}\n\n"
+
+        prompt += f"""Development plan (derived):
 
 {development_content}
 """
@@ -467,14 +484,6 @@ And this architecture:
 And this QA strategy:
 
 {qa_content}
-"""
-
-        if prd_content.strip():
-            prompt += f"""
-
-And this PRD (for context):
-
-{prd_content}
 """
 
         prompt += """

@@ -53,6 +53,15 @@ export function useArtifacts(jobId: string | undefined) {
   });
 }
 
+export function useJobUsage(jobId: string | undefined) {
+  return useQuery({
+    queryKey: ['job-usage', jobId],
+    queryFn: () => api.getJobUsage(jobId!),
+    enabled: !!jobId,
+    refetchInterval: 10000,
+  });
+}
+
 export function useCreateProject() {
   const queryClient = useQueryClient();
 
@@ -110,6 +119,19 @@ export function useRestartJob() {
     mutationFn: (jobId: string) => api.restartJob(jobId),
     onSuccess: (_data, jobId) => {
       queryClient.invalidateQueries({ queryKey: ['job', jobId] });
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+    },
+  });
+}
+
+export function useCancelJob() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ jobId, reason }: { jobId: string; reason?: string }) =>
+      api.cancelJob(jobId, reason),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['job', variables.jobId] });
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
     },
   });

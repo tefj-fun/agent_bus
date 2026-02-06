@@ -7,22 +7,13 @@
   </head>
   <body>
     <div class="doc">
-      <header class="doc-header">
-        <div class="doc-header__left">
-          $if(title)$<span class="doc-title">$title$</span>$endif$
-        </div>
-        <div class="doc-header__right">
-          $if(date)$<span class="doc-date">$date$</span>$endif$
-        </div>
-      </header>
-
       <div class="doc-cover">
         <div class="doc-cover__accent"></div>
         <div class="doc-cover__content">
           $if(title)$<h1 class="doc-cover__title">$title$</h1>$endif$
           $if(subtitle)$<p class="doc-cover__subtitle">$subtitle$</p>$endif$
           $if(status)$<span class="doc-cover__status">$status$</span>$endif$
-          $if(date)$<p class="doc-cover__date">Updated: $date$</p>$endif$
+          $if(date)$<p class="doc-cover__date">Updated: <span class="doc-cover__date-value">$date$</span></p>$endif$
 
           <ul class="meta-list">
             $if(owner)$

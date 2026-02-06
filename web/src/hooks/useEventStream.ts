@@ -8,13 +8,33 @@ interface UseEventStreamOptions {
   maxEvents?: number;
 }
 
-export function useEventStream({ jobId, onEvent, maxEvents = 50 }: UseEventStreamOptions = {}) {
+export function useEventStream({ jobId, onEvent, maxEvents = 10 }: UseEventStreamOptions = {}) {
   const [events, setEvents] = useState<AgentEvent[]>([]);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
   const reconnectAttempts = useRef(0);
+  const historyLoadedRef = useRef(false);
+
+  useEffect(() => {
+    if (!jobId || historyLoadedRef.current) return;
+
+    const controller = new AbortController();
+    fetch(`/api/events/history?job_id=${jobId}&limit=${maxEvents}`, {
+      signal: controller.signal,
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((payload) => {
+        if (payload?.events && Array.isArray(payload.events)) {
+          setEvents((payload.events as AgentEvent[]).slice(0, maxEvents));
+          historyLoadedRef.current = true;
+        }
+      })
+      .catch(() => undefined);
+
+    return () => controller.abort();
+  }, [jobId, maxEvents]);
 
   const connect = useCallback(() => {
     if (eventSourceRef.current) {
@@ -96,6 +116,7 @@ export function useEventStream({ jobId, onEvent, maxEvents = 50 }: UseEventStrea
 
   const clearEvents = useCallback(() => {
     setEvents([]);
+    historyLoadedRef.current = false;
   }, []);
 
   return {

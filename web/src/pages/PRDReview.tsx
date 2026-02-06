@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { PageLayout, PageHeader } from '../components/layout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -9,12 +9,15 @@ import { Modal, ConfirmDialog } from '../components/ui/Modal';
 import { SkeletonText } from '../components/ui/Skeleton';
 import { useToast } from '../components/ui/Toast';
 import { MemoryHitBadge } from '../components/domain/MemoryHitCard';
+import { ArtifactContent } from '../components/domain/ArtifactContent';
+import { PdfPreview } from '../components/domain/PdfPreview';
 import { useJob, usePrd, useApprovePrd, useRequestChanges, useArtifacts } from '../hooks/useProject';
 import { Copy, Download, Check, AlertTriangle, CheckCircle } from 'lucide-react';
 
 export function PRDReview() {
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { addToast } = useToast();
 
   const { data: job, isLoading: jobLoading } = useJob(jobId);
@@ -63,13 +66,6 @@ export function PRDReview() {
   const activePrdId = selectedPrdId ?? latestPrdId ?? (prd?.artifact_id || null);
   const activePrd = prdArtifacts.find((artifact) => artifact.id === activePrdId);
   const prdContent = activePrd?.content || prd?.content;
-  const pdfUrl = activePrdId
-    ? (() => {
-        const url = new URL(`/api/artifacts/pdf/${activePrdId}`, window.location.origin);
-        url.searchParams.set('ts', String(Date.now()));
-        return url.toString();
-      })()
-    : '';
 
   const handleCopy = async () => {
     if (prdContent) {
@@ -138,6 +134,11 @@ export function PRDReview() {
     }
   };
 
+  const returnPath = (location.state as { from?: string } | null)?.from;
+  const backLink = returnPath
+    ? { href: returnPath, label: 'Back' }
+    : { href: `/project/${jobId}`, label: 'Back to Project' };
+
   return (
     <PageLayout>
       <PageHeader
@@ -147,7 +148,7 @@ export function PRDReview() {
             ? 'Review the PRD and approve or request changes'
             : `Status: ${job?.status || 'Unknown'}`
         }
-        backLink={{ href: `/project/${jobId}`, label: 'Back to Project' }}
+        backLink={backLink}
         actions={
           <div className="flex items-center gap-2">
             <Button
@@ -219,11 +220,11 @@ export function PRDReview() {
             )}
 
             {typeof requirements === 'string' && requirements.trim().length > 0 && (
-              <div className="mb-4 p-4 border border-gray-200 rounded-lg bg-white">
-                <h4 className="text-sm font-semibold text-gray-900 mb-2">
+              <div className="mb-4 p-4 border border-border rounded-lg bg-bg-primary">
+                <h4 className="text-sm font-semibold text-text-primary mb-2">
                   Input Requirements
                 </h4>
-                <pre className="whitespace-pre-wrap text-sm text-gray-700 bg-gray-50 rounded-md p-3">
+                <pre className="whitespace-pre-wrap text-sm text-text-secondary bg-bg-secondary rounded-md p-3">
                   {requirements}
                 </pre>
               </div>
@@ -234,32 +235,16 @@ export function PRDReview() {
               <SkeletonText lines={15} />
             ) : prdError ? (
               <div className="text-center py-8">
-                <p className="text-gray-500 mb-2">PRD is not ready yet</p>
-                <p className="text-sm text-gray-400">
+                <p className="text-text-secondary mb-2">PRD is not ready yet</p>
+                <p className="text-sm text-text-muted">
                   Current stage: {job?.stage?.replace(/_/g, ' ')}
                 </p>
               </div>
             ) : (
               viewMode === 'pdf' ? (
-                <div className="doc-shell">
-                  <div className="doc-page doc-page--a4 doc-page--pdf">
-                    {activePrdId ? (
-                      <iframe
-                        title="PDF preview"
-                        src={pdfUrl}
-                        className="w-full h-[80vh] border-0"
-                      />
-                    ) : (
-                      <p className="text-sm text-gray-500">PDF preview unavailable</p>
-                    )}
-                  </div>
-                </div>
+                <PdfPreview artifactId={activePrdId || undefined} />
               ) : (
-                <div className="doc-shell">
-                  <div className={`doc-page ${a4View ? 'doc-page--a4' : ''}`}>
-                    <pre className="doc-markdown">{prdContent}</pre>
-                  </div>
-                </div>
+                <ArtifactContent type="prd" content={prdContent || ''} a4View={a4View} />
               )
             )}
           </Card>
@@ -267,7 +252,7 @@ export function PRDReview() {
           {/* Actions */}
           {isWaitingApproval && prdContent && (
             <Card className="mt-6">
-              <h3 className="font-semibold text-gray-900 mb-4">Your Decision</h3>
+              <h3 className="font-semibold text-text-primary mb-4">Your Decision</h3>
 
               <Textarea
                 label="Feedback (optional for approval, required for changes)"
@@ -277,7 +262,7 @@ export function PRDReview() {
                 className="min-h-[100px]"
               />
 
-              <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
+              <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
                 <Button
                   variant="outline"
                   onClick={() => setShowChangesDialog(true)}
@@ -301,7 +286,7 @@ export function PRDReview() {
         <div className="lg:col-span-1 space-y-4">
           {/* PRD History */}
           <Card>
-            <h3 className="font-semibold text-gray-900 mb-3">PRD History</h3>
+            <h3 className="font-semibold text-text-primary mb-3">PRD History</h3>
             {prdArtifacts.length > 0 ? (
               <div className="space-y-3">
                 {prdArtifacts.map((artifact) => {
@@ -315,11 +300,11 @@ export function PRDReview() {
                       type="button"
                       onClick={() => setSelectedPrdId(artifact.id)}
                       className={`w-full text-left border rounded-lg px-3 py-2 transition ${
-                        isActive ? 'border-primary-500 bg-primary-50' : 'border-gray-200 hover:border-gray-300'
+                        isActive ? 'border-primary-500 bg-primary-50' : 'border-border hover:border-primary-300'
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-medium text-sm text-gray-900">{label}</span>
+                        <span className="font-medium text-sm text-text-primary">{label}</span>
                         {isActive && (
                           <Badge variant="info" dot>
                             Active
@@ -327,12 +312,12 @@ export function PRDReview() {
                         )}
                       </div>
                       {artifact.createdAt && (
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-text-secondary mt-1">
                           {new Date(artifact.createdAt).toLocaleString()}
                         </p>
                       )}
                       {artifact.changeNotes && (
-                        <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                        <p className="text-xs text-text-secondary mt-1 line-clamp-2">
                           {artifact.changeNotes}
                         </p>
                       )}
@@ -341,13 +326,13 @@ export function PRDReview() {
                 })}
               </div>
             ) : (
-              <p className="text-sm text-gray-500">No version history yet</p>
+              <p className="text-sm text-text-secondary">No version history yet</p>
             )}
           </Card>
 
           {/* Similar Projects */}
           <Card>
-            <h3 className="font-semibold text-gray-900 mb-3">Similar Projects</h3>
+            <h3 className="font-semibold text-text-primary mb-3">Similar Projects</h3>
             {prd?.memory_hits && prd.memory_hits.length > 0 ? (
               <div className="space-y-1">
                 {prd.memory_hits.map((hit) => (
@@ -359,20 +344,20 @@ export function PRDReview() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-500">No similar projects found</p>
+              <p className="text-sm text-text-secondary">No similar projects found</p>
             )}
           </Card>
 
           {/* Quick Info */}
           <Card>
-            <h3 className="font-semibold text-gray-900 mb-3">Info</h3>
+            <h3 className="font-semibold text-text-primary mb-3">Info</h3>
             <dl className="space-y-2 text-sm">
               <div>
-                <dt className="text-gray-500">Project ID</dt>
-                <dd className="font-medium text-gray-900">{job?.project_id}</dd>
+                <dt className="text-text-secondary">Project ID</dt>
+                <dd className="font-medium text-text-primary">{job?.project_id}</dd>
               </div>
               <div>
-                <dt className="text-gray-500">Status</dt>
+                <dt className="text-text-secondary">Status</dt>
                 <dd>
                   <Badge
                     variant={
@@ -389,8 +374,8 @@ export function PRDReview() {
               </div>
               {prd?.created_at && (
                 <div>
-                  <dt className="text-gray-500">Generated</dt>
-                  <dd className="text-gray-700">
+                  <dt className="text-text-secondary">Generated</dt>
+                  <dd className="text-text-secondary">
                     {new Date(prd.created_at).toLocaleString()}
                   </dd>
                 </div>
@@ -422,10 +407,10 @@ export function PRDReview() {
         }
       >
         <div className="space-y-4">
-          <p className="text-gray-600">
+          <p className="text-text-secondary">
             This will start the full document generation pipeline:
           </p>
-          <ol className="list-decimal list-inside space-y-1 text-sm text-gray-600">
+          <ol className="list-decimal list-inside space-y-1 text-sm text-text-secondary">
             <li>Plan Generation (~5 min)</li>
             <li>Architecture Design (~10 min)</li>
             <li>UI/UX Design (~5 min)</li>
@@ -433,7 +418,7 @@ export function PRDReview() {
             <li>QA + Security + Docs (~10 min parallel)</li>
             <li>PM Review + Delivery (~5 min)</li>
           </ol>
-          <p className="text-sm text-gray-500 mt-4">
+          <p className="text-sm text-text-secondary mt-4">
             Estimated total: 45-60 minutes
           </p>
         </div>

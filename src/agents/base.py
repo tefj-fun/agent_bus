@@ -5,6 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
+# from functools import lru_cache
 from anthropic import AsyncAnthropic
 import json
 import asyncio
@@ -63,6 +64,11 @@ class BaseAgent(ABC):
         self.context = context
         self.agent_id = self.get_agent_id()
         self.capabilities = self.define_capabilities()
+        self._active_task_id: Optional[str] = None
+
+    def _set_active_task_id(self, task_id: str) -> None:
+        """Track the active task id for usage attribution."""
+        self._active_task_id = task_id
 
     @abstractmethod
     def get_agent_id(self) -> str:
@@ -86,6 +92,7 @@ class BaseAgent(ABC):
         model: Optional[str] = None,
         thinking_budget: int = 1024,
         max_tokens: Optional[int] = None,
+        task_id: Optional[str] = None,
     ) -> str:
         """
         Query Claude with extended thinking support.
@@ -105,17 +112,27 @@ class BaseAgent(ABC):
         if max_tokens is None:
             max_tokens = settings.anthropic_max_tokens
 
+        resolved_task_id = task_id or self._active_task_id
+
         if provider == "openai":
             from ..infrastructure.openai_client import openai_chat_complete
 
             # model parameter maps to OPENAI_MODEL for openai provider
-            text = await openai_chat_complete(
+            result = await openai_chat_complete(
                 prompt=prompt,
                 system=system,
                 model=model,
                 max_tokens=max_tokens,
+                return_usage=True,
             )
-            return text
+            if isinstance(result, tuple):
+                text, usage = result
+                normalized = self._normalize_usage(
+                    usage=usage, provider="openai", model=model or settings.openai_model
+                )
+                await self._record_llm_usage(resolved_task_id, normalized)
+                return text
+            return result
 
         # default: anthropic
         if model is None:
@@ -155,7 +172,168 @@ class BaseAgent(ABC):
         except asyncio.TimeoutError as e:
             raise TimeoutError(f"LLM call timed out after {timeout_s}s") from e
 
-        return self._extract_response(response)
+        text = self._extract_response(response)
+        usage = self._extract_usage(response)
+        normalized = self._normalize_usage(usage=usage, provider="anthropic", model=model)
+        await self._record_llm_usage(resolved_task_id, normalized)
+        return text
+
+    def _extract_usage(self, response: Any) -> Optional[Dict[str, Any]]:
+        """Extract usage information from LLM response."""
+        usage = getattr(response, "usage", None)
+        if usage is None:
+            return None
+
+        def _get(key: str) -> Optional[int]:
+            if isinstance(usage, dict):
+                return usage.get(key)
+            return getattr(usage, key, None)
+
+        input_tokens = _get("input_tokens")
+        output_tokens = _get("output_tokens")
+        cache_creation_input_tokens = _get("cache_creation_input_tokens")
+        cache_read_input_tokens = _get("cache_read_input_tokens")
+
+        payload: Dict[str, Any] = {}
+        if input_tokens is not None:
+            payload["input_tokens"] = input_tokens
+        if output_tokens is not None:
+            payload["output_tokens"] = output_tokens
+        if cache_creation_input_tokens is not None:
+            payload["cache_creation_input_tokens"] = cache_creation_input_tokens
+        if cache_read_input_tokens is not None:
+            payload["cache_read_input_tokens"] = cache_read_input_tokens
+
+        return payload or None
+
+    def _normalize_usage(
+        self,
+        usage: Optional[Dict[str, Any]],
+        provider: str,
+        model: Optional[str],
+    ) -> Optional[Dict[str, Any]]:
+        """Normalize usage payload into consistent schema."""
+        if not usage:
+            return None
+
+        input_tokens = int(usage.get("input_tokens") or 0)
+        output_tokens = int(usage.get("output_tokens") or 0)
+        total_tokens = int(usage.get("total_tokens") or (input_tokens + output_tokens))
+
+        normalized: Dict[str, Any] = {
+            "provider": provider,
+            "model": model,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "total_tokens": total_tokens,
+        }
+
+        # Preserve extra usage fields if present
+        for key in ("cache_creation_input_tokens", "cache_read_input_tokens"):
+            if key in usage and usage[key] is not None:
+                normalized[key] = int(usage[key])
+
+        cost_usd = self._calculate_cost_usd(provider, model, input_tokens, output_tokens)
+        if cost_usd is not None:
+            normalized["cost_usd"] = cost_usd
+
+        return normalized
+
+    @staticmethod
+    def _pricing_config() -> Dict[str, Any]:
+        from ..infrastructure.pricing import get_pricing
+
+        return get_pricing()
+
+    def _calculate_cost_usd(
+        self,
+        provider: str,
+        model: Optional[str],
+        input_tokens: int,
+        output_tokens: int,
+    ) -> Optional[float]:
+        """Calculate approximate cost in USD if pricing is configured."""
+        if not model:
+            return None
+        pricing = self._pricing_config()
+        provider_pricing = pricing.get(provider, {})
+        model_pricing = provider_pricing.get(model) or provider_pricing.get("*")
+        if not isinstance(model_pricing, dict):
+            return None
+        input_rate = model_pricing.get("input_per_1k")
+        output_rate = model_pricing.get("output_per_1k")
+        if input_rate is None or output_rate is None:
+            return None
+        try:
+            return (input_tokens / 1000.0) * float(input_rate) + (output_tokens / 1000.0) * float(output_rate)
+        except Exception:
+            return None
+
+    async def _record_llm_usage(
+        self, task_id: Optional[str], usage: Optional[Dict[str, Any]]
+    ) -> None:
+        """Persist LLM usage to task metadata (best-effort)."""
+        if not task_id or not usage:
+            return
+
+        try:
+            async with self.context.db_pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    "SELECT metadata FROM tasks WHERE id = $1",
+                    task_id,
+                )
+                if not row:
+                    return
+                metadata = row.get("metadata") or {}
+                if isinstance(metadata, str):
+                    metadata = json.loads(metadata)
+
+                llm_usage = metadata.get("llm_usage") or {}
+
+                def _to_int(value: Any) -> int:
+                    try:
+                        return int(value)
+                    except Exception:
+                        return 0
+
+                def _to_float(value: Any) -> float:
+                    try:
+                        return float(value)
+                    except Exception:
+                        return 0.0
+
+                llm_usage["input_tokens"] = _to_int(llm_usage.get("input_tokens")) + _to_int(
+                    usage.get("input_tokens")
+                )
+                llm_usage["output_tokens"] = _to_int(llm_usage.get("output_tokens")) + _to_int(
+                    usage.get("output_tokens")
+                )
+                llm_usage["total_tokens"] = _to_int(llm_usage.get("total_tokens")) + _to_int(
+                    usage.get("total_tokens")
+                )
+                llm_usage["calls"] = _to_int(llm_usage.get("calls")) + 1
+                llm_usage["last_provider"] = usage.get("provider")
+                llm_usage["last_model"] = usage.get("model")
+
+                if usage.get("cost_usd") is not None:
+                    llm_usage["cost_usd"] = _to_float(llm_usage.get("cost_usd")) + _to_float(
+                        usage.get("cost_usd")
+                    )
+
+                metadata["llm_usage"] = llm_usage
+
+                await conn.execute(
+                    """
+                    UPDATE tasks
+                    SET metadata = $2::jsonb
+                    WHERE id = $1
+                    """,
+                    task_id,
+                    json.dumps(metadata),
+                )
+        except Exception:
+            # Best-effort: usage tracking should not break task execution
+            pass
 
     def _extract_response(self, response: Any) -> str:
         """Extract text response from Claude API response."""
@@ -169,6 +347,16 @@ class BaseAgent(ABC):
                 text_parts.append(block.text)
 
         return "\n".join(text_parts)
+
+    def _truth_system_guardrails(self) -> str:
+        """Guardrails to ensure PRD and user requirements are the source of truth."""
+        return (
+            "Source of truth:\n"
+            "- The user requirements and the PRD are authoritative.\n"
+            "- Treat all other inputs as secondary/derived. If conflicts arise, call them out "
+            "and align to requirements/PRD.\n"
+            "- Do not invent requirements or scope beyond what is explicitly stated.\n"
+        )
 
     async def load_skill(self, skill_name: str, enforce_permissions: bool = True) -> Optional[Any]:
         """
@@ -273,6 +461,21 @@ class BaseAgent(ABC):
         """
         if not artifact_id:
             artifact_id = f"{self.agent_id}_{artifact_type}_{self.context.job_id}"
+
+        metadata = metadata or {}
+        truth_hash = self.context.config.get("truth_prd_hash") if self.context.config else None
+        truth_requirements_hash = (
+            self.context.config.get("truth_requirements_hash") if self.context.config else None
+        )
+        truth_prd_artifact_id = (
+            self.context.config.get("truth_prd_artifact_id") if self.context.config else None
+        )
+        if truth_hash and "truth_prd_hash" not in metadata:
+            metadata["truth_prd_hash"] = truth_hash
+        if truth_requirements_hash and "truth_requirements_hash" not in metadata:
+            metadata["truth_requirements_hash"] = truth_requirements_hash
+        if truth_prd_artifact_id and "truth_prd_artifact_id" not in metadata:
+            metadata["truth_prd_artifact_id"] = truth_prd_artifact_id
 
         # Use file-based artifact store if configured
         if settings.artifact_storage_backend == "file":

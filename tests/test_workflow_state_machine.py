@@ -37,6 +37,7 @@ class TestWorkflowStateMachine:
             WorkflowStage.INITIALIZATION,
             WorkflowStage.PRD_GENERATION,
             WorkflowStage.WAITING_FOR_APPROVAL,
+            WorkflowStage.FEATURE_TREE,
             WorkflowStage.PLAN_GENERATION,
             WorkflowStage.ARCHITECTURE_DESIGN,
             WorkflowStage.UIUX_DESIGN,
@@ -74,6 +75,9 @@ class TestWorkflowStateMachine:
         # Cannot skip stages
         assert not workflow.can_transition(
             WorkflowStage.PRD_GENERATION, WorkflowStage.PLAN_GENERATION
+        )
+        assert not workflow.can_transition(
+            WorkflowStage.WAITING_FOR_APPROVAL, WorkflowStage.PLAN_GENERATION
         )
 
         # Cannot go backwards
@@ -119,6 +123,7 @@ class TestWorkflowStateMachine:
         # Stages that should have agents
         executable_stages = [
             WorkflowStage.PRD_GENERATION,
+            WorkflowStage.FEATURE_TREE,
             WorkflowStage.PLAN_GENERATION,
             WorkflowStage.ARCHITECTURE_DESIGN,
             WorkflowStage.UIUX_DESIGN,
@@ -161,7 +166,8 @@ class TestWorkflowStateMachine:
         path = [
             (WorkflowStage.INITIALIZATION, WorkflowStage.PRD_GENERATION),
             (WorkflowStage.PRD_GENERATION, WorkflowStage.WAITING_FOR_APPROVAL),
-            (WorkflowStage.WAITING_FOR_APPROVAL, WorkflowStage.PLAN_GENERATION),
+            (WorkflowStage.WAITING_FOR_APPROVAL, WorkflowStage.FEATURE_TREE),
+            (WorkflowStage.FEATURE_TREE, WorkflowStage.PLAN_GENERATION),
             (WorkflowStage.PLAN_GENERATION, WorkflowStage.ARCHITECTURE_DESIGN),
             (WorkflowStage.ARCHITECTURE_DESIGN, WorkflowStage.UIUX_DESIGN),
             (WorkflowStage.UIUX_DESIGN, WorkflowStage.DEVELOPMENT),

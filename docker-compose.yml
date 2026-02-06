@@ -1,3 +1,10 @@
+x-build: &agent_bus_build
+  context: .
+  dockerfile: Dockerfile
+  args:
+    WITH_PDF: "1"
+    WITH_MERMAID: "1"
+
 services:
   # PostgreSQL database for state persistence
   postgres:
@@ -36,11 +43,8 @@ services:
   # FastAPI application
   api:
     build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        WITH_PDF: "1"
-        WITH_MERMAID: "1"
+      <<: *agent_bus_build
+    image: agent_bus:dev
     container_name: agent_bus_api
     environment:
       - PYTHONUNBUFFERED=1
@@ -68,6 +72,7 @@ services:
     volumes:
       - ./src:/app/src
       - ./skills:/app/skills
+      - ./config:/app/config
       - outputs_data:/app/outputs
       - outputs_pdfs_data:/app/outputs_pdfs
     depends_on:
@@ -81,11 +86,8 @@ services:
   # Orchestrator (runs MasterAgent loop outside the API process)
   orchestrator:
     build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        WITH_PDF: "1"
-        WITH_MERMAID: "1"
+      <<: *agent_bus_build
+    image: agent_bus:dev
     container_name: agent_bus_orchestrator
     environment:
       - PYTHONUNBUFFERED=1
@@ -109,6 +111,7 @@ services:
     volumes:
       - ./src:/app/src
       - ./skills:/app/skills
+      - ./config:/app/config
       - worker_workspace:/workspace
       - outputs_data:/app/outputs
       - outputs_pdfs_data:/app/outputs_pdfs
@@ -122,11 +125,8 @@ services:
   # Worker for CPU tasks
   worker:
     build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        WITH_PDF: "1"
-        WITH_MERMAID: "1"
+      <<: *agent_bus_build
+    image: agent_bus:dev
     container_name: agent_bus_worker
     environment:
       - PYTHONUNBUFFERED=1
@@ -151,6 +151,7 @@ services:
     volumes:
       - ./src:/app/src
       - ./skills:/app/skills
+      - ./config:/app/config
       - worker_workspace:/workspace
       - outputs_data:/app/outputs
       - outputs_pdfs_data:/app/outputs_pdfs

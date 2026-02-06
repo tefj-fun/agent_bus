@@ -1,4 +1,4 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { PageLayout, PageHeader } from '../components/layout';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -6,6 +6,8 @@ import { Badge } from '../components/ui/Badge';
 import { SkeletonCard } from '../components/ui/Skeleton';
 import { useToast } from '../components/ui/Toast';
 import { ArtifactCard } from '../components/domain/ArtifactViewer';
+import { ArtifactContent, supportsA4View } from '../components/domain/ArtifactContent';
+import { PdfPreview } from '../components/domain/PdfPreview';
 import { useJob, useArtifacts } from '../hooks/useProject';
 import { api } from '../api/client';
 import { formatRelativeTime } from '../utils/utils';
@@ -15,6 +17,8 @@ import type { ArtifactType } from '../types';
 
 export function Deliverables() {
   const { jobId } = useParams<{ jobId: string }>();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { addToast } = useToast();
   const { data: job, isLoading: jobLoading } = useJob(jobId);
   const { data: artifactsData, isLoading: artifactsLoading } = useArtifacts(jobId);
@@ -27,11 +31,18 @@ export function Deliverables() {
   const isLoading = jobLoading || artifactsLoading;
   const artifacts = artifactsData?.artifacts || [];
   const isCompleted = job?.status === 'completed';
+  const returnPath = (location.state as { from?: string } | null)?.from;
+  const backLink = returnPath
+    ? { href: returnPath, label: 'Back' }
+    : { href: `/project/${jobId}`, label: 'Back to Project' };
+  const currentPath = `${location.pathname}${location.search}`;
 
   // Group artifacts by category
-  const planningDocs = artifacts.filter(a => ['prd', 'plan'].includes(a.artifact_type));
+  const planningDocs = artifacts.filter(a => ['prd', 'plan', 'project_plan'].includes(a.artifact_type));
+  const platformDocs = artifacts.filter(a => ['feature_tree'].includes(a.artifact_type));
   const technicalDocs = artifacts.filter(a => ['architecture', 'uiux', 'development'].includes(a.artifact_type));
   const qualityDocs = artifacts.filter(a => ['qa', 'security', 'documentation', 'support'].includes(a.artifact_type));
+  const reviewDocs = artifacts.filter(a => ['pm_review', 'delivery'].includes(a.artifact_type));
 
   const handleDownloadAll = async () => {
     if (!jobId) return;
@@ -74,6 +85,7 @@ export function Deliverables() {
 
   const getArtifactRoute = (type: string): string => {
     if (type === 'prd') return `/prd/${jobId}`;
+    if (type === 'feature_tree') return `/project/${jobId}/feature-tree`;
     return `/project/${jobId}/artifact/${type}`;
   };
 
@@ -83,7 +95,7 @@ export function Deliverables() {
         title="Project Deliverables"
         description={
           <div className="flex items-center gap-2 mt-1">
-            <span className="text-gray-600">{job?.project_id}</span>
+            <span className="text-text-secondary">{job?.project_id}</span>
             {isCompleted && (
               <Badge variant="success" size="sm">
                 <CheckCircle className="w-3 h-3 mr-1" />
@@ -92,7 +104,7 @@ export function Deliverables() {
             )}
           </div>
         }
-        backLink={{ href: `/project/${jobId}`, label: 'Back to Project' }}
+        backLink={backLink}
       />
 
       {/* Download All Banner */}
@@ -133,12 +145,12 @@ export function Deliverables() {
       {/* No Artifacts State */}
       {!isLoading && artifacts.length === 0 && (
         <Card className="text-center py-12">
-          <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600 mb-2">No deliverables available yet</p>
-          <p className="text-sm text-gray-500 mb-4">
+          <AlertCircle className="w-12 h-12 text-text-muted mx-auto mb-4" />
+          <p className="text-text-secondary mb-2">No deliverables available yet</p>
+          <p className="text-sm text-text-secondary mb-4">
             Documents are generated as the pipeline progresses
           </p>
-          <Link to={`/project/${jobId}`}>
+          <Link to={`/project/${jobId}`} state={{ from: currentPath }}>
             <Button variant="outline">Check Pipeline Status</Button>
           </Link>
         </Card>
@@ -150,7 +162,7 @@ export function Deliverables() {
           {/* Planning Documents */}
           {planningDocs.length > 0 && (
             <section>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              <h2 className="text-lg font-semibold text-text-primary mb-4">
                 Planning Documents
               </h2>
               <div className="grid md:grid-cols-2 gap-4">
@@ -160,7 +172,36 @@ export function Deliverables() {
                     type={artifact.artifact_type as ArtifactType}
                     createdAt={artifact.created_at}
                     size={artifact.content.length}
-                    onView={() => window.location.href = getArtifactRoute(artifact.artifact_type)}
+                    onView={() =>
+                      navigate(getArtifactRoute(artifact.artifact_type), {
+                        state: { from: currentPath },
+                      })
+                    }
+                    onDownload={() => handleDownloadArtifact(artifact)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Platform Intelligence */}
+          {platformDocs.length > 0 && (
+            <section>
+              <h2 className="text-lg font-semibold text-text-primary mb-4">
+                Platform Intelligence
+              </h2>
+              <div className="grid md:grid-cols-2 gap-4">
+                {platformDocs.map((artifact) => (
+                  <ArtifactCard
+                    key={artifact.artifact_id}
+                    type={artifact.artifact_type as ArtifactType}
+                    createdAt={artifact.created_at}
+                    size={artifact.content.length}
+                    onView={() =>
+                      navigate(getArtifactRoute(artifact.artifact_type), {
+                        state: { from: currentPath },
+                      })
+                    }
                     onDownload={() => handleDownloadArtifact(artifact)}
                   />
                 ))}
@@ -171,7 +212,7 @@ export function Deliverables() {
           {/* Technical Documents */}
           {technicalDocs.length > 0 && (
             <section>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              <h2 className="text-lg font-semibold text-text-primary mb-4">
                 Technical Documents
               </h2>
               <div className="grid md:grid-cols-2 gap-4">
@@ -192,11 +233,32 @@ export function Deliverables() {
           {/* Quality & Support */}
           {qualityDocs.length > 0 && (
             <section>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              <h2 className="text-lg font-semibold text-text-primary mb-4">
                 Quality & Support
               </h2>
               <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {qualityDocs.map((artifact) => (
+                  <ArtifactCard
+                    key={artifact.artifact_id}
+                    type={artifact.artifact_type as ArtifactType}
+                    createdAt={artifact.created_at}
+                    size={artifact.content.length}
+                    onView={() => setViewingArtifact(artifact.artifact_id)}
+                    onDownload={() => handleDownloadArtifact(artifact)}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Review & Handoff */}
+          {reviewDocs.length > 0 && (
+            <section>
+              <h2 className="text-lg font-semibold text-text-primary mb-4">
+                Review & Handoff
+              </h2>
+              <div className="grid md:grid-cols-2 gap-4">
+                {reviewDocs.map((artifact) => (
                   <ArtifactCard
                     key={artifact.artifact_id}
                     type={artifact.artifact_type as ArtifactType}
@@ -231,18 +293,18 @@ export function Deliverables() {
               if (!artifact) return null;
               return (
                 <>
-                  <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
+                  <div className="flex items-center justify-between mb-4 pb-4 border-b border-border">
                     <h2 className="text-lg font-semibold">
                       {artifact.artifact_type.replace(/_/g, ' ').toUpperCase()}
                     </h2>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant={viewMode === 'markdown' ? 'primary' : 'outline'}
-                        size="sm"
-                        onClick={() => setViewMode('markdown')}
-                      >
-                        Markdown
-                      </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={viewMode === 'markdown' ? 'primary' : 'outline'}
+                      size="sm"
+                      onClick={() => setViewMode('markdown')}
+                    >
+                      Markdown
+                    </Button>
                       <Button
                         variant={viewMode === 'pdf' ? 'primary' : 'outline'}
                         size="sm"
@@ -250,14 +312,17 @@ export function Deliverables() {
                       >
                         PDF Preview
                       </Button>
-                      <Button
-                        variant={a4View ? 'primary' : 'outline'}
-                        size="sm"
-                        onClick={() => setA4View((prev) => !prev)}
-                        disabled={viewMode === 'pdf'}
-                      >
-                        {a4View ? 'A4 View On' : 'A4 View Off'}
-                      </Button>
+                    <Button
+                      variant={a4View ? 'primary' : 'outline'}
+                      size="sm"
+                      onClick={() => setA4View((prev) => !prev)}
+                      disabled={
+                        viewMode === 'pdf' ||
+                        !supportsA4View(artifact.artifact_type as ArtifactType)
+                      }
+                    >
+                      {a4View ? 'A4 View On' : 'A4 View Off'}
+                    </Button>
                       <Button
                         variant="outline"
                         size="sm"
@@ -280,28 +345,13 @@ export function Deliverables() {
                     </div>
                   </div>
                   {viewMode === 'pdf' ? (
-                    <div className="doc-shell">
-                      <div className="doc-page doc-page--a4 doc-page--pdf">
-                        <iframe
-                          title="PDF preview"
-                          src={(() => {
-                            const url = new URL(
-                              `/api/artifacts/pdf/${artifact.artifact_id}`,
-                              window.location.origin
-                            );
-                            url.searchParams.set('ts', String(Date.now()));
-                            return url.toString();
-                          })()}
-                          className="w-full h-[80vh] border-0"
-                        />
-                      </div>
-                    </div>
+                    <PdfPreview artifactId={artifact.artifact_id} />
                   ) : (
-                    <div className="doc-shell">
-                      <div className={`doc-page ${a4View ? 'doc-page--a4' : ''}`}>
-                        <pre className="doc-markdown">{artifact.content}</pre>
-                      </div>
-                    </div>
+                    <ArtifactContent
+                      type={artifact.artifact_type as ArtifactType}
+                      content={artifact.content}
+                      a4View={a4View}
+                    />
                   )}
                 </>
               );

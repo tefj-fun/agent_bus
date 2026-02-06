@@ -18,21 +18,21 @@ export function Badge({
   ...props
 }: BadgeProps) {
   const variants = {
-    default: 'bg-gray-100 text-gray-700',
+    default: 'bg-bg-tertiary text-text-secondary',
     success: 'bg-success-50 text-success-700',
     warning: 'bg-warning-50 text-warning-700',
     error: 'bg-error-50 text-error-700',
     info: 'bg-info-50 text-info-700',
-    purple: 'bg-purple-50 text-purple-700',
+    purple: 'bg-stage-prd/10 text-stage-prd',
   };
 
   const dotColors = {
-    default: 'bg-gray-400',
+    default: 'bg-text-muted',
     success: 'bg-success-500',
     warning: 'bg-warning-500',
     error: 'bg-error-500',
     info: 'bg-info-500',
-    purple: 'bg-purple-500',
+    purple: 'bg-stage-prd',
   };
 
   const sizes = {

@@ -272,21 +272,12 @@ Agent Bus is an **internal developer tool** that transforms customer requirement
 ```
 
 #### Dark Mode
-```css
---color-bg-primary: #0f172a;
---color-bg-secondary: #1e293b;
---color-bg-tertiary: #334155;
---color-text-primary: #f1f5f9;
---color-text-secondary: #94a3b8;
---color-text-muted: #64748b;
---color-border: #334155;
+Dark mode is intentionally **not supported**. The UI is light-theme only to ensure consistency across planning artifacts and exported visuals.
 
-/* Adjusted semantic colors for dark backgrounds */
---color-primary-500: #60a5fa;
---color-success-500: #4ade80;
---color-warning-500: #fbbf24;
---color-error-500: #f87171;
-```
+#### Theme Enforcement
+- Use the design tokens from `web/src/styles/tokens.css` for all colors.
+- Avoid Tailwind default palette colors (e.g., `gray-`, `blue-`) and raw hex values in UI code.
+- `npm run lint` includes a theme check that blocks non-token colors in `web/src`.
 
 ### 4.3 Typography
 

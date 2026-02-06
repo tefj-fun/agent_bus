@@ -36,6 +36,14 @@ class Settings(BaseSettings):
     openai_api_key: str = Field(default="", env="OPENAI_API_KEY")
     openai_model: str = Field(default="gpt-4o-mini", env="OPENAI_MODEL")
 
+    # Optional pricing config for cost calculations (JSON string)
+    llm_pricing_json: str = Field(default="", env="LLM_PRICING_JSON")
+    pricing_refresh_seconds: int = Field(default=86400, env="PRICING_REFRESH_SECONDS")
+    pricing_request_timeout: int = Field(default=10, env="PRICING_REQUEST_TIMEOUT")
+    pricing_user_agent: str = Field(
+        default="agent_bus_pricing/1.0", env="PRICING_USER_AGENT"
+    )
+
     # Redis
     redis_host: str = Field(default="localhost", env="REDIS_HOST")
     redis_port: int = Field(default=6379, env="REDIS_PORT")
@@ -72,6 +80,22 @@ class Settings(BaseSettings):
 
     # Skills
     skills_directory: str = Field(default="./skills", env="SKILLS_DIRECTORY")
+
+    # Platform Module Catalog
+    module_catalog_path: str = Field(
+        default="./config/platform_modules.json", env="MODULE_CATALOG_PATH"
+    )
+    module_catalog_seed_on_startup: bool = Field(
+        default=True, env="MODULE_CATALOG_SEED_ON_STARTUP"
+    )
+
+    # Truth/Alignment Guardrails
+    truth_alignment_min_matches: int = Field(
+        default=2, env="TRUTH_ALIGNMENT_MIN_MATCHES"
+    )
+    truth_alignment_threshold: float = Field(
+        default=0.15, env="TRUTH_ALIGNMENT_THRESHOLD"
+    )
 
     # Workers
     max_workers: int = Field(default=4, env="MAX_WORKERS")

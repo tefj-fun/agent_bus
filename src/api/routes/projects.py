@@ -10,6 +10,9 @@ from typing import Optional
 from ...infrastructure.postgres_client import postgres_client
 from ...config import settings
 from ...storage.artifact_store import get_artifact_store, FileArtifactStore
+from ...utils.truth import hash_text
+from .events import publish_job_aborted
+from ...orchestration.workflow import WorkflowStage
 from .artifacts import export_job_artifacts as export_job_artifacts_handler
 
 
@@ -30,6 +33,81 @@ async def _get_artifact_from_file_store(job_id: str, artifact_type: str) -> Opti
     except RuntimeError:
         pass
     return None
+
+
+async def _fetch_latest_prd(job_id: str) -> Optional[dict]:
+    """Fetch the latest PRD artifact with content."""
+    file_artifact = await _get_artifact_from_file_store(job_id, "prd")
+    if file_artifact:
+        return file_artifact
+
+    pool = await postgres_client.get_pool()
+    async with pool.acquire() as conn:
+        artifact_row = await conn.fetchrow(
+            """
+            SELECT id, content, metadata, updated_at, created_at
+            FROM artifacts
+            WHERE job_id = $1 AND type = 'prd'
+            ORDER BY updated_at DESC, created_at DESC
+            LIMIT 1
+            """,
+            job_id,
+        )
+        if artifact_row:
+            payload = dict(artifact_row)
+            content = payload.get("content") or ""
+            metadata = payload.get("metadata") or {}
+            if isinstance(metadata, str):
+                try:
+                    metadata = json.loads(metadata)
+                except Exception:
+                    metadata = {}
+            if isinstance(content, str) and content.startswith("[file:") and metadata.get("_file_path"):
+                try:
+                    with open(metadata["_file_path"], "r") as f:
+                        payload["content"] = f.read()
+                except Exception:
+                    pass
+            return payload
+
+    return None
+
+
+async def _upsert_job_truth(
+    job_id: str,
+    requirements: str,
+    prd_content: str,
+    prd_artifact_id: Optional[str],
+    approved_at: Optional[str],
+) -> None:
+    requirements_hash = hash_text(requirements)
+    prd_hash = hash_text(prd_content)
+
+    pool = await postgres_client.get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO job_truth (
+                job_id, requirements, requirements_hash, prd_content, prd_hash, prd_artifact_id, approved_at
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            ON CONFLICT (job_id) DO UPDATE
+            SET requirements = EXCLUDED.requirements,
+                requirements_hash = EXCLUDED.requirements_hash,
+                prd_content = EXCLUDED.prd_content,
+                prd_hash = EXCLUDED.prd_hash,
+                prd_artifact_id = EXCLUDED.prd_artifact_id,
+                approved_at = EXCLUDED.approved_at,
+                updated_at = NOW()
+            """,
+            job_id,
+            requirements,
+            requirements_hash,
+            prd_content,
+            prd_hash,
+            prd_artifact_id,
+            approved_at,
+        )
 
 
 router = APIRouter()
@@ -724,10 +802,75 @@ async def get_job_memory_hits(job_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/{job_id}/usage")
+async def get_job_usage(job_id: str):
+    """Return aggregated LLM usage for a job."""
+    try:
+        pool = await postgres_client.get_pool()
+        async with pool.acquire() as conn:
+            exists = await conn.fetchval("SELECT 1 FROM jobs WHERE id = $1", job_id)
+            if not exists:
+                raise HTTPException(status_code=404, detail="Job not found")
+
+            row = await conn.fetchrow(
+                """
+                SELECT
+                    COALESCE(SUM((metadata->'llm_usage'->>'input_tokens')::bigint), 0) AS input_tokens,
+                    COALESCE(SUM((metadata->'llm_usage'->>'output_tokens')::bigint), 0) AS output_tokens,
+                    COALESCE(SUM((metadata->'llm_usage'->>'total_tokens')::bigint), 0) AS total_tokens,
+                    COALESCE(SUM((metadata->'llm_usage'->>'calls')::bigint), 0) AS calls,
+                    COALESCE(SUM((metadata->'llm_usage'->>'cost_usd')::numeric), 0) AS cost_usd,
+                    SUM(
+                        CASE
+                            WHEN metadata->'llm_usage'->>'cost_usd' IS NOT NULL THEN 1
+                            ELSE 0
+                        END
+                    ) AS cost_count
+                FROM tasks
+                WHERE job_id = $1
+                """,
+                job_id,
+            )
+
+        if not row:
+            return {"job_id": job_id, "usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "calls": 0, "cost_usd": None}}
+
+        cost_available = (row.get("cost_count") or 0) > 0
+        cost_value = float(row.get("cost_usd") or 0) if cost_available else None
+
+        return {
+            "job_id": job_id,
+            "usage": {
+                "input_tokens": int(row.get("input_tokens") or 0),
+                "output_tokens": int(row.get("output_tokens") or 0),
+                "total_tokens": int(row.get("total_tokens") or 0),
+                "calls": int(row.get("calls") or 0),
+                "cost_usd": cost_value,
+                "cost_available": cost_available,
+            },
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 class ApprovalRequest(BaseModel):
     """Request model for approval actions."""
 
     notes: Optional[str] = None
+
+
+class CancelRequest(BaseModel):
+    """Request model for cancel actions."""
+
+    reason: Optional[str] = None
+
+
+class ResumeRequest(BaseModel):
+    """Request model for resume actions."""
+
+    stage: str
 
 
 @router.post("/{job_id}/approve")
@@ -744,14 +887,45 @@ async def approve_job(job_id: str, request: ApprovalRequest):
             raise HTTPException(status_code=404, detail="Job not found")
 
         await postgres_client.update_job_status(
-            job_id=job_id, status="approved", workflow_stage="plan_generation"
+            job_id=job_id, status="approved", workflow_stage="feature_tree"
         )
+
+        approved_at = datetime.now(timezone.utc).isoformat()
         await postgres_client.update_job_metadata(
             job_id=job_id,
             metadata={
                 "approval_notes": request.notes,
-                "approved_at": datetime.now(timezone.utc).isoformat(),
+                "approved_at": approved_at,
             },
+        )
+
+        # Persist canonical truth (requirements + approved PRD)
+        pool = await postgres_client.get_pool()
+        async with pool.acquire() as conn:
+            job_row = await conn.fetchrow(
+                "SELECT metadata FROM jobs WHERE id = $1",
+                job_id,
+            )
+        metadata = job_row.get("metadata") if job_row else {}
+        if isinstance(metadata, str):
+            try:
+                metadata = json.loads(metadata)
+            except Exception:
+                metadata = {}
+        requirements = metadata.get("requirements") if isinstance(metadata, dict) else None
+        if not isinstance(requirements, str) or not requirements.strip():
+            raise HTTPException(status_code=400, detail="Missing requirements for job")
+
+        prd_artifact = await _fetch_latest_prd(job_id)
+        if not prd_artifact or not prd_artifact.get("content"):
+            raise HTTPException(status_code=400, detail="Missing PRD content for job")
+
+        await _upsert_job_truth(
+            job_id=job_id,
+            requirements=requirements.strip(),
+            prd_content=str(prd_artifact.get("content")),
+            prd_artifact_id=prd_artifact.get("id"),
+            approved_at=approved_at,
         )
 
         return {"job_id": job_id, "status": "approved"}
@@ -772,6 +946,10 @@ async def request_changes(job_id: str, request: ApprovalRequest):
         await postgres_client.update_job_status(
             job_id=job_id, status="changes_requested", workflow_stage="prd_generation"
         )
+        # Clear canonical truth (PRD no longer approved)
+        pool = await postgres_client.get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute("DELETE FROM job_truth WHERE job_id = $1", job_id)
         await postgres_client.update_job_metadata(
             job_id=job_id,
             metadata={
@@ -802,6 +980,7 @@ async def restart_job(job_id: str):
             # Clear prior tasks and artifacts for a clean restart
             await conn.execute("DELETE FROM tasks WHERE job_id = $1", job_id)
             await conn.execute("DELETE FROM artifacts WHERE job_id = $1", job_id)
+            await conn.execute("DELETE FROM job_truth WHERE job_id = $1", job_id)
 
             await conn.execute(
                 """
@@ -822,6 +1001,139 @@ async def restart_job(job_id: str):
         )
 
         return {"job_id": job_id, "status": "queued"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{job_id}/cancel")
+async def cancel_job(job_id: str, request: CancelRequest):
+    """Cancel a running job and stop further processing."""
+    try:
+        pool = await postgres_client.get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT status, workflow_stage FROM jobs WHERE id = $1",
+                job_id,
+            )
+            if not row:
+                raise HTTPException(status_code=404, detail="Job not found")
+            if row["status"] in {"completed", "failed", "canceled"}:
+                return {"job_id": job_id, "status": row["status"], "message": "Job already ended"}
+
+            # Mark job canceled but keep current workflow_stage for context
+            await conn.execute(
+                """
+                UPDATE jobs
+                SET status = 'canceled',
+                    updated_at = NOW()
+                WHERE id = $1
+                """,
+                job_id,
+            )
+
+            # Best-effort: mark pending/running tasks as canceled
+            await conn.execute(
+                """
+                UPDATE tasks
+                SET status = 'canceled',
+                    error = 'Canceled by user'
+                WHERE job_id = $1 AND status IN ('pending', 'running', 'in_progress')
+                """,
+                job_id,
+            )
+
+        await postgres_client.update_job_metadata(
+            job_id=job_id,
+            metadata={
+                "canceled_at": datetime.now(timezone.utc).isoformat(),
+                "cancel_reason": request.reason,
+            },
+        )
+
+        try:
+            await publish_job_aborted(job_id, request.reason or "Canceled by user")
+        except Exception:
+            pass
+
+        return {"job_id": job_id, "status": "canceled"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{job_id}/resume")
+async def resume_job(job_id: str, request: ResumeRequest):
+    """Resume a job from a specific stage (re-runs downstream stages)."""
+    try:
+        # Validate stage
+        valid_stages = {
+            WorkflowStage.FEATURE_TREE.value,
+            WorkflowStage.PLAN_GENERATION.value,
+            WorkflowStage.ARCHITECTURE_DESIGN.value,
+            WorkflowStage.UIUX_DESIGN.value,
+            WorkflowStage.DEVELOPMENT.value,
+            WorkflowStage.QA_TESTING.value,
+            WorkflowStage.SECURITY_REVIEW.value,
+            WorkflowStage.DOCUMENTATION.value,
+            WorkflowStage.SUPPORT_DOCS.value,
+            WorkflowStage.PM_REVIEW.value,
+            WorkflowStage.DELIVERY.value,
+        }
+        if request.stage not in valid_stages:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid stage '{request.stage}'. Valid: {', '.join(sorted(valid_stages))}",
+            )
+
+        pool = await postgres_client.get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT status FROM jobs WHERE id = $1",
+                job_id,
+            )
+            if not row:
+                raise HTTPException(status_code=404, detail="Job not found")
+
+            # Mark any pending/running tasks as canceled to avoid overlaps
+            await conn.execute(
+                """
+                UPDATE tasks
+                SET status = 'canceled',
+                    error = 'Canceled for resume'
+                WHERE job_id = $1 AND status IN ('pending', 'running', 'in_progress')
+                """,
+                job_id,
+            )
+
+            # Set job to approved so orchestrator picks it up
+            await conn.execute(
+                """
+                UPDATE jobs
+                SET status = 'approved',
+                    workflow_stage = $2,
+                    updated_at = NOW()
+                WHERE id = $1
+                """,
+                job_id,
+                request.stage,
+            )
+
+        await postgres_client.update_job_metadata(
+            job_id=job_id,
+            metadata={
+                "resume_from_stage": request.stage,
+                "resume_requested_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+
+        return {
+            "job_id": job_id,
+            "status": "approved",
+            "resume_from_stage": request.stage,
+        }
     except HTTPException:
         raise
     except Exception as e:

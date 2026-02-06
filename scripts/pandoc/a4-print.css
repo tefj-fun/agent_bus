@@ -60,6 +60,7 @@ body {
 .doc-cover__title {
   font-size: 26pt;
   margin: 0 0 6pt;
+  string-set: doc-title content(text);
 }
 
 .doc-cover__subtitle {
@@ -83,6 +84,10 @@ body {
 .doc-cover__date {
   font-size: 9pt;
   color: #64748b;
+}
+
+.doc-cover__date-value {
+  string-set: doc-date content(text);
 }
 
 .meta-list {
@@ -117,36 +122,8 @@ body {
   color: #0f172a;
 }
 
-.doc-header,
 .doc-footer {
   font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
-}
-
-.doc-title {
-  font-weight: 600;
-  color: #1d4ed8;
-}
-
-.doc-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 8pt;
-  margin-bottom: 16pt;
-  border-bottom: 2px solid #dbeafe;
-}
-
-.doc-header__right {
-  font-size: 9pt;
-  color: #2563eb;
-}
-
-.doc-header__left {
-  string-set: doc-title content(text);
-}
-
-.doc-date {
-  string-set: doc-date content(text);
 }
 
 .doc-footer {

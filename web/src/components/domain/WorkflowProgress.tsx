@@ -8,6 +8,7 @@ interface WorkflowProgressProps {
   failedStage?: WorkflowStage;
   orientation?: 'horizontal' | 'vertical';
   compact?: boolean;
+  currentStageOverride?: 'completed' | 'active';
 }
 
 export function WorkflowProgress({
@@ -15,6 +16,7 @@ export function WorkflowProgress({
   failedStage,
   orientation = 'horizontal',
   compact = false,
+  currentStageOverride,
 }: WorkflowProgressProps) {
   const isTerminalCompleted = currentStage === 'completed';
   const currentIndex = getStageIndex(currentStage);
@@ -37,7 +39,7 @@ export function WorkflowProgress({
     if (isTerminalCompleted) return 'completed';
     if (failedIndex >= 0 && stageIndex === failedIndex) return 'failed';
     if (stageIndex < currentIndex) return 'completed';
-    if (stageIndex === currentIndex) return 'active';
+    if (stageIndex === currentIndex) return currentStageOverride || 'active';
     return 'pending';
   };
 
@@ -52,15 +54,15 @@ export function WorkflowProgress({
               <div className="flex-1 min-w-0 pt-0.5">
                 <p className={cn(
                   'font-medium',
-                  status === 'completed' && 'text-gray-600',
+                  status === 'completed' && 'text-text-secondary',
                   status === 'active' && 'text-primary-600',
                   status === 'failed' && 'text-error-600',
-                  status === 'pending' && 'text-gray-400'
+                  status === 'pending' && 'text-text-muted'
                 )}>
                   {stage.name}
                 </p>
                 {status === 'active' && (
-                  <p className="text-sm text-gray-500 mt-0.5">In progress...</p>
+                  <p className="text-sm text-text-secondary mt-0.5">In progress...</p>
                 )}
               </div>
             </div>
@@ -72,29 +74,29 @@ export function WorkflowProgress({
 
   return (
     <div className="w-full overflow-x-auto">
-      <div className="flex items-center justify-between flex-nowrap min-w-max">
+      <div className="flex items-start justify-between flex-nowrap min-w-max">
         {displayStages.map((stage, i) => {
           const status = getStageStatus(stage, i);
           const isLast = i === displayStages.length - 1;
 
           return (
-            <div key={stage.id} className="flex items-center flex-1">
-              <div className="flex flex-col items-center">
+            <div key={stage.id} className="flex items-start flex-1 basis-0 min-w-[3.5rem]">
+              <div className="flex flex-col items-center w-full">
                 <StageIcon status={status} icon={stage.icon} />
-                <span className={cn(
-                  'text-xs mt-1.5 font-medium text-center',
-                  status === 'completed' && 'text-gray-600',
+                <div className={cn(
+                  'text-[10px] mt-1 font-medium text-center leading-[1.1] min-h-[1.5rem]',
+                  status === 'completed' && 'text-text-secondary',
                   status === 'active' && 'text-primary-600',
                   status === 'failed' && 'text-error-600',
-                  status === 'pending' && 'text-gray-400'
+                  status === 'pending' && 'text-text-muted'
                 )}>
                   {stage.name}
-                </span>
+                </div>
               </div>
               {!isLast && (
                 <div className={cn(
-                  'flex-1 h-0.5 mx-2 mt-[-1rem]',
-                  status === 'completed' ? 'bg-success-500' : 'bg-gray-200'
+                  'flex-1 h-0.5 mx-0.5 mt-2.5',
+                  status === 'completed' ? 'bg-success-500' : 'bg-border'
                 )} />
               )}
             </div>
@@ -132,9 +134,13 @@ function StageIcon({ status, icon }: { status: 'completed' | 'active' | 'failed'
     );
   }
 
+  const normalizedIcon = icon.replace(/[\uFE0E\uFE0F]/g, '').trim() || '?';
+
   return (
-    <div className={cn(baseClasses, 'bg-gray-100 text-gray-400')}>
-      <span>{icon}</span>
+    <div className={cn(baseClasses, 'bg-bg-tertiary text-text-muted')}>
+      <span className="inline-flex items-center justify-center leading-none text-[11px] font-semibold">
+        {normalizedIcon}
+      </span>
     </div>
   );
 }

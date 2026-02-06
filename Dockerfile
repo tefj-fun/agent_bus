@@ -72,6 +72,10 @@ ARG WITH_MERMAID=0
 
 WORKDIR /app
 
+# Ensure bash is available for scripts (render_pdfs.sh relies on bash features)
+RUN apt-get update && apt-get install -y --no-install-recommends bash \
+    && rm -rf /var/lib/apt/lists/*
+
 # Runtime system deps for PDF rendering only
 RUN if [ "$WITH_PDF" = "1" ]; then \
       apt-get update && apt-get install -y --no-install-recommends \
@@ -101,6 +105,7 @@ COPY src/ ./src/
 COPY skills/ ./skills/
 COPY tests/ ./tests/
 COPY scripts/ ./scripts/
+COPY config/ ./config/
 
 # Expose port
 EXPOSE 8000

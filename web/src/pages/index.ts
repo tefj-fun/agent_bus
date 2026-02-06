@@ -3,6 +3,8 @@ export { CreateProject } from './CreateProject';
 export { PRDReview } from './PRDReview';
 export { ProjectStatus } from './ProjectStatus';
 export { Deliverables } from './Deliverables';
+export { FeatureTree } from './FeatureTree';
+export { Artifact } from './Artifact';
 export { Memory } from './Memory';
 export { Metrics } from './Metrics';
 export { Settings } from './Settings';

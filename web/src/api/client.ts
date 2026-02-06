@@ -73,6 +73,21 @@ export const api = {
     }>(response);
   },
 
+  async getJobUsage(jobId: string) {
+    const response = await fetch(`${API_BASE}/projects/${jobId}/usage`);
+    return handleResponse<{
+      job_id: string;
+      usage: {
+        input_tokens: number;
+        output_tokens: number;
+        total_tokens: number;
+        calls: number;
+        cost_usd: number | null;
+        cost_available?: boolean;
+      };
+    }>(response);
+  },
+
   async getArtifacts(jobId: string) {
     const response = await fetch(`${API_BASE}/artifacts/job/${jobId}`);
     const data = await handleResponse<{
@@ -125,6 +140,15 @@ export const api = {
   async restartJob(jobId: string) {
     const response = await fetch(`${API_BASE}/projects/${jobId}/restart`, {
       method: 'POST',
+    });
+    return handleResponse<{ job_id: string; status: string }>(response);
+  },
+
+  async cancelJob(jobId: string, reason?: string) {
+    const response = await fetch(`${API_BASE}/projects/${jobId}/cancel`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason }),
     });
     return handleResponse<{ job_id: string; status: string }>(response);
   },

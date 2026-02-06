@@ -8,6 +8,7 @@ import json
 from datetime import datetime
 
 from ...infrastructure.redis_client import redis_client
+from ...infrastructure.postgres_client import postgres_client
 
 router = APIRouter(prefix="/events", tags=["events"])
 
@@ -33,6 +34,29 @@ async def publish_event(event_type: str, data: dict) -> None:
         print(f"[Events] Published {event_type} to {result} subscribers")
     except Exception as e:
         print(f"[Events] Failed to publish event: {e}")
+
+    # Best-effort persistence for history
+    try:
+        job_id = data.get("job_id") if isinstance(data, dict) else None
+        if job_id:
+            agent_id = data.get("agent") or data.get("agent_id") or "system"
+            message = data.get("message") or _default_event_message(event_type, data)
+            pool = await postgres_client.get_pool()
+            async with pool.acquire() as conn:
+                await conn.execute(
+                    """
+                    INSERT INTO agent_events (agent_id, job_id, event_type, message, data)
+                    VALUES ($1, $2, $3, $4, $5::jsonb)
+                    """,
+                    agent_id,
+                    job_id,
+                    event_type,
+                    message,
+                    json.dumps(data or {}),
+                )
+    except Exception:
+        # Never break event publishing if persistence fails
+        pass
 
 
 async def event_generator(
@@ -149,10 +173,113 @@ async def get_event_history(
     Returns:
         Dictionary with events list
     """
-    return {
-        "events": [],
-        "message": "Event history not yet implemented - use /stream for real-time events",
-    }
+    try:
+        pool = await postgres_client.get_pool()
+        async with pool.acquire() as conn:
+            if job_id:
+                rows = await conn.fetch(
+                    """
+                    SELECT id, agent_id, job_id, event_type, message, data, created_at
+                    FROM agent_events
+                    WHERE job_id = $1
+                    ORDER BY created_at DESC
+                    LIMIT $2
+                    """,
+                    job_id,
+                    limit,
+                )
+            else:
+                rows = await conn.fetch(
+                    """
+                    SELECT id, agent_id, job_id, event_type, message, data, created_at
+                    FROM agent_events
+                    ORDER BY created_at DESC
+                    LIMIT $1
+                    """,
+                    limit,
+                )
+
+            events = []
+            has_stage_events = False
+            for row in rows:
+                data = row.get("data") or {}
+                if isinstance(data, str):
+                    try:
+                        data = json.loads(data)
+                    except Exception:
+                        data = {}
+                event_type = row.get("event_type") or "agent_event"
+                if event_type.startswith("stage_"):
+                    has_stage_events = True
+                events.append(
+                    {
+                        "id": str(row.get("id") or ""),
+                        "type": event_type,
+                        "message": row.get("message") or "",
+                        "timestamp": row.get("created_at").isoformat()
+                        if row.get("created_at")
+                        else "",
+                        "agent": row.get("agent_id"),
+                        "job_id": row.get("job_id"),
+                        "metadata": data,
+                    }
+                )
+
+            # Synthesize stage events from tasks when none were persisted
+            if job_id and not has_stage_events:
+                task_rows = await conn.fetch(
+                    """
+                    SELECT task_type, status, created_at, completed_at
+                    FROM tasks
+                    WHERE job_id = $1
+                    ORDER BY created_at ASC
+                    """,
+                    job_id,
+                )
+                synthetic = []
+                for task in task_rows:
+                    stage = task.get("task_type")
+                    if not stage:
+                        continue
+                    created_at = task.get("created_at")
+                    completed_at = task.get("completed_at")
+                    if created_at:
+                        synthetic.append(
+                            {
+                                "id": f"synth-start-{stage}-{created_at.timestamp()}",
+                                "type": "stage_started",
+                                "message": f"Stage started: {stage}",
+                                "timestamp": created_at.isoformat(),
+                                "agent": None,
+                                "job_id": job_id,
+                                "metadata": {"stage": stage},
+                            }
+                        )
+                    if completed_at:
+                        synthetic.append(
+                            {
+                                "id": f"synth-done-{stage}-{completed_at.timestamp()}",
+                                "type": "stage_completed",
+                                "message": f"Stage completed: {stage}",
+                                "timestamp": completed_at.isoformat(),
+                                "agent": None,
+                                "job_id": job_id,
+                                "metadata": {"stage": stage},
+                            }
+                        )
+
+                events.extend(synthetic)
+
+            # Sort newest first
+            events = sorted(
+                events,
+                key=lambda e: e.get("timestamp") or "",
+                reverse=True,
+            )
+
+        return {"events": events[:limit]}
+    except Exception as e:
+        return {"events": [], "message": f"Failed to load event history: {e}"}
 
 
 # Helper functions for publishing common events
@@ -208,3 +335,23 @@ async def publish_hitl_requested(job_id: str, task_id: str, reason: str) -> None
         "hitl_requested",
         {"job_id": job_id, "task_id": task_id, "reason": reason}
     )
+
+
+def _default_event_message(event_type: str, data: dict) -> str:
+    if event_type == "stage_started":
+        return f"Stage started: {data.get('stage', '')}".strip()
+    if event_type == "stage_completed":
+        return f"Stage completed: {data.get('stage', '')}".strip()
+    if event_type == "task_started":
+        return f"Task started: {data.get('task_id', '')}".strip()
+    if event_type == "task_completed":
+        return f"Task completed: {data.get('task_id', '')}".strip()
+    if event_type == "job_started":
+        return "Job started"
+    if event_type == "job_completed":
+        return "Job completed"
+    if event_type == "job_failed":
+        return f"Job failed: {data.get('error', '')}".strip()
+    if event_type == "hitl_requested":
+        return f"Approval requested: {data.get('reason', '')}".strip()
+    return event_type.replace("_", " ").title()

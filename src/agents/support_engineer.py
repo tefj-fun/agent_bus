@@ -24,6 +24,7 @@ class SupportEngineer(BaseAgent):
     async def execute(self, task: AgentTask) -> AgentResult:
         """Generate support documentation and FAQs."""
         try:
+            self._set_active_task_id(task.task_id)
             await self.log_event("info", "Starting support documentation generation")
 
             input_payload = json.dumps(task.input_data or {}, indent=2, sort_keys=True)
@@ -102,6 +103,7 @@ class SupportEngineer(BaseAgent):
 
     def _build_system_prompt(self) -> str:
         return (
+            f"{self._truth_system_guardrails()}\n"
             "You are a Support Engineer creating support documentation. "
             "Write FAQs, troubleshooting steps, escalation guidance, and runbooks "
             "that are easy for support teams and customers to follow."
@@ -112,6 +114,7 @@ class SupportEngineer(BaseAgent):
             "Create support documentation based on the following project context. "
             "Include an FAQ, common issues with resolutions, escalation steps, and "
             "operational runbook notes.\n\n"
+            "Treat the PRD and user requirements in the payload as the source of truth.\n\n"
             f"Project context:\n{input_payload}"
         )
 

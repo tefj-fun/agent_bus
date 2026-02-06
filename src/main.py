@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from .infrastructure.container import container
 from .infrastructure.redis_client import redis_client
 from .infrastructure.postgres_client import postgres_client
-from .api.routes import projects, memory, skills, artifacts, patterns, metrics, events, settings as settings_routes
+from .api.routes import projects, memory, skills, artifacts, patterns, metrics, events, settings as settings_routes, modules
 from .api.routes import ui, ui_jobs
 from .api.routes import ui_prd
 from .api.routes import ui_prd_actions
@@ -16,6 +16,9 @@ from .api.routes import api_documents
 from .api.error_handling import setup_error_handlers
 from .config import settings
 from .storage.artifact_store import init_artifact_store
+from .catalog.module_catalog import catalog_is_empty, seed_module_catalog
+from pathlib import Path
+import json
 
 
 @asynccontextmanager
@@ -37,6 +40,21 @@ async def lifespan(app: FastAPI):
     if settings.artifact_storage_backend == "file":
         init_artifact_store(settings.artifact_output_dir)
         print(f"Artifact store initialized at {settings.artifact_output_dir}")
+
+    # Seed module catalog (best effort) so feature tree has a global baseline
+    if settings.module_catalog_seed_on_startup:
+        try:
+            pool = await postgres_client.get_pool()
+            if await catalog_is_empty(pool):
+                path = Path(settings.module_catalog_path)
+                if path.exists():
+                    payload = json.loads(path.read_text(encoding="utf-8"))
+                    modules = payload.get("modules") if isinstance(payload, dict) else None
+                    if isinstance(modules, list) and modules:
+                        await seed_module_catalog(pool, modules)
+                        print(f"Seeded module catalog with {len(modules)} modules")
+        except Exception as exc:
+            print(f"Module catalog seed skipped: {exc}")
 
     yield
 
@@ -74,6 +92,7 @@ app.include_router(projects.router, prefix="/api/projects", tags=["projects"])
 app.include_router(memory.router, prefix="/api/memory", tags=["memory"])
 app.include_router(skills.router, prefix="/api", tags=["skills"])
 app.include_router(artifacts.router, prefix="/api/artifacts", tags=["artifacts"])
+app.include_router(modules.router, prefix="/api/modules", tags=["modules"])
 app.include_router(ui.router, prefix="/ui", tags=["ui"])
 app.include_router(ui_jobs.router, prefix="/ui", tags=["ui"])
 app.include_router(ui_prd.router, prefix="/ui", tags=["ui"])

@@ -409,6 +409,7 @@ class TestWorkflowIntegration:
 
         # Check key stages exist
         assert WorkflowStage.PRD_GENERATION
+        assert WorkflowStage.FEATURE_TREE
         assert WorkflowStage.ARCHITECTURE_DESIGN
         assert WorkflowStage.DEVELOPMENT
         assert WorkflowStage.COMPLETED

@@ -25,7 +25,8 @@ async def openai_chat_complete(
     system: str,
     model: str | None = None,
     max_tokens: int = 2048,
-) -> str:
+    return_usage: bool = False,
+) -> str | tuple[str, dict]:
     api_key = settings.openai_api_key
     if not api_key:
         raise ValueError("OPENAI_API_KEY is required when LLM_PROVIDER=openai and LLM_MODE=real")
@@ -53,6 +54,20 @@ async def openai_chat_complete(
         data = resp.json()
 
     try:
-        return data["choices"][0]["message"]["content"]
+        text = data["choices"][0]["message"]["content"]
     except Exception as e:
         raise RuntimeError(f"Unexpected OpenAI response shape: {data}") from e
+
+    if not return_usage:
+        return text
+
+    usage = data.get("usage") or {}
+    return (
+        text,
+        {
+            "input_tokens": usage.get("prompt_tokens", 0),
+            "output_tokens": usage.get("completion_tokens", 0),
+            "total_tokens": usage.get("total_tokens", 0),
+            "raw": usage,
+        },
+    )

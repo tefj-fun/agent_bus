@@ -156,7 +156,7 @@ export function Settings() {
 
       <div className="grid gap-6">
         <Card>
-          <h3 className="font-semibold text-gray-900 mb-3">Backend Status</h3>
+          <h3 className="font-semibold text-text-primary mb-3">Backend Status</h3>
           <div className="flex items-center gap-3">
             <Badge
               variant={
@@ -169,39 +169,39 @@ export function Settings() {
             >
               {healthStatus}
             </Badge>
-            <span className="text-sm text-gray-600">API: `/health`</span>
+            <span className="text-sm text-text-secondary">API: `/health`</span>
           </div>
         </Card>
 
         <Card>
-          <h3 className="font-semibold text-gray-900 mb-3">Artifacts Storage</h3>
-          {storageLoading && <p className="text-sm text-gray-500">Loading...</p>}
+          <h3 className="font-semibold text-text-primary mb-3">Artifacts Storage</h3>
+          {storageLoading && <p className="text-sm text-text-secondary">Loading...</p>}
           {storageError && (
             <p className="text-sm text-error-600">Failed to load storage info</p>
           )}
           {!storageLoading && !storageError && (
             <dl className="grid md:grid-cols-2 gap-4 text-sm">
               <div>
-                <dt className="text-gray-500">Backend</dt>
-                <dd className="font-medium text-gray-900">
+                <dt className="text-text-secondary">Backend</dt>
+                <dd className="font-medium text-text-primary">
                   {storageInfo?.backend || 'unknown'}
                 </dd>
               </div>
               <div>
-                <dt className="text-gray-500">Output Dir</dt>
-                <dd className="font-medium text-gray-900">
+                <dt className="text-text-secondary">Output Dir</dt>
+                <dd className="font-medium text-text-primary">
                   {storageInfo?.output_dir ?? 'n/a'}
                 </dd>
               </div>
               <div>
-                <dt className="text-gray-500">Jobs With Artifacts</dt>
-                <dd className="font-medium text-gray-900">
+                <dt className="text-text-secondary">Jobs With Artifacts</dt>
+                <dd className="font-medium text-text-primary">
                   {storageInfo?.total_jobs ?? 0}
                 </dd>
               </div>
               <div>
-                <dt className="text-gray-500">Output Dir Exists</dt>
-                <dd className="font-medium text-gray-900">
+                <dt className="text-text-secondary">Output Dir Exists</dt>
+                <dd className="font-medium text-text-primary">
                   {storageInfo?.output_dir_exists ? 'yes' : 'no'}
                 </dd>
               </div>
@@ -210,44 +210,44 @@ export function Settings() {
         </Card>
 
         <Card>
-          <h3 className="font-semibold text-gray-900 mb-3">Client Config</h3>
+          <h3 className="font-semibold text-text-primary mb-3">Client Config</h3>
           <dl className="grid md:grid-cols-2 gap-4 text-sm">
             <div>
-              <dt className="text-gray-500">API Base</dt>
-              <dd className="font-medium text-gray-900">/api (same origin)</dd>
+              <dt className="text-text-secondary">API Base</dt>
+              <dd className="font-medium text-text-primary">/api (same origin)</dd>
             </div>
             <div>
-              <dt className="text-gray-500">SSE Base</dt>
-              <dd className="font-medium text-gray-900">{sseBase}</dd>
+              <dt className="text-text-secondary">SSE Base</dt>
+              <dd className="font-medium text-text-primary">{sseBase}</dd>
             </div>
           </dl>
         </Card>
 
         <Card>
-          <h3 className="font-semibold text-gray-900 mb-3">Server Config</h3>
-          {settingsLoading && <p className="text-sm text-gray-500">Loading settings...</p>}
+          <h3 className="font-semibold text-text-primary mb-3">Server Config</h3>
+          {settingsLoading && <p className="text-sm text-text-secondary">Loading settings...</p>}
           {settingsError && (
             <p className="text-sm text-error-600">Failed to load runtime settings</p>
           )}
           {!settingsLoading && !settingsError && (
             <div className="space-y-4">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-text-secondary">
                 Changes apply immediately for new requests. Secrets are write-only and masked
                 below.
               </p>
               <div className="grid md:grid-cols-2 gap-4 text-sm">
                 <label className="flex flex-col gap-1">
-                  <span className="text-gray-500">LLM Mode</span>
+                  <span className="text-text-secondary">LLM Mode</span>
                   <input
-                    className="border rounded-md px-3 py-2"
+                    className="border border-border bg-bg-primary text-text-primary rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                     value={settingsForm.llm_mode}
                     onChange={(e) => setSettingsForm({ ...settingsForm, llm_mode: e.target.value })}
                   />
                 </label>
                 <label className="flex flex-col gap-1">
-                  <span className="text-gray-500">LLM Provider</span>
+                  <span className="text-text-secondary">LLM Provider</span>
                   <input
-                    className="border rounded-md px-3 py-2"
+                    className="border border-border bg-bg-primary text-text-primary rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                     value={settingsForm.llm_provider}
                     onChange={(e) =>
                       setSettingsForm({ ...settingsForm, llm_provider: e.target.value })
@@ -255,9 +255,9 @@ export function Settings() {
                   />
                 </label>
                 <label className="flex flex-col gap-1">
-                  <span className="text-gray-500">Anthropic Model</span>
+                  <span className="text-text-secondary">Anthropic Model</span>
                   <input
-                    className="border rounded-md px-3 py-2"
+                    className="border border-border bg-bg-primary text-text-primary rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                     value={settingsForm.anthropic_model}
                     onChange={(e) =>
                       setSettingsForm({ ...settingsForm, anthropic_model: e.target.value })
@@ -265,9 +265,9 @@ export function Settings() {
                   />
                 </label>
                 <label className="flex flex-col gap-1">
-                  <span className="text-gray-500">OpenAI Model</span>
+                  <span className="text-text-secondary">OpenAI Model</span>
                   <input
-                    className="border rounded-md px-3 py-2"
+                    className="border border-border bg-bg-primary text-text-primary rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                     value={settingsForm.openai_model}
                     onChange={(e) =>
                       setSettingsForm({ ...settingsForm, openai_model: e.target.value })
@@ -275,9 +275,9 @@ export function Settings() {
                   />
                 </label>
                 <label className="flex flex-col gap-1">
-                  <span className="text-gray-500">Anthropic Max Tokens</span>
+                  <span className="text-text-secondary">Anthropic Max Tokens</span>
                   <input
-                    className="border rounded-md px-3 py-2"
+                    className="border border-border bg-bg-primary text-text-primary rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                     type="number"
                     min={1}
                     value={settingsForm.anthropic_max_tokens}
@@ -287,9 +287,9 @@ export function Settings() {
                   />
                 </label>
                 <label className="flex flex-col gap-1">
-                  <span className="text-gray-500">PRD Max Tokens</span>
+                  <span className="text-text-secondary">PRD Max Tokens</span>
                   <input
-                    className="border rounded-md px-3 py-2"
+                    className="border border-border bg-bg-primary text-text-primary rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                     type="number"
                     min={1}
                     value={settingsForm.prd_max_tokens}
@@ -299,9 +299,9 @@ export function Settings() {
                   />
                 </label>
                 <label className="flex flex-col gap-1">
-                  <span className="text-gray-500">LLM Timeout (s)</span>
+                  <span className="text-text-secondary">LLM Timeout (s)</span>
                   <input
-                    className="border rounded-md px-3 py-2"
+                    className="border border-border bg-bg-primary text-text-primary rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                     type="number"
                     min={1}
                     value={settingsForm.timeout_llm_call}
@@ -311,9 +311,9 @@ export function Settings() {
                   />
                 </label>
                 <label className="flex flex-col gap-1">
-                  <span className="text-gray-500">Task Timeout (s)</span>
+                  <span className="text-text-secondary">Task Timeout (s)</span>
                   <input
-                    className="border rounded-md px-3 py-2"
+                    className="border border-border bg-bg-primary text-text-primary rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                     type="number"
                     min={1}
                     value={settingsForm.timeout_task_completion}
@@ -326,9 +326,9 @@ export function Settings() {
                   />
                 </label>
                 <label className="flex flex-col gap-1">
-                  <span className="text-gray-500">DB Timeout (s)</span>
+                  <span className="text-text-secondary">DB Timeout (s)</span>
                   <input
-                    className="border rounded-md px-3 py-2"
+                    className="border border-border bg-bg-primary text-text-primary rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                     type="number"
                     min={1}
                     value={settingsForm.timeout_db_query}
@@ -338,9 +338,9 @@ export function Settings() {
                   />
                 </label>
                 <label className="flex flex-col gap-1">
-                  <span className="text-gray-500">Redis Timeout (s)</span>
+                  <span className="text-text-secondary">Redis Timeout (s)</span>
                   <input
-                    className="border rounded-md px-3 py-2"
+                    className="border border-border bg-bg-primary text-text-primary rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                     type="number"
                     min={1}
                     value={settingsForm.timeout_redis_operation}
@@ -353,7 +353,7 @@ export function Settings() {
 
               <div className="grid md:grid-cols-2 gap-4 text-sm">
                 <label className="flex flex-col gap-1">
-                  <span className="text-gray-500">
+                  <span className="text-text-secondary">
                     Anthropic API Key (current: {runtimeSettings?.anthropic_api_key_masked || 'unset'})
                   </span>
                   <Textarea
@@ -366,7 +366,7 @@ export function Settings() {
                   />
                 </label>
                 <label className="flex flex-col gap-1">
-                  <span className="text-gray-500">
+                  <span className="text-text-secondary">
                     OpenAI API Key (current: {runtimeSettings?.openai_api_key_masked || 'unset'})
                   </span>
                   <Textarea

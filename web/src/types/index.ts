@@ -16,12 +16,14 @@ export type JobStatus =
   | 'waiting_for_approval'
   | 'changes_requested'
   | 'completed'
+  | 'canceled'
   | 'failed';
 
 export type WorkflowStage =
   | 'initialization'
   | 'prd_generation'
   | 'waiting_for_approval'
+  | 'feature_tree'
   | 'plan_generation'
   | 'architecture_design'
   | 'uiux_design'
@@ -47,14 +49,19 @@ export interface Artifact {
 
 export type ArtifactType =
   | 'prd'
+  | 'feature_tree'
+  | 'feature_tree_graph'
   | 'plan'
+  | 'project_plan'
   | 'architecture'
   | 'uiux'
   | 'development'
   | 'qa'
   | 'security'
   | 'documentation'
-  | 'support';
+  | 'support'
+  | 'pm_review'
+  | 'delivery';
 
 // Memory types
 export interface MemoryPattern {
@@ -87,6 +94,7 @@ export type EventType =
   | 'job_started'
   | 'job_completed'
   | 'job_failed'
+  | 'job_aborted'
   | 'stage_started'
   | 'stage_completed'
   | 'task_started'
@@ -137,20 +145,23 @@ export interface StageInfo {
 export const WORKFLOW_STAGES: StageInfo[] = [
   { id: 'initialization', name: 'Init', agent: 'system', status: 'pending', icon: '⚙️', color: 'stage-plan' },
   { id: 'prd_generation', name: 'PRD', agent: 'prd_agent', status: 'pending', icon: '📝', color: 'stage-prd' },
-  { id: 'waiting_for_approval', name: 'Approval', agent: 'prd_agent', status: 'pending', icon: '🧾', color: 'stage-prd' },
+  { id: 'waiting_for_approval', name: 'Approval', agent: 'prd_agent', status: 'pending', icon: '✅', color: 'stage-prd' },
+  { id: 'feature_tree', name: 'Feature Tree', agent: 'feature_tree_agent', status: 'pending', icon: '🌳', color: 'stage-plan' },
   { id: 'plan_generation', name: 'Plan', agent: 'plan_agent', status: 'pending', icon: '📋', color: 'stage-plan' },
   { id: 'architecture_design', name: 'Architecture', agent: 'architect_agent', status: 'pending', icon: '🏗️', color: 'stage-arch' },
   { id: 'uiux_design', name: 'UI/UX', agent: 'uiux_agent', status: 'pending', icon: '🎨', color: 'stage-uiux' },
   { id: 'development', name: 'Development', agent: 'developer_agent', status: 'pending', icon: '💻', color: 'stage-dev' },
-  { id: 'qa_testing', name: 'QA', agent: 'qa_agent', status: 'pending', icon: '✅', color: 'stage-qa' },
+  { id: 'qa_testing', name: 'QA', agent: 'qa_agent', status: 'pending', icon: '🧪', color: 'stage-qa' },
   { id: 'security_review', name: 'Security', agent: 'security_agent', status: 'pending', icon: '🔒', color: 'stage-security' },
   { id: 'documentation', name: 'Docs', agent: 'tech_writer', status: 'pending', icon: '📚', color: 'stage-docs' },
-  { id: 'support_docs', name: 'Support', agent: 'support_engineer', status: 'pending', icon: '🧰', color: 'stage-docs' },
-  { id: 'pm_review', name: 'PM Review', agent: 'product_manager', status: 'pending', icon: '👔', color: 'stage-prd' },
+  { id: 'support_docs', name: 'Support', agent: 'support_engineer', status: 'pending', icon: '🎧', color: 'stage-docs' },
+  { id: 'pm_review', name: 'PM Review', agent: 'product_manager', status: 'pending', icon: '🧑‍💼', color: 'stage-prd' },
   { id: 'delivery', name: 'Delivery', agent: 'delivery_agent', status: 'pending', icon: '📦', color: 'stage-dev' },
   { id: 'completed', name: 'Completed', agent: 'system', status: 'pending', icon: '🏁', color: 'stage-qa' },
   { id: 'failed', name: 'Failed', agent: 'system', status: 'pending', icon: '🛑', color: 'stage-security' },
 ];
+
+
 
 // Helper to get stage index
 export function getStageIndex(stage: WorkflowStage): number {

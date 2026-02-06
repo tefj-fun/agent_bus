@@ -35,10 +35,12 @@ class UIUXAgent(BaseAgent):
             Agent result with UI/UX artifact
         """
         try:
+            self._set_active_task_id(task.task_id)
             await self.log_event("info", "Starting UI/UX design")
 
             architecture_content = task.input_data.get("architecture") or ""
             prd_content = task.input_data.get("prd") or ""
+            requirements = (task.input_data.get("requirements") or "").strip()
 
             if not architecture_content.strip():
                 return AgentResult(
@@ -54,7 +56,9 @@ class UIUXAgent(BaseAgent):
             system_prompt = self._build_uiux_system_prompt()
 
             # Generate UI/UX design (real LLM or mock)
-            user_prompt = self._build_uiux_user_prompt(architecture_content, prd_content)
+            user_prompt = self._build_uiux_user_prompt(
+                architecture_content, prd_content, requirements
+            )
 
             from ..config import settings
 
@@ -152,6 +156,7 @@ class UIUXAgent(BaseAgent):
                 metadata={
                     "task_id": task.task_id,
                     "architecture_length": len(architecture_content),
+                    "requirements_length": len(requirements),
                     "prd_length": len(prd_content),
                     "parseable_json": "raw_design" not in uiux_payload,
                 },
@@ -199,7 +204,10 @@ class UIUXAgent(BaseAgent):
 
     def _build_uiux_system_prompt(self) -> str:
         """Build system prompt for UI/UX design generation."""
-        return """You are an expert UI/UX Designer specialized in creating comprehensive design systems and user experiences.
+        return (
+            self._truth_system_guardrails()
+            + """
+You are an expert UI/UX Designer specialized in creating comprehensive design systems and user experiences.
 
 Your role is to transform technical architectures into beautiful, usable, and accessible user interfaces.
 
@@ -301,20 +309,23 @@ Your role is to transform technical architectures into beautiful, usable, and ac
 - Consider performance (e.g., icon systems, image optimization)
 - Provide clear component hierarchy and composition patterns
 - Document interaction patterns and micro-interactions"""
+        )
 
-    def _build_uiux_user_prompt(self, architecture_content: str, prd_content: str) -> str:
+    def _build_uiux_user_prompt(
+        self, architecture_content: str, prd_content: str, requirements: str
+    ) -> str:
         """Build user prompt for UI/UX design generation."""
-        prompt = f"""Design a comprehensive UI/UX system based on this architecture:
+        prompt = "Design a comprehensive UI/UX system using the sources of truth below.\n\n"
 
-{architecture_content}
-"""
+        if requirements:
+            prompt += f"User Requirements (source of truth):\n{requirements}\n\n"
 
         if prd_content.strip():
-            prompt += f"""
+            prompt += f"PRD (source of truth):\n{prd_content}\n\n"
 
-And this PRD (for context):
+        prompt += f"""Architecture (derived):
 
-{prd_content}
+{architecture_content}
 """
 
         prompt += """

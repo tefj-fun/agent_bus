@@ -1,0 +1,60 @@
+{
+  "modules": [
+    {
+      "module_id": "mod.identity",
+      "name": "Identity & Access",
+      "capabilities": ["signup", "login", "sso", "mfa", "roles", "permissions"],
+      "owner": "platform-team",
+      "description": "User identity, authentication, and authorization services."
+    },
+    {
+      "module_id": "mod.user-profile",
+      "name": "User Profile",
+      "capabilities": ["profile", "preferences", "settings", "avatar"],
+      "owner": "platform-team",
+      "description": "User profile data and preferences management."
+    },
+    {
+      "module_id": "mod.billing",
+      "name": "Billing & Subscriptions",
+      "capabilities": ["pricing", "subscriptions", "invoicing", "payments"],
+      "owner": "platform-team",
+      "description": "Billing, plans, and payment workflows."
+    },
+    {
+      "module_id": "mod.notifications",
+      "name": "Notifications",
+      "capabilities": ["email", "sms", "push", "in-app", "templates"],
+      "owner": "platform-team",
+      "description": "Multi-channel notification delivery and templates."
+    },
+    {
+      "module_id": "mod.files",
+      "name": "File Storage",
+      "capabilities": ["upload", "download", "metadata", "cdn", "virus-scan"],
+      "owner": "platform-team",
+      "description": "File storage, delivery, and asset management."
+    },
+    {
+      "module_id": "mod.search",
+      "name": "Search & Indexing",
+      "capabilities": ["search", "filter", "indexing", "autocomplete"],
+      "owner": "platform-team",
+      "description": "Unified search and indexing services."
+    },
+    {
+      "module_id": "mod.analytics",
+      "name": "Analytics & Insights",
+      "capabilities": ["events", "dashboards", "reporting", "kpis"],
+      "owner": "platform-team",
+      "description": "Event tracking and reporting."
+    },
+    {
+      "module_id": "mod.workflow",
+      "name": "Workflow Orchestration",
+      "capabilities": ["pipelines", "approvals", "state-machines", "automation"],
+      "owner": "platform-team",
+      "description": "Reusable workflow and automation primitives."
+    }
+  ]
+}

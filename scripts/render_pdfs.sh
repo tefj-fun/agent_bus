@@ -24,19 +24,31 @@ fi
 
 mkdir -p "${OUTPUT_DIR}"
 
-find "${INPUT_DIR}" -type f -name "*.md" | while read -r md_file; do
+find "${INPUT_DIR}" -type f \( -name "*.md" -o -name "feature_tree*.txt" \) | while read -r md_file; do
   rel_path="${md_file#${INPUT_DIR}/}"
-  base_name="$(basename "${rel_path}" .md)"
+  base_name="$(basename "${rel_path}")"
+  base_name="${base_name%.*}"
   out_dir="${OUTPUT_DIR}/$(dirname "${rel_path}")"
   mkdir -p "${out_dir}"
   out_pdf="${out_dir}/${base_name}.pdf"
 
   tmp_dir="$(mktemp -d)"
   tmp_md="${tmp_dir}/${base_name}.md"
+  tmp_src="${tmp_dir}/${base_name}_src.md"
   assets_dir="${tmp_dir}/assets"
   mkdir -p "${assets_dir}"
 
-  python3 "${MERMAID_RENDER}" "${md_file}" "${tmp_md}" "${assets_dir}"
+  src_file="${md_file}"
+  if [[ "${md_file}" == *.txt ]]; then
+    if [[ "${base_name}" == feature_tree_graph* ]]; then
+      printf "```mermaid\n%s\n```\n" "$(cat "${md_file}")" > "${tmp_src}"
+    else
+      printf "```json\n%s\n```\n" "$(cat "${md_file}")" > "${tmp_src}"
+    fi
+    src_file="${tmp_src}"
+  fi
+
+  python3 "${MERMAID_RENDER}" "${src_file}" "${tmp_md}" "${assets_dir}"
 
   pandoc "${tmp_md}" \
     --from gfm+pipe_tables+yaml_metadata_block \

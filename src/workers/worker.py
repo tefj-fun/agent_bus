@@ -18,10 +18,12 @@ from ..agents.developer_agent import DeveloperAgent
 from ..agents.qa_agent import QAAgent
 from ..agents.security_agent import SecurityAgent
 from ..agents.delivery_agent import DeliveryAgent
+from ..agents.feature_tree_agent import FeatureTreeAgent
 
 from ..infrastructure.redis_client import redis_client
 from ..infrastructure.postgres_client import postgres_client
 from ..infrastructure.anthropic_client import anthropic_client
+from ..infrastructure.pricing import refresh_pricing, pricing_refresh_loop
 from ..skills.manager import SkillsManager
 from ..storage.artifact_store import init_artifact_store
 from ..config import settings
@@ -47,6 +49,7 @@ class AgentWorker:
             "project_manager": ProjectManager,
             "memory_agent": MemoryAgent,
             "plan_agent": PlanAgent,
+            "feature_tree_agent": FeatureTreeAgent,
             "architect_agent": ArchitectAgent,
             "uiux_agent": UIUXAgent,
             "developer_agent": DeveloperAgent,
@@ -69,6 +72,13 @@ class AgentWorker:
         if settings.artifact_storage_backend == "file":
             init_artifact_store(settings.artifact_output_dir)
             print(f"Artifact store initialized at {settings.artifact_output_dir}")
+
+        # Best-effort pricing refresh (for cost calculations)
+        try:
+            await refresh_pricing()
+            asyncio.create_task(pricing_refresh_loop())
+        except Exception:
+            pass
 
         while True:
             try:
@@ -93,10 +103,29 @@ class AgentWorker:
         task_id = task_dict["task_id"]
         agent_type = task_dict["agent_type"]
 
-        # Update task status to RUNNING
-        await self.postgres.update_task_status(task_id, "running")
-
         try:
+            # Check for canceled jobs before starting work
+            pool = await self.postgres.get_pool()
+            async with pool.acquire() as conn:
+                job_status = await conn.fetchval(
+                    "SELECT status FROM jobs WHERE id = $1",
+                    task_dict.get("job_id"),
+                )
+            if job_status == "canceled":
+                await self.postgres.update_task_status(
+                    task_id=task_id, status="canceled", error="Job canceled"
+                )
+                await self.redis.set_with_expiry(
+                    f"agent_bus:results:{task_id}",
+                    json.dumps({"success": False, "error": "Job canceled", "task_id": task_id}),
+                    3600,
+                )
+                print(f"Task {task_id} skipped (job canceled)")
+                return
+
+            # Update task status to RUNNING
+            await self.postgres.update_task_status(task_id, "running")
+
             # Get agent class
             AgentClass = self.agent_registry.get(agent_type)
             if not AgentClass:

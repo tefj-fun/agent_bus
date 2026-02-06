@@ -9,11 +9,11 @@ export interface CardProps extends HTMLAttributes<HTMLDivElement> {
 const Card = forwardRef<HTMLDivElement, CardProps>(
   ({ className, variant = 'default', padding = 'md', children, ...props }, ref) => {
     const variants = {
-      default: 'bg-white border border-gray-200',
-      elevated: 'bg-white shadow-md',
-      outlined: 'bg-transparent border border-gray-300',
+      default: 'bg-bg-primary border border-border',
+      elevated: 'bg-bg-primary shadow-md',
+      outlined: 'bg-transparent border border-border',
       interactive:
-        'bg-white border border-gray-200 hover:border-primary-300 hover:shadow-md cursor-pointer transition-all duration-150',
+        'bg-bg-primary border border-border hover:border-primary-300 hover:shadow-md cursor-pointer transition-all duration-150',
     };
 
     const paddings = {
@@ -57,9 +57,9 @@ const CardHeader = forwardRef<HTMLDivElement, CardHeaderProps>(
         {...props}
       >
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+          <h3 className="text-lg font-semibold text-text-primary">{title}</h3>
           {description && (
-            <p className="text-sm text-gray-500 mt-0.5">{description}</p>
+            <p className="text-sm text-text-secondary mt-0.5">{description}</p>
           )}
         </div>
         {action && <div>{action}</div>}

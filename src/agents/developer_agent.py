@@ -36,11 +36,13 @@ class DeveloperAgent(BaseAgent):
             Agent result with development artifact
         """
         try:
+            self._set_active_task_id(task.task_id)
             await self.log_event("info", "Starting development with TDD approach")
 
             architecture_content = task.input_data.get("architecture") or ""
             uiux_content = task.input_data.get("ui_ux") or ""
             prd_content = task.input_data.get("prd") or ""
+            requirements = (task.input_data.get("requirements") or "").strip()
 
             if not architecture_content.strip():
                 return AgentResult(
@@ -57,7 +59,7 @@ class DeveloperAgent(BaseAgent):
 
             # Generate development plan (real LLM or mock)
             user_prompt = self._build_developer_user_prompt(
-                architecture_content, uiux_content, prd_content
+                architecture_content, uiux_content, prd_content, requirements
             )
 
             from ..config import settings
@@ -221,6 +223,7 @@ class DeveloperAgent(BaseAgent):
                     "task_id": task.task_id,
                     "architecture_length": len(architecture_content),
                     "uiux_length": len(uiux_content),
+                    "requirements_length": len(requirements),
                     "prd_length": len(prd_content),
                     "parseable_json": "raw_development" not in development_payload,
                 },
@@ -268,7 +271,8 @@ class DeveloperAgent(BaseAgent):
 
     def _build_developer_system_prompt(self) -> str:
         """Build system prompt for development plan generation."""
-        return """You are an expert Software Developer specialized in Test-Driven Development (TDD) and clean code practices.
+        return f"""{self._truth_system_guardrails()}
+You are an expert Software Developer specialized in Test-Driven Development (TDD) and clean code practices.
 
 Your role is to transform architecture and UI/UX designs into implementable code structure with comprehensive TDD strategy.
 
@@ -363,10 +367,22 @@ Your role is to transform architecture and UI/UX designs into implementable code
 - Focus on maintainability and code quality"""
 
     def _build_developer_user_prompt(
-        self, architecture_content: str, uiux_content: str, prd_content: str
+        self,
+        architecture_content: str,
+        uiux_content: str,
+        prd_content: str,
+        requirements: str,
     ) -> str:
         """Build user prompt for development plan generation."""
-        prompt = f"""Create a comprehensive development plan with TDD strategy based on this architecture:
+        prompt = "Create a comprehensive development plan with TDD strategy using the sources of truth below.\n\n"
+
+        if requirements:
+            prompt += f"User Requirements (source of truth):\n{requirements}\n\n"
+
+        if prd_content.strip():
+            prompt += f"PRD (source of truth):\n{prd_content}\n\n"
+
+        prompt += f"""Architecture (derived):
 
 {architecture_content}
 """
@@ -377,14 +393,6 @@ Your role is to transform architecture and UI/UX designs into implementable code
 And this UI/UX design:
 
 {uiux_content}
-"""
-
-        if prd_content.strip():
-            prompt += f"""
-
-And this PRD (for context):
-
-{prd_content}
 """
 
         prompt += """

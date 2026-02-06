@@ -149,7 +149,7 @@ Include:
                 required
               />
 
-              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+              <div className="flex items-center justify-between pt-4 border-t border-border">
                 <Button
                   type="button"
                   variant="ghost"
@@ -174,11 +174,11 @@ Include:
           <Card>
             <div className="flex items-center gap-2 mb-4">
               <Sparkles className="w-5 h-5 text-primary-500" />
-              <h3 className="font-semibold text-gray-900">Similar Past Projects</h3>
+              <h3 className="font-semibold text-text-primary">Similar Past Projects</h3>
             </div>
 
             {requirements.length < 50 ? (
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-text-secondary">
                 Start typing requirements to see similar patterns from past projects...
               </p>
             ) : searchingPatterns ? (
@@ -204,10 +204,10 @@ Include:
               </div>
             ) : (
               <div className="text-center py-6">
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-text-secondary">
                   No similar projects found.
                 </p>
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-text-muted mt-1">
                   This will create new patterns in memory.
                 </p>
               </div>

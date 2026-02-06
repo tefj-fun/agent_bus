@@ -49,17 +49,17 @@ export function MemoryHitCard({
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <h4 className="font-medium text-gray-900 truncate">{title}</h4>
+            <h4 className="font-medium text-text-primary truncate">{title}</h4>
             <Badge variant={getTypeColor(patternType)} size="sm">
               {patternType}
             </Badge>
           </div>
 
-          <p className="text-sm text-gray-600 line-clamp-2 mb-2">
+          <p className="text-sm text-text-secondary line-clamp-2 mb-2">
             {truncate(preview, 150)}
           </p>
 
-          <div className="flex items-center gap-3 text-xs text-gray-500">
+          <div className="flex items-center gap-3 text-xs text-text-secondary">
             <span className="font-medium text-primary-600">
               {similarityPercent}% match
             </span>
@@ -84,7 +84,7 @@ export function MemoryHitCard({
                 ? 'text-success-600'
                 : similarityPercent >= 70
                 ? 'text-primary-600'
-                : 'text-gray-500'
+                : 'text-text-secondary'
             }`}
           >
             {similarityPercent}%
@@ -92,7 +92,7 @@ export function MemoryHitCard({
         </div>
       </div>
 
-      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
         {onViewDetails && (
           <Button
             variant="ghost"
@@ -131,9 +131,9 @@ export function MemoryHitBadge({
   return (
     <button
       onClick={onClick}
-      className="flex items-center justify-between w-full px-3 py-2 text-sm rounded-lg hover:bg-gray-50 transition-colors"
+      className="flex items-center justify-between w-full px-3 py-2 text-sm rounded-lg hover:bg-bg-secondary transition-colors"
     >
-      <span className="truncate text-gray-700">{title}</span>
+      <span className="truncate text-text-secondary">{title}</span>
       <span className="text-xs font-medium text-primary-600 ml-2">
         {Math.round(similarity * 100)}%
       </span>

@@ -38,6 +38,7 @@ class PRDAgent(BaseAgent):
             Agent result with PRD
         """
         try:
+            self._set_active_task_id(task.task_id)
             await self.log_event("info", "Starting PRD generation")
 
             sales_requirements = task.input_data.get("requirements", "")

@@ -10,6 +10,7 @@ class WorkflowStage(Enum):
     INITIALIZATION = "initialization"
     PRD_GENERATION = "prd_generation"
     WAITING_FOR_APPROVAL = "waiting_for_approval"
+    FEATURE_TREE = "feature_tree"
     PLAN_GENERATION = "plan_generation"
     ARCHITECTURE_DESIGN = "architecture_design"
     UIUX_DESIGN = "uiux_design"
@@ -31,7 +32,8 @@ class WorkflowStateMachine:
     TRANSITIONS: Dict[WorkflowStage, List[WorkflowStage]] = {
         WorkflowStage.INITIALIZATION: [WorkflowStage.PRD_GENERATION, WorkflowStage.FAILED],
         WorkflowStage.PRD_GENERATION: [WorkflowStage.WAITING_FOR_APPROVAL, WorkflowStage.FAILED],
-        WorkflowStage.WAITING_FOR_APPROVAL: [WorkflowStage.PLAN_GENERATION, WorkflowStage.FAILED],
+        WorkflowStage.WAITING_FOR_APPROVAL: [WorkflowStage.FEATURE_TREE, WorkflowStage.FAILED],
+        WorkflowStage.FEATURE_TREE: [WorkflowStage.PLAN_GENERATION, WorkflowStage.FAILED],
         WorkflowStage.PLAN_GENERATION: [WorkflowStage.ARCHITECTURE_DESIGN, WorkflowStage.FAILED],
         WorkflowStage.ARCHITECTURE_DESIGN: [WorkflowStage.UIUX_DESIGN, WorkflowStage.FAILED],
         WorkflowStage.UIUX_DESIGN: [WorkflowStage.DEVELOPMENT, WorkflowStage.FAILED],
@@ -55,6 +57,7 @@ class WorkflowStateMachine:
     # Map stages to required agents
     STAGE_AGENTS: Dict[WorkflowStage, str] = {
         WorkflowStage.PRD_GENERATION: "prd_agent",
+        WorkflowStage.FEATURE_TREE: "feature_tree_agent",
         WorkflowStage.PLAN_GENERATION: "plan_agent",
         WorkflowStage.ARCHITECTURE_DESIGN: "architect_agent",
         WorkflowStage.UIUX_DESIGN: "uiux_agent",

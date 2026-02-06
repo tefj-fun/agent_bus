@@ -36,11 +36,13 @@ class QAAgent(BaseAgent):
             Agent result with QA artifact
         """
         try:
+            self._set_active_task_id(task.task_id)
             await self.log_event("info", "Starting QA strategy generation")
 
             development_content = task.input_data.get("development") or ""
             architecture_content = task.input_data.get("architecture") or ""
             prd_content = task.input_data.get("prd") or ""
+            requirements = (task.input_data.get("requirements") or "").strip()
 
             if not development_content.strip():
                 return AgentResult(
@@ -57,7 +59,7 @@ class QAAgent(BaseAgent):
 
             # Generate QA strategy (real LLM or mock)
             user_prompt = self._build_qa_user_prompt(
-                development_content, architecture_content, prd_content
+                development_content, architecture_content, prd_content, requirements
             )
 
             from ..config import settings
@@ -286,6 +288,7 @@ class QAAgent(BaseAgent):
                     "task_id": task.task_id,
                     "development_length": len(development_content),
                     "architecture_length": len(architecture_content),
+                    "requirements_length": len(requirements),
                     "prd_length": len(prd_content),
                     "parseable_json": "raw_qa" not in qa_payload,
                 },
@@ -334,7 +337,8 @@ class QAAgent(BaseAgent):
 
     def _build_qa_system_prompt(self) -> str:
         """Build system prompt for QA strategy generation."""
-        return """You are an expert QA Engineer and Test Architect with deep expertise in software quality assurance.
+        return f"""{self._truth_system_guardrails()}
+You are an expert QA Engineer and Test Architect with deep expertise in software quality assurance.
 
 Your role is to create comprehensive QA strategies, test plans, and test cases based on development plans and system architecture.
 
@@ -450,10 +454,22 @@ Your role is to create comprehensive QA strategies, test plans, and test cases b
 - Focus on quality metrics that matter"""
 
     def _build_qa_user_prompt(
-        self, development_content: str, architecture_content: str, prd_content: str
+        self,
+        development_content: str,
+        architecture_content: str,
+        prd_content: str,
+        requirements: str,
     ) -> str:
         """Build user prompt for QA strategy generation."""
-        prompt = f"""Create a comprehensive QA strategy with test plans and test cases based on this development plan:
+        prompt = "Create a comprehensive QA strategy using the sources of truth below.\n\n"
+
+        if requirements:
+            prompt += f"User Requirements (source of truth):\n{requirements}\n\n"
+
+        if prd_content.strip():
+            prompt += f"PRD (source of truth):\n{prd_content}\n\n"
+
+        prompt += f"""Development plan (derived):
 
 {development_content}
 """
@@ -464,14 +480,6 @@ Your role is to create comprehensive QA strategies, test plans, and test cases b
 And this architecture:
 
 {architecture_content}
-"""
-
-        if prd_content.strip():
-            prompt += f"""
-
-And this PRD (for context):
-
-{prd_content}
 """
 
         prompt += """

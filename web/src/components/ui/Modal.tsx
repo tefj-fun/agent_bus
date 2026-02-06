@@ -64,23 +64,23 @@ export function Modal({
       <div className="flex min-h-full items-center justify-center p-4">
         <div
           className={cn(
-            'relative w-full bg-white rounded-xl shadow-xl transform transition-all',
+            'relative w-full bg-bg-primary rounded-xl shadow-xl transform transition-all',
             sizes[size]
           )}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-start justify-between p-4 border-b border-gray-200">
+          <div className="flex items-start justify-between p-4 border-b border-border">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+              <h2 className="text-lg font-semibold text-text-primary">{title}</h2>
               {description && (
-                <p className="text-sm text-gray-500 mt-1">{description}</p>
+                <p className="text-sm text-text-secondary mt-1">{description}</p>
               )}
             </div>
             {showCloseButton && (
               <button
                 onClick={onClose}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-text-muted hover:text-text-secondary transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -92,7 +92,7 @@ export function Modal({
 
           {/* Footer */}
           {footer && (
-            <div className="flex items-center justify-end gap-3 p-4 border-t border-gray-200">
+            <div className="flex items-center justify-end gap-3 p-4 border-t border-border">
               {footer}
             </div>
           )}
@@ -149,7 +149,7 @@ export function ConfirmDialog({
         </>
       }
     >
-      <p className="text-gray-600">{message}</p>
+      <p className="text-text-secondary">{message}</p>
     </Modal>
   );
 }

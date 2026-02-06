@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { Copy, Download, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '../../utils/utils';
+import { ArtifactContent, supportsA4View } from './ArtifactContent';
+import { PdfPreview } from './PdfPreview';
 import type { ArtifactType } from '../../types';
 
 interface ArtifactViewerProps {
+  artifactId?: string;
   type: ArtifactType;
   content: string;
   title?: string;
@@ -17,6 +20,7 @@ interface ArtifactViewerProps {
 }
 
 export function ArtifactViewer({
+  artifactId,
   type,
   content,
   title,
@@ -27,7 +31,14 @@ export function ArtifactViewer({
 }: ArtifactViewerProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [copied, setCopied] = useState(false);
-  const [a4View, setA4View] = useState(true);
+  const [a4View, setA4View] = useState(supportsA4View(type));
+  const [viewMode, setViewMode] = useState<'markdown' | 'pdf'>('markdown');
+  const showA4Toggle = supportsA4View(type);
+
+  useEffect(() => {
+    setA4View(supportsA4View(type));
+    setViewMode('markdown');
+  }, [type]);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(content);
@@ -48,15 +59,21 @@ export function ArtifactViewer({
   const getTypeInfo = (t: ArtifactType) => {
     const types: Record<ArtifactType, { label: string; icon: string; color: 'purple' | 'warning' | 'info' | 'success' | 'error' | 'default' }> = {
       prd: { label: 'PRD', icon: '📄', color: 'purple' },
+      feature_tree: { label: 'Feature Tree', icon: '🌳', color: 'info' },
+      feature_tree_graph: { label: 'Feature Tree Graph', icon: '📈', color: 'info' },
       plan: { label: 'Plan', icon: '📋', color: 'info' },
+      project_plan: { label: 'Project Plan', icon: '🗺️', color: 'info' },
       architecture: { label: 'Architecture', icon: '🏗️', color: 'warning' },
       uiux: { label: 'UI/UX', icon: '🎨', color: 'info' },
       development: { label: 'Development', icon: '💻', color: 'info' },
-      qa: { label: 'QA', icon: '✅', color: 'success' },
+      qa: { label: 'QA', icon: '🧪', color: 'success' },
       security: { label: 'Security', icon: '🔒', color: 'error' },
       documentation: { label: 'Documentation', icon: '📚', color: 'default' },
       support: { label: 'Support', icon: '🎧', color: 'default' },
+      pm_review: { label: 'PM Review', icon: '🧑‍💼', color: 'warning' },
+      delivery: { label: 'Delivery', icon: '📦', color: 'success' },
     };
+
     return types[t] || { label: t, icon: '📄', color: 'default' as const };
   };
 
@@ -67,8 +84,8 @@ export function ArtifactViewer({
       {/* Header */}
       <div
         className={cn(
-          'flex items-center justify-between px-4 py-3 border-b border-gray-200',
-          collapsible && 'cursor-pointer hover:bg-gray-50'
+          'flex items-center justify-between px-4 py-3 border-b border-border',
+          collapsible && 'cursor-pointer hover:bg-bg-secondary'
         )}
         onClick={collapsible ? () => setExpanded(!expanded) : undefined}
       >
@@ -76,7 +93,7 @@ export function ArtifactViewer({
           <span className="text-lg">{typeInfo.icon}</span>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-medium text-gray-900">
+              <h3 className="font-medium text-text-primary">
                 {title || typeInfo.label}
               </h3>
               <Badge variant={typeInfo.color} size="sm">
@@ -84,7 +101,7 @@ export function ArtifactViewer({
               </Badge>
             </div>
             {createdAt && (
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-text-secondary">
                 Generated {new Date(createdAt).toLocaleString()}
               </p>
             )}
@@ -95,15 +112,39 @@ export function ArtifactViewer({
           {!collapsible && (
             <>
               <Button
-                variant={a4View ? 'primary' : 'ghost'}
+                variant={viewMode === 'markdown' ? 'primary' : 'ghost'}
                 size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setA4View((prev) => !prev);
+                  setViewMode('markdown');
                 }}
               >
-                {a4View ? 'A4 View On' : 'A4 View Off'}
+                Markdown
               </Button>
+              <Button
+                variant={viewMode === 'pdf' ? 'primary' : 'ghost'}
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (artifactId) setViewMode('pdf');
+                }}
+                disabled={!artifactId}
+              >
+                PDF Preview
+              </Button>
+              {showA4Toggle && (
+                <Button
+                  variant={a4View ? 'primary' : 'ghost'}
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setA4View((prev) => !prev);
+                  }}
+                  disabled={viewMode === 'pdf'}
+                >
+                  {a4View ? 'A4 View On' : 'A4 View Off'}
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
@@ -130,9 +171,9 @@ export function ArtifactViewer({
           )}
           {collapsible && (
             expanded ? (
-              <ChevronUp className="w-5 h-5 text-gray-400" />
+              <ChevronUp className="w-5 h-5 text-text-muted" />
             ) : (
-              <ChevronDown className="w-5 h-5 text-gray-400" />
+              <ChevronDown className="w-5 h-5 text-text-muted" />
             )
           )}
         </div>
@@ -141,13 +182,13 @@ export function ArtifactViewer({
       {/* Content */}
       {expanded && (
         <div className="p-4">
-          <div className="doc-shell">
-            <div className={`doc-page ${a4View ? 'doc-page--a4' : ''}`}>
-              <pre className="doc-markdown">{content}</pre>
-            </div>
-          </div>
+          {viewMode === 'pdf' ? (
+            <PdfPreview artifactId={artifactId} />
+          ) : (
+            <ArtifactContent type={type} content={content} a4View={a4View} />
+          )}
           {actions && (
-            <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="mt-4 pt-4 border-t border-border">
               {actions}
             </div>
           )}
@@ -176,15 +217,21 @@ export function ArtifactCard({
   const getTypeInfo = (t: ArtifactType) => {
     const types: Record<ArtifactType, { label: string; icon: string }> = {
       prd: { label: 'Product Requirements Document', icon: '📄' },
+      feature_tree: { label: 'Feature Tree', icon: '🌳' },
+      feature_tree_graph: { label: 'Feature Tree Graph', icon: '📈' },
       plan: { label: 'Project Plan', icon: '📋' },
+      project_plan: { label: 'Project Plan', icon: '🗺️' },
       architecture: { label: 'System Architecture', icon: '🏗️' },
       uiux: { label: 'UI/UX Design System', icon: '🎨' },
       development: { label: 'Development Plan', icon: '💻' },
-      qa: { label: 'QA Test Plan', icon: '✅' },
+      qa: { label: 'QA Test Plan', icon: '🧪' },
       security: { label: 'Security Review', icon: '🔒' },
       documentation: { label: 'Technical Documentation', icon: '📚' },
       support: { label: 'Support Documentation', icon: '🎧' },
+      pm_review: { label: 'Product Manager Review', icon: '🧑‍💼' },
+      delivery: { label: 'Delivery Package', icon: '📦' },
     };
+
     return types[t] || { label: t, icon: '📄' };
   };
 
@@ -201,10 +248,10 @@ export function ArtifactCard({
       <div className="flex items-start gap-3">
         <span className="text-2xl">{typeInfo.icon}</span>
         <div className="flex-1 min-w-0">
-          <h4 className="font-medium text-gray-900">
+          <h4 className="font-medium text-text-primary">
             {title || typeInfo.label}
           </h4>
-          <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
+          <div className="flex items-center gap-2 text-xs text-text-secondary mt-1">
             {createdAt && (
               <span>Generated {new Date(createdAt).toLocaleDateString()}</span>
             )}

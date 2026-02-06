@@ -5,6 +5,8 @@ from typing import Dict, Any
 import time
 import psutil
 
+from ...infrastructure.postgres_client import postgres_client
+
 router = APIRouter(prefix="/metrics", tags=["metrics"])
 
 # Simple metrics storage (in production, use Prometheus client library)
@@ -55,6 +57,40 @@ async def get_metrics() -> Dict[str, Any]:
     memory = psutil.virtual_memory()
     uptime_seconds = time.time() - _start_time
 
+    usage: Dict[str, Any] | None = None
+    try:
+        pool = await postgres_client.get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT
+                    COALESCE(SUM((metadata->'llm_usage'->>'input_tokens')::bigint), 0) AS input_tokens,
+                    COALESCE(SUM((metadata->'llm_usage'->>'output_tokens')::bigint), 0) AS output_tokens,
+                    COALESCE(SUM((metadata->'llm_usage'->>'total_tokens')::bigint), 0) AS total_tokens,
+                    COALESCE(SUM((metadata->'llm_usage'->>'calls')::bigint), 0) AS calls,
+                    COALESCE(SUM((metadata->'llm_usage'->>'cost_usd')::numeric), 0) AS cost_usd,
+                    SUM(
+                        CASE
+                            WHEN metadata->'llm_usage'->>'cost_usd' IS NOT NULL THEN 1
+                            ELSE 0
+                        END
+                    ) AS cost_count
+                FROM tasks
+                """
+            )
+        if row:
+            cost_available = (row.get("cost_count") or 0) > 0
+            usage = {
+                "input_tokens": int(row.get("input_tokens") or 0),
+                "output_tokens": int(row.get("output_tokens") or 0),
+                "total_tokens": int(row.get("total_tokens") or 0),
+                "calls": int(row.get("calls") or 0),
+                "cost_usd": float(row.get("cost_usd") or 0) if cost_available else None,
+                "cost_available": cost_available,
+            }
+    except Exception:
+        usage = None
+
     return {
         "counters": _metrics,
         "system": {
@@ -64,6 +100,7 @@ async def get_metrics() -> Dict[str, Any]:
             "memory_total_bytes": memory.total,
             "uptime_seconds": uptime_seconds,
         },
+        "usage": usage,
         "timestamp": time.time(),
     }
 

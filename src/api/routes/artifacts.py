@@ -3,6 +3,9 @@
 import os
 import shutil
 import tempfile
+import asyncio
+import subprocess
+from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
@@ -193,9 +196,18 @@ async def get_artifact_pdf(artifact_id: str):
         pdf_path = os.path.join(settings.artifact_pdf_output_dir, job_id, pdf_name)
 
         if not os.path.exists(pdf_path):
+            try:
+                await _generate_job_pdfs(job_id)
+            except Exception as gen_err:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"PDF generation failed: {gen_err}",
+                )
+
+        if not os.path.exists(pdf_path):
             raise HTTPException(
                 status_code=404,
-                detail="PDF not generated yet. Run the PDF export script.",
+                detail="PDF not generated yet. Auto-generation attempted but no PDF was produced.",
             )
 
         headers = {
@@ -211,6 +223,99 @@ async def get_artifact_pdf(artifact_id: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/pdf/{artifact_id}/status")
+async def get_artifact_pdf_status(artifact_id: str):
+    """Check whether a PDF is available for a specific artifact."""
+    if settings.artifact_storage_backend != "file":
+        return {
+            "available": False,
+            "detail": "PDF preview only available with file storage backend",
+        }
+
+    try:
+        from ...infrastructure.postgres_client import postgres_client
+
+        pool = await postgres_client.get_pool()
+        async with pool.acquire() as conn:
+            artifact_row = await conn.fetchrow(
+                """
+                SELECT id, job_id, type, metadata
+                FROM artifacts
+                WHERE id = $1
+                """,
+                artifact_id,
+            )
+
+        if not artifact_row:
+            return {"available": False, "detail": "Artifact not found"}
+
+        job_id = artifact_row.get("job_id")
+        metadata = artifact_row.get("metadata") or {}
+        if isinstance(metadata, str):
+            try:
+                import json
+
+                metadata = json.loads(metadata)
+            except Exception:
+                metadata = {}
+
+        file_path = metadata.get("_file_path")
+        if not file_path:
+            artifact_type = artifact_row.get("type") or "artifact"
+            file_path = f"{artifact_type}.md"
+
+        pdf_name = file_path.rsplit(".", 1)[0] + ".pdf"
+        pdf_path = os.path.join(settings.artifact_pdf_output_dir, job_id, pdf_name)
+
+        if not os.path.exists(pdf_path):
+            try:
+                await _generate_job_pdfs(job_id)
+            except Exception as gen_err:
+                return {
+                    "available": False,
+                    "detail": f"PDF generation failed: {gen_err}",
+                }
+
+        if not os.path.exists(pdf_path):
+            return {
+                "available": False,
+                "detail": "PDF not generated yet. Auto-generation attempted but no PDF was produced.",
+            }
+
+        return {"available": True}
+    except Exception as e:
+        return {"available": False, "detail": str(e)}
+
+
+async def _generate_job_pdfs(job_id: str) -> None:
+    """Generate PDFs for a job's artifacts using the render_pdfs script."""
+    repo_root = Path(__file__).resolve().parents[3]
+    script_path = repo_root / "scripts" / "render_pdfs.sh"
+    input_dir = Path(settings.artifact_output_dir) / job_id
+    output_dir = Path(settings.artifact_pdf_output_dir) / job_id
+
+    if not script_path.exists():
+        raise RuntimeError("render_pdfs.sh not found in scripts/")
+    if not input_dir.exists():
+        raise RuntimeError(f"Artifact directory not found: {input_dir}")
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    cmd = ["bash", str(script_path), str(input_dir), str(output_dir)]
+    result = await asyncio.to_thread(
+        subprocess.run,
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    if result.returncode != 0:
+        stderr = (result.stderr or "").strip()
+        stdout = (result.stdout or "").strip()
+        message = stderr or stdout or "Unknown error running render_pdfs.sh"
+        raise RuntimeError(message)
 
 
 @router.get("/job/{job_id}/export")

@@ -26,6 +26,7 @@ class ProductManager(BaseAgent):
     async def execute(self, task: AgentTask) -> AgentResult:
         """Review outputs and provide product decisions."""
         try:
+            self._set_active_task_id(task.task_id)
             await self.log_event("info", "Starting product management review")
 
             input_payload = json.dumps(task.input_data or {}, indent=2, sort_keys=True)
@@ -80,6 +81,7 @@ class ProductManager(BaseAgent):
 
     def _build_system_prompt(self) -> str:
         return (
+            f"{self._truth_system_guardrails()}\n"
             "You are a Product Manager reviewing project outputs. "
             "Summarize key decisions, validate scope, identify gaps, and "
             "prioritize MVP and follow-on releases."
@@ -89,6 +91,7 @@ class ProductManager(BaseAgent):
         return (
             "Review the following project outputs and provide a PM summary. "
             "Include MVP scope, prioritized backlog, risks, and decisions needed.\n\n"
+            "Treat the PRD and user requirements in the payload as the source of truth.\n\n"
             f"Project context:\n{input_payload}"
         )
 

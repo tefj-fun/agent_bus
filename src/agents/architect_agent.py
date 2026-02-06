@@ -35,8 +35,10 @@ class ArchitectAgent(BaseAgent):
             Agent result with architecture artifact
         """
         try:
+            self._set_active_task_id(task.task_id)
             await self.log_event("info", "Starting architecture design")
 
+            requirements = (task.input_data.get("requirements") or "").strip()
             prd_content = task.input_data.get("prd") or task.input_data.get("prd_content") or ""
             plan_content = task.input_data.get("plan") or ""
 
@@ -54,7 +56,9 @@ class ArchitectAgent(BaseAgent):
             system_prompt = self._build_architecture_system_prompt()
 
             # Generate architecture (real LLM or mock)
-            user_prompt = self._build_architecture_user_prompt(prd_content, plan_content)
+            user_prompt = self._build_architecture_user_prompt(
+                prd_content, requirements, plan_content
+            )
 
             from ..config import settings
 
@@ -113,6 +117,7 @@ class ArchitectAgent(BaseAgent):
                 content=architecture_content,
                 metadata={
                     "task_id": task.task_id,
+                    "requirements_length": len(requirements),
                     "prd_length": len(prd_content),
                     "plan_length": len(plan_content),
                     "parseable_json": "raw_architecture" not in architecture_payload,
@@ -161,7 +166,8 @@ class ArchitectAgent(BaseAgent):
 
     def _build_architecture_system_prompt(self) -> str:
         """Build system prompt for architecture generation."""
-        return """You are an expert Solution Architect specialized in designing scalable, maintainable software systems.
+        return f"""{self._truth_system_guardrails()}
+You are an expert Solution Architect specialized in designing scalable, maintainable software systems.
 
 Your role is to transform PRDs and project plans into detailed technical architecture specifications.
 
@@ -233,12 +239,16 @@ Your role is to transform PRDs and project plans into detailed technical archite
 - Document key architectural decisions and trade-offs
 - Keep it practical and implementable"""
 
-    def _build_architecture_user_prompt(self, prd_content: str, plan_content: str) -> str:
+    def _build_architecture_user_prompt(
+        self, prd_content: str, requirements: str, plan_content: str
+    ) -> str:
         """Build user prompt for architecture generation."""
-        prompt = f"""Design a comprehensive system architecture based on this PRD:
+        prompt = "Design a comprehensive system architecture using the sources of truth below.\n\n"
 
-{prd_content}
-"""
+        if requirements:
+            prompt += f"User Requirements (source of truth):\n{requirements}\n\n"
+
+        prompt += f"PRD (source of truth):\n{prd_content}\n"
 
         if plan_content.strip():
             prompt += f"""

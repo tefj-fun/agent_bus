@@ -1,1 +1,22 @@
 # Force CI rebuild Sun Feb  1 01:39:38 PM PST 2026
+.git
+.github
+.idea
+.vscode
+.env
+.env.*
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+dist/
+build/
+node_modules/
+.venv/
+venv/
+outputs/
+outputs_pdfs/
+worker_workspace/
+*.log
