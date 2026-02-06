@@ -9,7 +9,7 @@ import { Modal, ConfirmDialog } from '../components/ui/Modal';
 import { SkeletonText } from '../components/ui/Skeleton';
 import { useToast } from '../components/ui/Toast';
 import { MemoryHitBadge } from '../components/domain/MemoryHitCard';
-import { useJob, usePrd, useApprovePrd, useRequestChanges } from '../hooks/useProject';
+import { useJob, usePrd, useApprovePrd, useRequestChanges, useArtifacts } from '../hooks/useProject';
 import { Copy, Download, Check, AlertTriangle, CheckCircle } from 'lucide-react';
 
 export function PRDReview() {
@@ -19,6 +19,7 @@ export function PRDReview() {
 
   const { data: job, isLoading: jobLoading } = useJob(jobId);
   const { data: prd, isLoading: prdLoading, error: prdError } = usePrd(jobId);
+  const { data: artifactsData } = useArtifacts(jobId);
 
   const approveMutation = useApprovePrd(jobId!);
   const requestChangesMutation = useRequestChanges(jobId!);
@@ -27,27 +28,64 @@ export function PRDReview() {
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [showChangesDialog, setShowChangesDialog] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [selectedPrdId, setSelectedPrdId] = useState<string | null>(null);
+  const [a4View, setA4View] = useState(true);
+  const [viewMode, setViewMode] = useState<'markdown' | 'pdf'>('markdown');
 
   const isWaitingApproval = job?.status === 'waiting_for_approval';
   const isLoading = jobLoading || prdLoading;
   const requirements =
     (job?.metadata as Record<string, unknown> | undefined)?.requirements;
 
+  const prdArtifacts = (artifactsData?.artifacts || [])
+    .filter((artifact) => artifact.artifact_type === 'prd' && artifact.content)
+    .map((artifact) => {
+      const meta = (artifact.metadata || {}) as Record<string, unknown>;
+      const versionRaw = meta.prd_version;
+      const version = typeof versionRaw === 'number' ? versionRaw : Number(versionRaw) || 0;
+      const changeNotes = typeof meta.change_request_notes === 'string' ? meta.change_request_notes : '';
+      return {
+        id: artifact.artifact_id,
+        content: artifact.content,
+        createdAt: artifact.created_at || '',
+        version,
+        changeNotes,
+      };
+    })
+    .sort((a, b) => {
+      if (a.version && b.version && a.version !== b.version) {
+        return b.version - a.version;
+      }
+      return (b.createdAt || '').localeCompare(a.createdAt || '');
+    });
+
+  const latestPrdId = prdArtifacts[0]?.id || null;
+  const activePrdId = selectedPrdId ?? latestPrdId ?? (prd?.artifact_id || null);
+  const activePrd = prdArtifacts.find((artifact) => artifact.id === activePrdId);
+  const prdContent = activePrd?.content || prd?.content;
+  const pdfUrl = activePrdId
+    ? (() => {
+        const url = new URL(`/api/artifacts/pdf/${activePrdId}`, window.location.origin);
+        url.searchParams.set('ts', String(Date.now()));
+        return url.toString();
+      })()
+    : '';
+
   const handleCopy = async () => {
-    if (prd?.content) {
-      await navigator.clipboard.writeText(prd.content);
+    if (prdContent) {
+      await navigator.clipboard.writeText(prdContent);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
   };
 
   const handleDownload = () => {
-    if (prd?.content) {
-      const blob = new Blob([prd.content], { type: 'text/markdown' });
+    if (prdContent) {
+      const blob = new Blob([prdContent], { type: 'text/markdown' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `prd-${job?.project_id || jobId}.md`;
+      a.download = `prd-${job?.project_id || jobId}${activePrd?.version ? `-v${activePrd.version}` : ''}.md`;
       a.click();
       URL.revokeObjectURL(url);
     }
@@ -113,11 +151,34 @@ export function PRDReview() {
         actions={
           <div className="flex items-center gap-2">
             <Button
+              variant={viewMode === 'markdown' ? 'primary' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('markdown')}
+            >
+              Markdown
+            </Button>
+            <Button
+              variant={viewMode === 'pdf' ? 'primary' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('pdf')}
+              disabled={!activePrdId}
+            >
+              PDF Preview
+            </Button>
+            <Button
+              variant={a4View ? 'primary' : 'ghost'}
+              size="sm"
+              onClick={() => setA4View((prev) => !prev)}
+              disabled={viewMode === 'pdf'}
+            >
+              {a4View ? 'A4 View On' : 'A4 View Off'}
+            </Button>
+            <Button
               variant="ghost"
               size="sm"
               icon={copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
               onClick={handleCopy}
-              disabled={!prd?.content}
+              disabled={!prdContent}
             >
               {copied ? 'Copied' : 'Copy'}
             </Button>
@@ -126,7 +187,7 @@ export function PRDReview() {
               size="sm"
               icon={<Download className="w-4 h-4" />}
               onClick={handleDownload}
-              disabled={!prd?.content}
+              disabled={!prdContent}
             >
               Download
             </Button>
@@ -179,16 +240,32 @@ export function PRDReview() {
                 </p>
               </div>
             ) : (
-              <div className="prose prose-sm max-w-none">
-                <pre className="whitespace-pre-wrap text-sm text-gray-700 bg-gray-50 rounded-lg p-4 overflow-x-auto font-mono">
-                  {prd?.content}
-                </pre>
-              </div>
+              viewMode === 'pdf' ? (
+                <div className="doc-shell">
+                  <div className="doc-page doc-page--a4 doc-page--pdf">
+                    {activePrdId ? (
+                      <iframe
+                        title="PDF preview"
+                        src={pdfUrl}
+                        className="w-full h-[80vh] border-0"
+                      />
+                    ) : (
+                      <p className="text-sm text-gray-500">PDF preview unavailable</p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="doc-shell">
+                  <div className={`doc-page ${a4View ? 'doc-page--a4' : ''}`}>
+                    <pre className="doc-markdown">{prdContent}</pre>
+                  </div>
+                </div>
+              )
             )}
           </Card>
 
           {/* Actions */}
-          {isWaitingApproval && prd?.content && (
+          {isWaitingApproval && prdContent && (
             <Card className="mt-6">
               <h3 className="font-semibold text-gray-900 mb-4">Your Decision</h3>
 
@@ -222,6 +299,52 @@ export function PRDReview() {
 
         {/* Sidebar */}
         <div className="lg:col-span-1 space-y-4">
+          {/* PRD History */}
+          <Card>
+            <h3 className="font-semibold text-gray-900 mb-3">PRD History</h3>
+            {prdArtifacts.length > 0 ? (
+              <div className="space-y-3">
+                {prdArtifacts.map((artifact) => {
+                  const isActive = artifact.id === activePrdId;
+                  const label = artifact.version
+                    ? `Version ${artifact.version}`
+                    : 'Initial';
+                  return (
+                    <button
+                      key={artifact.id}
+                      type="button"
+                      onClick={() => setSelectedPrdId(artifact.id)}
+                      className={`w-full text-left border rounded-lg px-3 py-2 transition ${
+                        isActive ? 'border-primary-500 bg-primary-50' : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-sm text-gray-900">{label}</span>
+                        {isActive && (
+                          <Badge variant="info" dot>
+                            Active
+                          </Badge>
+                        )}
+                      </div>
+                      {artifact.createdAt && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          {new Date(artifact.createdAt).toLocaleString()}
+                        </p>
+                      )}
+                      {artifact.changeNotes && (
+                        <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                          {artifact.changeNotes}
+                        </p>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">No version history yet</p>
+            )}
+          </Card>
+
           {/* Similar Projects */}
           <Card>
             <h3 className="font-semibold text-gray-900 mb-3">Similar Projects</h3>
