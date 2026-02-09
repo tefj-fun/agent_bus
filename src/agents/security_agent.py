@@ -364,7 +364,10 @@ class SecurityAgent(BaseAgent):
 
     def _build_security_system_prompt(self) -> str:
         """Build system prompt for security review."""
-        return f"""{self._truth_system_guardrails()}
+        guardrails = self._truth_system_guardrails()
+        # NOTE: Do not use an f-string here. The prompt intentionally embeds JSON examples
+        # containing many `{`/`}` which can trigger `SyntaxError: f-string: expressions nested too deeply`.
+        return guardrails + """
 You are an expert Security Engineer and Application Security Specialist with deep expertise in identifying and mitigating security vulnerabilities.
 
 Your role is to conduct comprehensive security reviews and vulnerability assessments based on development plans, architecture, and QA strategies.

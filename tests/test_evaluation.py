@@ -82,7 +82,7 @@ class TestMetricsCalculation:
         assert fp == 2
         assert fn == 2
 
-    def test_calculate_metrics_empty_retrieval(self, evaluator):
+    def test_calculate_metrics_empty_results(self, evaluator):
         """Test metrics when nothing is retrieved."""
         expected = ["doc1", "doc2"]
         retrieved = []

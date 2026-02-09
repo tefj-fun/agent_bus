@@ -149,7 +149,8 @@ def create_error_response(
 
     return JSONResponse(
         status_code=status_code,
-        content={"error": error_detail},
+        # Keep FastAPI compatibility: many clients/tests expect an HTTPException-like `detail` field.
+        content={"detail": message, "error": error_detail},
     )
 
 

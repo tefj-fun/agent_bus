@@ -2,6 +2,7 @@ FROM python:3.11-slim AS builder
 
 ARG WITH_PDF=0
 ARG WITH_MERMAID=0
+ARG WITH_TESTS=0
 
 WORKDIR /app
 
@@ -65,10 +66,19 @@ RUN if [ "$WITH_PDF" = "1" ]; then \
       pip wheel --no-cache-dir --wheel-dir /wheels weasyprint==68.0; \
     fi
 
+# Optional test deps (useful for local/dev docker compose runs)
+RUN if [ "$WITH_TESTS" = "1" ]; then \
+      pip wheel --no-cache-dir --wheel-dir /wheels \
+        packaging==23.0 \
+        pytest==8.4.2 \
+        pytest-asyncio==0.25.3; \
+    fi
+
 FROM python:3.11-slim
 
 ARG WITH_PDF=0
 ARG WITH_MERMAID=0
+ARG WITH_TESTS=0
 
 WORKDIR /app
 
@@ -101,11 +111,20 @@ RUN if [ "$WITH_MERMAID" = "1" ]; then \
     fi
 
 # Copy application code last (invalidates only when source changes)
+COPY pyproject.toml ./
+COPY README.md ./README.md
+COPY CHANGELOG.md ./CHANGELOG.md
+COPY docs/ ./docs/
+COPY .github/ ./.github/
+COPY helm/ ./helm/
 COPY src/ ./src/
 COPY skills/ ./skills/
 COPY tests/ ./tests/
 COPY scripts/ ./scripts/
 COPY config/ ./config/
+
+# Ensure helper scripts are executable in the container (Windows checkouts lose +x).
+RUN chmod +x scripts/release.sh || true
 
 # Expose port
 EXPOSE 8000

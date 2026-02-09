@@ -18,6 +18,69 @@ from ...storage.artifact_store import get_artifact_store, FileArtifactStore
 
 router = APIRouter()
 
+# In-process tracking for PDF generation so status requests don't block while rendering.
+_pdf_generation_tasks: dict[str, "asyncio.Task[None]"] = {}
+_pdf_generation_errors: dict[str, str] = {}
+
+
+def _is_pdf_stale(job_id: str, pdf_path: str, file_path: str | None) -> bool:
+    """Return True if the PDF should be regenerated.
+
+    Regenerate when the source artifact or the PDF rendering assets (template/CSS/scripts)
+    are newer than the current PDF. This lets template changes propagate automatically.
+    """
+    try:
+        pdf_mtime = os.path.getmtime(pdf_path)
+    except OSError:
+        return True
+
+    repo_root = Path(__file__).resolve().parents[3]
+    candidates: list[Path] = [
+        repo_root / "scripts" / "render_pdfs.sh",
+        repo_root / "scripts" / "render_mermaid.py",
+        repo_root / "scripts" / "pandoc" / "template.html",
+        repo_root / "scripts" / "pandoc" / "a4-print.css",
+    ]
+
+    if file_path:
+        src_path = Path(settings.artifact_output_dir) / job_id / file_path
+        candidates.append(src_path)
+
+    newest = pdf_mtime
+    for path in candidates:
+        try:
+            if path.exists():
+                newest = max(newest, path.stat().st_mtime)
+        except OSError:
+            # Ignore permission/race errors; best-effort staleness check.
+            continue
+
+    return newest > pdf_mtime
+
+
+def _ensure_pdf_generation(job_id: str) -> None:
+    """Start PDF generation in the background (at most one task per job_id)."""
+    task = _pdf_generation_tasks.get(job_id)
+    if task and not task.done():
+        return
+
+    async def runner() -> None:
+        await _generate_job_pdfs(job_id)
+
+    _pdf_generation_errors.pop(job_id, None)
+    new_task = asyncio.create_task(runner())
+
+    def _cleanup(t: "asyncio.Task[None]") -> None:
+        try:
+            t.result()
+        except Exception as e:
+            _pdf_generation_errors[job_id] = str(e)
+        finally:
+            _pdf_generation_tasks.pop(job_id, None)
+
+    new_task.add_done_callback(_cleanup)
+    _pdf_generation_tasks[job_id] = new_task
+
 
 class ArtifactInfo(BaseModel):
     """Artifact information model."""
@@ -159,50 +222,38 @@ async def get_artifact_pdf(artifact_id: str):
         if not isinstance(store, FileArtifactStore):
             raise HTTPException(status_code=400, detail="File artifact store not initialized")
 
-        # Fetch artifact metadata from DB (includes job_id and _file_path)
-        from ...infrastructure.postgres_client import postgres_client
-
-        pool = await postgres_client.get_pool()
-        async with pool.acquire() as conn:
-            artifact_row = await conn.fetchrow(
-                """
-                SELECT id, job_id, type, metadata
-                FROM artifacts
-                WHERE id = $1
-                """,
-                artifact_id,
-            )
-
-        if not artifact_row:
+        # Use the file store as source of truth (Postgres may not contain artifacts when
+        # ARTIFACT_STORAGE_BACKEND=file).
+        artifact = await store.get(artifact_id)
+        if not artifact:
             raise HTTPException(status_code=404, detail="Artifact not found")
 
-        job_id = artifact_row.get("job_id")
-        metadata = artifact_row.get("metadata") or {}
-        if isinstance(metadata, str):
-            try:
-                import json
-
-                metadata = json.loads(metadata)
-            except Exception:
-                metadata = {}
-
-        file_path = metadata.get("_file_path")
+        job_id = artifact.get("job_id")
+        metadata = artifact.get("metadata") or {}
+        file_path = metadata.get("_file_path") or metadata.get("file_path")
         if not file_path:
             # fall back to default filename if metadata missing
-            artifact_type = artifact_row.get("type") or "artifact"
+            artifact_type = artifact.get("type") or "artifact"
             file_path = f"{artifact_type}.md"
 
         pdf_name = file_path.rsplit(".", 1)[0] + ".pdf"
         pdf_path = os.path.join(settings.artifact_pdf_output_dir, job_id, pdf_name)
 
+        if os.path.exists(pdf_path) and _is_pdf_stale(job_id, pdf_path, file_path):
+            _ensure_pdf_generation(job_id)
+            raise HTTPException(
+                status_code=404,
+                detail="PDF is stale and is being regenerated. Please retry shortly.",
+            )
+
         if not os.path.exists(pdf_path):
-            try:
-                await _generate_job_pdfs(job_id)
-            except Exception as gen_err:
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"PDF generation failed: {gen_err}",
-                )
+            # Don't block the request (PDF generation can take a while). Kick off generation
+            # and ask the client to retry once status reports availability.
+            _ensure_pdf_generation(job_id)
+            raise HTTPException(
+                status_code=404,
+                detail="PDF not generated yet. Generation has started; retry shortly.",
+            )
 
         if not os.path.exists(pdf_path):
             raise HTTPException(
@@ -235,56 +286,51 @@ async def get_artifact_pdf_status(artifact_id: str):
         }
 
     try:
-        from ...infrastructure.postgres_client import postgres_client
+        store = get_artifact_store()
+        if not isinstance(store, FileArtifactStore):
+            return {"available": False, "detail": "File artifact store not initialized"}
 
-        pool = await postgres_client.get_pool()
-        async with pool.acquire() as conn:
-            artifact_row = await conn.fetchrow(
-                """
-                SELECT id, job_id, type, metadata
-                FROM artifacts
-                WHERE id = $1
-                """,
-                artifact_id,
-            )
-
-        if not artifact_row:
+        artifact = await store.get(artifact_id)
+        if not artifact:
             return {"available": False, "detail": "Artifact not found"}
 
-        job_id = artifact_row.get("job_id")
-        metadata = artifact_row.get("metadata") or {}
-        if isinstance(metadata, str):
-            try:
-                import json
-
-                metadata = json.loads(metadata)
-            except Exception:
-                metadata = {}
-
-        file_path = metadata.get("_file_path")
+        job_id = artifact.get("job_id")
+        metadata = artifact.get("metadata") or {}
+        file_path = metadata.get("_file_path") or metadata.get("file_path")
         if not file_path:
-            artifact_type = artifact_row.get("type") or "artifact"
+            artifact_type = artifact.get("type") or "artifact"
             file_path = f"{artifact_type}.md"
 
         pdf_name = file_path.rsplit(".", 1)[0] + ".pdf"
         pdf_path = os.path.join(settings.artifact_pdf_output_dir, job_id, pdf_name)
 
-        if not os.path.exists(pdf_path):
-            try:
-                await _generate_job_pdfs(job_id)
-            except Exception as gen_err:
-                return {
-                    "available": False,
-                    "detail": f"PDF generation failed: {gen_err}",
-                }
-
-        if not os.path.exists(pdf_path):
+        if os.path.exists(pdf_path) and not _is_pdf_stale(job_id, pdf_path, file_path):
+            return {"available": True}
+        if os.path.exists(pdf_path) and _is_pdf_stale(job_id, pdf_path, file_path):
+            # Force regeneration so template/script updates propagate.
+            task = _pdf_generation_tasks.get(job_id)
+            if not (task and not task.done()):
+                _ensure_pdf_generation(job_id)
             return {
                 "available": False,
-                "detail": "PDF not generated yet. Auto-generation attempted but no PDF was produced.",
+                "detail": "PDF is stale and is being regenerated. Please wait...",
             }
 
-        return {"available": True}
+        # If a generation attempt failed recently, surface that error.
+        if job_id in _pdf_generation_errors:
+            return {
+                "available": False,
+                "detail": f"PDF generation failed: {_pdf_generation_errors[job_id]}",
+            }
+
+        # If generation is already running, don't block.
+        task = _pdf_generation_tasks.get(job_id)
+        if task and not task.done():
+            return {"available": False, "detail": "PDF is being generated. Please wait..."}
+
+        # Start generation in the background and return immediately.
+        _ensure_pdf_generation(job_id)
+        return {"available": False, "detail": "PDF generation started. Please wait..."}
     except Exception as e:
         return {"available": False, "detail": str(e)}
 
@@ -310,6 +356,7 @@ async def _generate_job_pdfs(job_id: str) -> None:
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
+        timeout=300,
     )
     if result.returncode != 0:
         stderr = (result.stderr or "").strip()

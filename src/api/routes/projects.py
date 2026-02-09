@@ -4,6 +4,7 @@ import uuid
 import json
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional
 
@@ -78,7 +79,7 @@ async def _upsert_job_truth(
     requirements: str,
     prd_content: str,
     prd_artifact_id: Optional[str],
-    approved_at: Optional[str],
+    approved_at: Optional[datetime],
 ) -> None:
     requirements_hash = hash_text(requirements)
     prd_hash = hash_text(prd_content)
@@ -833,22 +834,39 @@ async def get_job_usage(job_id: str):
             )
 
         if not row:
-            return {"job_id": job_id, "usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "calls": 0, "cost_usd": None}}
+            # This endpoint changes while jobs run; prevent intermediary/browser caching.
+            return JSONResponse(
+                {
+                    "job_id": job_id,
+                    "usage": {
+                        "input_tokens": 0,
+                        "output_tokens": 0,
+                        "total_tokens": 0,
+                        "calls": 0,
+                        "cost_usd": None,
+                        "cost_available": False,
+                    },
+                },
+                headers={"Cache-Control": "no-store"},
+            )
 
         cost_available = (row.get("cost_count") or 0) > 0
         cost_value = float(row.get("cost_usd") or 0) if cost_available else None
 
-        return {
-            "job_id": job_id,
-            "usage": {
-                "input_tokens": int(row.get("input_tokens") or 0),
-                "output_tokens": int(row.get("output_tokens") or 0),
-                "total_tokens": int(row.get("total_tokens") or 0),
-                "calls": int(row.get("calls") or 0),
-                "cost_usd": cost_value,
-                "cost_available": cost_available,
+        return JSONResponse(
+            {
+                "job_id": job_id,
+                "usage": {
+                    "input_tokens": int(row.get("input_tokens") or 0),
+                    "output_tokens": int(row.get("output_tokens") or 0),
+                    "total_tokens": int(row.get("total_tokens") or 0),
+                    "calls": int(row.get("calls") or 0),
+                    "cost_usd": cost_value,
+                    "cost_available": cost_available,
+                },
             },
-        }
+            headers={"Cache-Control": "no-store"},
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -882,22 +900,17 @@ async def approve_job(job_id: str, request: ApprovalRequest):
     try:
         pool = await postgres_client.get_pool()
         async with pool.acquire() as conn:
-            exists = await conn.fetchval("SELECT 1 FROM jobs WHERE id = $1", job_id)
-        if not exists:
+            row = await conn.fetchrow("SELECT status FROM jobs WHERE id = $1", job_id)
+        if not row:
             raise HTTPException(status_code=404, detail="Job not found")
+        if row["status"] in {"canceled", "failed", "completed"}:
+            raise HTTPException(
+                status_code=409, detail=f"Job already ended (status={row['status']})"
+            )
 
-        await postgres_client.update_job_status(
-            job_id=job_id, status="approved", workflow_stage="feature_tree"
-        )
-
+        # Store a naive UTC datetime for Postgres TIMESTAMP (no timezone).
+        approved_at_dt = datetime.now(timezone.utc).replace(tzinfo=None)
         approved_at = datetime.now(timezone.utc).isoformat()
-        await postgres_client.update_job_metadata(
-            job_id=job_id,
-            metadata={
-                "approval_notes": request.notes,
-                "approved_at": approved_at,
-            },
-        )
 
         # Persist canonical truth (requirements + approved PRD)
         pool = await postgres_client.get_pool()
@@ -925,10 +938,27 @@ async def approve_job(job_id: str, request: ApprovalRequest):
             requirements=requirements.strip(),
             prd_content=str(prd_artifact.get("content")),
             prd_artifact_id=prd_artifact.get("id"),
-            approved_at=approved_at,
+            approved_at=approved_at_dt,
+        )
+
+        # Mark approved only after truth is persisted, so the orchestrator doesn't race ahead.
+        updated = await postgres_client.update_job_status(
+            job_id=job_id, status="approved", workflow_stage="feature_tree"
+        )
+        if not updated:
+            raise HTTPException(status_code=404, detail="Job not found")
+
+        await postgres_client.update_job_metadata(
+            job_id=job_id,
+            metadata={
+                "approval_notes": request.notes,
+                "approved_at": approved_at,
+            },
         )
 
         return {"job_id": job_id, "status": "approved"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -939,13 +969,19 @@ async def request_changes(job_id: str, request: ApprovalRequest):
     try:
         pool = await postgres_client.get_pool()
         async with pool.acquire() as conn:
-            exists = await conn.fetchval("SELECT 1 FROM jobs WHERE id = $1", job_id)
-        if not exists:
+            row = await conn.fetchrow("SELECT status FROM jobs WHERE id = $1", job_id)
+        if not row:
             raise HTTPException(status_code=404, detail="Job not found")
+        if row["status"] in {"canceled", "failed", "completed"}:
+            raise HTTPException(
+                status_code=409, detail=f"Job already ended (status={row['status']})"
+            )
 
-        await postgres_client.update_job_status(
+        updated = await postgres_client.update_job_status(
             job_id=job_id, status="changes_requested", workflow_stage="prd_generation"
         )
+        if not updated:
+            raise HTTPException(status_code=404, detail="Job not found")
         # Clear canonical truth (PRD no longer approved)
         pool = await postgres_client.get_pool()
         async with pool.acquire() as conn:
@@ -958,6 +994,8 @@ async def request_changes(job_id: str, request: ApprovalRequest):
             },
         )
         return {"job_id": job_id, "status": "changes_requested"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

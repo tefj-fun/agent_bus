@@ -131,6 +131,7 @@ class FileArtifactStore(ArtifactStore):
     TYPE_EXTENSIONS = {
         "prd": ".md",
         "plan": ".md",
+        "project_plan": ".md",
         "architecture": ".md",
         "ui_ux": ".md",
         "development": ".md",
@@ -138,6 +139,9 @@ class FileArtifactStore(ArtifactStore):
         "security": ".md",
         "documentation": ".md",
         "support_docs": ".md",
+        "pm_review": ".txt",
+        "feature_tree": ".txt",
+        "feature_tree_graph": ".txt",
         "delivery": ".md",
         "code": ".txt",  # Could be multiple files
     }
@@ -173,6 +177,36 @@ class FileArtifactStore(ArtifactStore):
         if version is not None:
             return f"{artifact_type}_v{version}.meta.json"
         return f"{artifact_type}.meta.json"
+
+    def _parse_artifact_id(self, artifact_id: str) -> Optional[tuple[str, str]]:
+        """Parse artifact_id into (job_id, artifact_type).
+
+        Historically artifact IDs have used the shape `{agent_id}_{artifact_type}_{job_id}`.
+        Job IDs can include underscores, so we can't reliably split on `_` and assume a
+        fixed number of parts. Artifact types can also include underscores (e.g. `ui_ux`,
+        `support_docs`, `pm_review`, `feature_tree`). Instead, locate an artifact_type
+        token *sequence* and treat the remainder as job_id.
+        """
+        parts = artifact_id.split("_")
+        if len(parts) < 3:
+            return None
+
+        known_types = set(self.TYPE_EXTENSIONS.keys())
+        max_type_parts = max(len(t.split("_")) for t in known_types) if known_types else 1
+
+        # Prefer the right-most match (and longest token) to reduce ambiguity if agent_id contains
+        # type-like tokens (e.g. `feature_tree_agent`).
+        for idx in range(len(parts) - 2, 0, -1):
+            for k in range(max_type_parts, 0, -1):
+                if idx + k >= len(parts):
+                    continue
+                token = "_".join(parts[idx : idx + k])
+                if token not in known_types:
+                    continue
+                job_id = "_".join(parts[idx + k :])
+                if job_id:
+                    return job_id, token
+        return None
 
     def _load_manifest(self, job_dir: Path) -> Dict[str, Any]:
         """Load or create the job manifest."""
@@ -279,14 +313,10 @@ class FileArtifactStore(ArtifactStore):
 
     async def get(self, artifact_id: str) -> Optional[Dict[str, Any]]:
         """Retrieve an artifact by ID."""
-        # artifact_id format: {agent_id}_{artifact_type}_{job_id}
-        parts = artifact_id.split("_")
-        if len(parts) < 3:
+        parsed = self._parse_artifact_id(artifact_id)
+        if not parsed:
             return None
-
-        # Extract job_id (last part) and artifact_type (second to last)
-        job_id = parts[-1]
-        artifact_type = parts[-2]
+        job_id, artifact_type = parsed
 
         job_dir = self.output_dir / job_id
         if not job_dir.exists():
@@ -319,14 +349,23 @@ class FileArtifactStore(ArtifactStore):
 
         # Read metadata if exists
         metadata = {}
+        file_path = None
         if meta_path.exists():
             with open(meta_path, "r") as f:
                 metadata = json.load(f)
+                file_path = metadata.get("file_path") or file_path
+        if not file_path and entry:
+            file_path = entry.get("file")
 
         return {
             "id": artifact_id,
             "content": content,
-            "metadata": metadata.get("metadata", {}),
+            # Preserve the historical "metadata" shape but include file path so downstream
+            # consumers (like PDF rendering) can locate the source filename.
+            "metadata": {
+                **(metadata.get("metadata", {}) or {}),
+                "_file_path": file_path,
+            },
             "created_at": metadata.get("created_at"),
             "updated_at": metadata.get("updated_at"),
             "agent_id": metadata.get("agent_id"),
@@ -363,15 +402,22 @@ class FileArtifactStore(ArtifactStore):
                 # Load metadata
                 meta_path = job_dir / entry.get("metadata_file", f"{atype}.meta.json")
                 metadata = {}
+                file_path = None
                 if meta_path.exists():
                     with open(meta_path, "r") as f:
                         metadata = json.load(f)
+                        file_path = metadata.get("file_path") or file_path
+                if not file_path:
+                    file_path = entry.get("file")
 
                 artifacts.append(
                     {
                         "id": entry.get("id"),
                         "content": content,
-                        "metadata": metadata.get("metadata", {}),
+                        "metadata": {
+                            **(metadata.get("metadata", {}) or {}),
+                            "_file_path": file_path,
+                        },
                         "created_at": metadata.get("created_at"),
                         "updated_at": entry.get("updated_at"),
                         "agent_id": entry.get("agent_id"),
@@ -394,12 +440,10 @@ class FileArtifactStore(ArtifactStore):
 
     async def delete(self, artifact_id: str) -> bool:
         """Delete an artifact."""
-        parts = artifact_id.split("_")
-        if len(parts) < 3:
+        parsed = self._parse_artifact_id(artifact_id)
+        if not parsed:
             return False
-
-        job_id = parts[-1]
-        artifact_type = parts[-2]
+        job_id, artifact_type = parsed
 
         job_dir = self.output_dir / job_id
         if not job_dir.exists():

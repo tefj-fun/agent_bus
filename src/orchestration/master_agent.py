@@ -90,11 +90,13 @@ class MasterAgent:
                 inputs={"requirements": requirements},
             )
 
-            await self.postgres.update_job_status(
+            updated = await self.postgres.update_job_status(
                 job_id=job_id,
                 status="waiting_for_approval",
                 workflow_stage=WorkflowStage.WAITING_FOR_APPROVAL.value,
             )
+            if not updated:
+                raise JobDeletedError(f"Job {job_id} deleted")
 
             print(f"[MasterAgent] Job {job_id} ready for approval after PRD generation")
 
@@ -104,9 +106,16 @@ class MasterAgent:
                 "results": {"prd": prd_result},
             }
 
+        except JobDeletedError as e:
+            # Job was hard-deleted while we were running. Avoid writing to DB.
+            print(f"[MasterAgent] Job {job_id} deleted mid-flight: {str(e)}")
+            return {"job_id": job_id, "status": "deleted", "error": str(e)}
         except JobCanceledError as e:
             print(f"[MasterAgent] Job {job_id} canceled: {str(e)}")
-            await self.postgres.update_job_status(job_id=job_id, status="canceled")
+            try:
+                await self.postgres.update_job_status(job_id=job_id, status="canceled")
+            except Exception:
+                pass
             return {"job_id": job_id, "status": "canceled", "error": str(e)}
         except Exception as e:
             print(f"[MasterAgent] Job {job_id} failed: {str(e)}")
@@ -172,6 +181,7 @@ class MasterAgent:
                 "truth_requirements_hash": truth.get("requirements_hash", ""),
                 "truth_prd_artifact_id": truth.get("prd_artifact_id"),
             }
+            prd_content = truth_inputs.get("prd", "")  # convenience for later stages
 
             resume_from = None
             if isinstance(metadata, dict):
@@ -520,10 +530,12 @@ class MasterAgent:
                     },
                 )
 
-            # Transition to COMPLETED state
-            await self.postgres.update_job_status(
+            # Transition to COMPLETED state (if job was deleted, stop cleanly)
+            updated = await self.postgres.update_job_status(
                 job_id=job_id, status="completed", workflow_stage=WorkflowStage.COMPLETED.value
             )
+            if not updated:
+                raise JobDeletedError(f"Job {job_id} deleted")
 
             return {
                 "job_id": job_id,
@@ -542,9 +554,15 @@ class MasterAgent:
                     "delivery": delivery_result,
                 },
             }
+        except JobDeletedError as e:
+            print(f"[MasterAgent] Job {job_id} deleted after approval: {str(e)}")
+            return {"job_id": job_id, "status": "deleted", "error": str(e)}
         except JobCanceledError as e:
             print(f"[MasterAgent] Job {job_id} canceled after approval: {str(e)}")
-            await self.postgres.update_job_status(job_id=job_id, status="canceled")
+            try:
+                await self.postgres.update_job_status(job_id=job_id, status="canceled")
+            except Exception:
+                pass
             return {"job_id": job_id, "status": "canceled", "error": str(e)}
         except Exception as e:
             print(f"[MasterAgent] Job {job_id} failed after approval: {str(e)}")
@@ -570,9 +588,13 @@ class MasterAgent:
                 )
             except Exception as meta_err:
                 print(f"[MasterAgent] Failed to persist job error metadata: {meta_err}")
-            await self.postgres.update_job_status(
-                job_id=job_id, status="failed", workflow_stage=WorkflowStage.FAILED.value
-            )
+            try:
+                # If the job was deleted, this will be a no-op or fail; don't let it bubble.
+                await self.postgres.update_job_status(
+                    job_id=job_id, status="failed", workflow_stage=WorkflowStage.FAILED.value
+                )
+            except Exception:
+                pass
             return {"job_id": job_id, "status": "failed", "error": str(e)}
 
     async def continue_after_change_request(self, job_id: str) -> Dict:
@@ -614,20 +636,28 @@ class MasterAgent:
                 },
             )
 
-            await self.postgres.update_job_status(
+            updated = await self.postgres.update_job_status(
                 job_id=job_id,
                 status="waiting_for_approval",
                 workflow_stage=WorkflowStage.WAITING_FOR_APPROVAL.value,
             )
+            if not updated:
+                raise JobDeletedError(f"Job {job_id} deleted")
 
             return {
                 "job_id": job_id,
                 "status": "waiting_for_approval",
                 "results": {"prd": prd_result},
             }
+        except JobDeletedError as e:
+            print(f"[MasterAgent] Job {job_id} deleted during PRD revision: {str(e)}")
+            return {"job_id": job_id, "status": "deleted", "error": str(e)}
         except JobCanceledError as e:
             print(f"[MasterAgent] Job {job_id} canceled during PRD revision: {str(e)}")
-            await self.postgres.update_job_status(job_id=job_id, status="canceled")
+            try:
+                await self.postgres.update_job_status(job_id=job_id, status="canceled")
+            except Exception:
+                pass
             return {"job_id": job_id, "status": "canceled", "error": str(e)}
         except Exception as e:
             print(f"[MasterAgent] Job {job_id} failed during PRD revision: {str(e)}")
@@ -642,9 +672,12 @@ class MasterAgent:
                 )
             except Exception as meta_err:
                 print(f"[MasterAgent] Failed to persist job error metadata: {meta_err}")
-            await self.postgres.update_job_status(
-                job_id=job_id, status="failed", workflow_stage=WorkflowStage.FAILED.value
-            )
+            try:
+                await self.postgres.update_job_status(
+                    job_id=job_id, status="failed", workflow_stage=WorkflowStage.FAILED.value
+                )
+            except Exception:
+                pass
             return {"job_id": job_id, "status": "failed", "error": str(e)}
 
     async def _fetch_project_and_prd(self, job_id: str) -> tuple[Optional[str], Optional[str]]:
@@ -963,6 +996,19 @@ class MasterAgent:
 
         print(f"[MasterAgent] Executing stage {stage.value} with agent {agent_id}")
 
+        # If the job was hard-deleted, stop immediately (do not enqueue more work).
+        status = None
+        try:
+            status = await self.postgres.get_job_status(job_id)
+        except Exception:
+            # Best-effort check; downstream DB writes will also fail if the job is gone.
+            status = None
+
+        if status is None:
+            raise JobDeletedError(f"Job {job_id} deleted")
+        if status == "canceled":
+            raise JobCanceledError(f"Job {job_id} canceled")
+
         # Publish stage started event
         try:
             await publish_stage_started(job_id, stage.value, agent_id)
@@ -970,9 +1016,11 @@ class MasterAgent:
             print(f"[MasterAgent] Failed to publish stage_started event: {e}")
 
         # Update job status
-        await self.postgres.update_job_status(
+        updated = await self.postgres.update_job_status(
             job_id=job_id, status="in_progress", workflow_stage=stage.value
         )
+        if not updated:
+            raise JobDeletedError(f"Job {job_id} deleted")
 
         # Create task
         task_data = {
@@ -990,13 +1038,19 @@ class MasterAgent:
         queue_name = "agent_bus:tasks"
 
         # Create task in database
-        await self.postgres.create_task(
-            task_id=task_id,
-            job_id=job_id,
-            agent_id=agent_id,
-            task_type=stage.value,
-            input_data=inputs,
-        )
+        try:
+            await self.postgres.create_task(
+                task_id=task_id,
+                job_id=job_id,
+                agent_id=agent_id,
+                task_type=stage.value,
+                input_data=inputs,
+            )
+        except Exception as e:
+            # Most common: FK violation if job was deleted between checks.
+            if not await self.postgres.job_exists(job_id):
+                raise JobDeletedError(f"Job {job_id} deleted") from e
+            raise
         print(f"[MasterAgent] Created task {task_id} in database for stage {stage.value}")
 
         # Enqueue task to Redis
@@ -1024,6 +1078,8 @@ class MasterAgent:
             await self._validate_alignment(job_id, stage, result)
             return result
         except JobCanceledError:
+            raise
+        except JobDeletedError:
             raise
         except Exception as e:
             try:
@@ -1065,9 +1121,13 @@ class MasterAgent:
                         "SELECT status FROM jobs WHERE id = $1",
                         job_id,
                     )
+                if status is None:
+                    raise JobDeletedError(f"Job {job_id} deleted")
                 if status == "canceled":
                     raise JobCanceledError(f"Job {job_id} canceled")
             except JobCanceledError:
+                raise
+            except JobDeletedError:
                 raise
             except Exception:
                 pass
@@ -1079,5 +1139,11 @@ class MasterAgent:
 
 class JobCanceledError(Exception):
     """Raised when a job is canceled mid-flight."""
+
+    pass
+
+
+class JobDeletedError(Exception):
+    """Raised when a job was hard-deleted mid-flight."""
 
     pass

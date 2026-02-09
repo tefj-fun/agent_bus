@@ -28,6 +28,8 @@ type PlanPayload = {
   raw_plan?: string;
 };
 
+type PlanRoot = PlanPayload & { plan?: unknown };
+
 type ParseResult = {
   plan?: PlanPayload;
   raw?: string;
@@ -40,9 +42,9 @@ function stripCodeFence(value: string): string {
   return match ? match[1].trim() : trimmed;
 }
 
-function safeParse(value: string): { parsed?: PlanPayload; error?: string } {
+function safeParse(value: string): { parsed?: PlanRoot; error?: string } {
   try {
-    const parsed = JSON.parse(value) as PlanPayload;
+    const parsed = JSON.parse(value) as PlanRoot;
     return { parsed };
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Invalid JSON' };

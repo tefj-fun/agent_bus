@@ -87,7 +87,7 @@ export function Artifact() {
       {!isLoading && artifact && (
         <ArtifactViewer
           artifactId={artifact.artifact_id}
-          type={artifact.artifact_type}
+          type={artifactType}
           content={artifact.content}
           createdAt={artifact.created_at}
         />

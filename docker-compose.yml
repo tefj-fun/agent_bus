@@ -4,6 +4,7 @@ x-build: &agent_bus_build
   args:
     WITH_PDF: "1"
     WITH_MERMAID: "1"
+    WITH_TESTS: "1"
 
 services:
   # PostgreSQL database for state persistence

@@ -53,6 +53,7 @@ export function ProjectStatus() {
   const isFailed = job?.status === 'failed' || job?.status === 'canceled';
   const isWaitingApproval = job?.status === 'waiting_for_approval';
   const isActive = !isCompleted && !isFailed;
+  const isLiveRunning = isActive && !isWaitingApproval;
   const usage = usageData?.usage;
   const currentPath = `${location.pathname}${location.search}`;
   const returnPath = (location.state as { from?: string } | null)?.from;
@@ -70,8 +71,10 @@ export function ProjectStatus() {
   const failureReason = getFailureReason(job?.metadata, events);
   const failedStageId = getFailedStageId(job?.metadata);
   const stageForProgress = (isFailed && failedStageId ? failedStageId : currentStage) as WorkflowStage;
-  const failureStage = getFailureStage(job?.metadata, stageForProgress);
-  const latestTask = job?.latest_task;
+  const failureStage = getFailureStage(stageForProgress);
+  const latestTask = (job?.metadata as Record<string, unknown> | undefined)?.['latest_task'] as
+    | { task_type?: string; status?: string }
+    | undefined;
   const currentStageOverride = latestTask?.task_type === stageForProgress && latestTask?.status === 'completed'
     ? 'completed'
     : undefined;
@@ -103,6 +106,9 @@ export function ProjectStatus() {
         // Use updated_at for completed/failed jobs
         const end = job.updated_at ? new Date(job.updated_at).getTime() : Date.now();
         setElapsed(Math.max(0, Math.round((end - start) / 1000)));
+      } else if (isWaitingApproval) {
+        // Freeze while waiting for HITL approval.
+        setElapsed(baseElapsed);
       } else {
         // Live timer for running jobs
         const liveElapsed = baseElapsed + Math.floor((Date.now() - clientStart) / 1000);
@@ -112,12 +118,12 @@ export function ProjectStatus() {
 
     updateElapsed();
 
-    // Only run interval for active jobs
-    if (isActive) {
+    // Only run interval for actively running jobs (not waiting for approval)
+    if (isLiveRunning) {
       const interval = setInterval(updateElapsed, 1000);
       return () => clearInterval(interval);
     }
-  }, [job?.created_at, job?.updated_at, isCompleted, isFailed, isActive]);
+  }, [job?.created_at, job?.updated_at, isCompleted, isFailed, isWaitingApproval, isLiveRunning, isActive]);
 
   if (jobLoading) {
     return (
@@ -447,7 +453,6 @@ function getFailureReason(
 }
 
 function getFailureStage(
-  metadata: Record<string, unknown> | undefined,
   fallbackStage: WorkflowStage
 ): string {
   if (fallbackStage && fallbackStage !== 'failed') {

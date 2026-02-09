@@ -271,7 +271,10 @@ class DeveloperAgent(BaseAgent):
 
     def _build_developer_system_prompt(self) -> str:
         """Build system prompt for development plan generation."""
-        return f"""{self._truth_system_guardrails()}
+        guardrails = self._truth_system_guardrails()
+        # NOTE: Do not use an f-string here. The prompt intentionally embeds JSON examples
+        # containing many `{`/`}` which can trigger `SyntaxError: f-string: expressions nested too deeply`.
+        return guardrails + """
 You are an expert Software Developer specialized in Test-Driven Development (TDD) and clean code practices.
 
 Your role is to transform architecture and UI/UX designs into implementable code structure with comprehensive TDD strategy.

@@ -18,26 +18,62 @@ type UIUXPayload = {
   components?: Array<{
     name?: string;
     description?: string;
-    variants?: string[];
-    states?: string[];
-    props?: string[];
+    // Some producers emit rich objects here (e.g. { name, appearance, use_case }).
+    variants?: unknown[];
+    states?: unknown[];
+    props?: unknown[];
   }>;
   layouts?: Array<{
     name?: string;
     structure?: string;
-    use_cases?: string[];
-    breakpoints?: string[];
+    use_cases?: unknown[];
+    breakpoints?: unknown[];
   }>;
   user_flows?: Array<{
     name?: string;
-    steps?: string[];
-    screens?: string[];
-    interactions?: string[];
+    steps?: unknown[];
+    screens?: unknown[];
+    interactions?: unknown[];
   }>;
   accessibility?: Record<string, unknown>;
   animations?: Record<string, unknown>;
   [key: string]: unknown;
 };
+
+function toLabel(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (value && typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    if (typeof obj.name === 'string' && obj.name.trim()) return obj.name;
+    if (typeof obj.label === 'string' && obj.label.trim()) return obj.label;
+    return '[object]';
+  }
+  return '';
+}
+
+function toStableKey(value: unknown, fallback: string): string {
+  if (typeof value === 'string' && value.trim()) return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (value && typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    const parts: string[] = [];
+    if (typeof obj.id === 'string' && obj.id.trim()) parts.push(obj.id);
+    if (typeof obj.name === 'string' && obj.name.trim()) parts.push(obj.name);
+    if (typeof obj.appearance === 'string' && obj.appearance.trim()) parts.push(obj.appearance);
+    if (typeof obj.use_case === 'string' && obj.use_case.trim()) parts.push(obj.use_case);
+    if (parts.length > 0) return parts.join(':');
+
+    // Last resort: stable-ish string for keys without crashing render.
+    try {
+      const json = JSON.stringify(value);
+      if (json && json !== '{}') return json;
+    } catch {
+      // ignore
+    }
+  }
+  return fallback;
+}
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -183,13 +219,16 @@ export function UIUXRenderer({ content }: { content: string }) {
       {components.length > 0 && (
         <Section title="Components">
           <div className="space-y-3">
-            {components.map((component) => (
-              <Card key={component.name} className="p-4 space-y-2">
+            {components.map((component, componentIdx) => (
+              <Card
+                key={toStableKey(component.name, `component-${componentIdx}`)}
+                className="p-4 space-y-2"
+              >
                 <div className="flex flex-wrap items-center gap-2">
                   <h4 className="text-sm font-semibold text-text-primary">
                     {component.name || 'Component'}
                   </h4>
-                  {component.variants && component.variants.length > 0 && (
+                  {Array.isArray(component.variants) && component.variants.length > 0 && (
                     <Badge variant="default" size="sm">
                       {component.variants.length} variants
                     </Badge>
@@ -198,23 +237,31 @@ export function UIUXRenderer({ content }: { content: string }) {
                 {component.description && (
                   <p className="text-sm text-text-secondary">{component.description}</p>
                 )}
-                {component.variants && component.variants.length > 0 && (
+                {Array.isArray(component.variants) && component.variants.length > 0 && (
                   <div className="flex flex-wrap gap-2 text-xs">
-                    {component.variants.map((variant) => (
-                      <Badge key={variant} variant="info" size="sm">
-                        {variant}
-                      </Badge>
-                    ))}
+                    {component.variants.map((variant, variantIdx) => {
+                      const label = toLabel(variant) || 'Variant';
+                      const keyBase = toStableKey(
+                        variant,
+                        `variant-${component.name || componentIdx}-${variantIdx}`
+                      );
+                      const key = `${keyBase}::${variantIdx}`;
+                      return (
+                        <Badge key={key} variant="info" size="sm">
+                          {label}
+                        </Badge>
+                      );
+                    })}
                   </div>
                 )}
-                {component.states && component.states.length > 0 && (
+                {Array.isArray(component.states) && component.states.length > 0 && (
                   <p className="text-xs text-text-secondary">
-                    States: {component.states.join(', ')}
+                    States: {component.states.map((s) => toLabel(s) || '[object]').join(', ')}
                   </p>
                 )}
-                {component.props && component.props.length > 0 && (
+                {Array.isArray(component.props) && component.props.length > 0 && (
                   <p className="text-xs text-text-secondary">
-                    Props: {component.props.join(', ')}
+                    Props: {component.props.map((p) => toLabel(p) || '[object]').join(', ')}
                   </p>
                 )}
               </Card>
@@ -226,26 +273,31 @@ export function UIUXRenderer({ content }: { content: string }) {
       {layouts.length > 0 && (
         <Section title="Layouts">
           <div className="space-y-3">
-            {layouts.map((layout) => (
-              <Card key={layout.name} className="p-4 space-y-2">
+            {layouts.map((layout, layoutIdx) => (
+              <Card key={toStableKey(layout.name, `layout-${layoutIdx}`)} className="p-4 space-y-2">
                 <h4 className="text-sm font-semibold text-text-primary">
                   {layout.name || 'Layout'}
                 </h4>
                 {layout.structure && (
                   <p className="text-sm text-text-secondary">{layout.structure}</p>
                 )}
-                {layout.use_cases && layout.use_cases.length > 0 && (
+                {Array.isArray(layout.use_cases) && layout.use_cases.length > 0 && (
                   <p className="text-xs text-text-secondary">
-                    Use cases: {layout.use_cases.join(', ')}
+                    Use cases: {layout.use_cases.map((u) => toLabel(u) || '[object]').join(', ')}
                   </p>
                 )}
-                {layout.breakpoints && layout.breakpoints.length > 0 && (
+                {Array.isArray(layout.breakpoints) && layout.breakpoints.length > 0 && (
                   <div className="flex flex-wrap gap-2 text-xs">
-                    {layout.breakpoints.map((bp) => (
-                      <Badge key={bp} variant="default" size="sm">
-                        {bp}
-                      </Badge>
-                    ))}
+                    {layout.breakpoints.map((bp, bpIdx) => {
+                      const label = toLabel(bp) || 'Breakpoint';
+                      const keyBase = toStableKey(bp, `bp-${layout.name || layoutIdx}-${bpIdx}`);
+                      const key = `${keyBase}::${bpIdx}`;
+                      return (
+                        <Badge key={key} variant="default" size="sm">
+                          {label}
+                        </Badge>
+                      );
+                    })}
                   </div>
                 )}
               </Card>
@@ -257,30 +309,41 @@ export function UIUXRenderer({ content }: { content: string }) {
       {flows.length > 0 && (
         <Section title="User Flows">
           <div className="space-y-3">
-            {flows.map((flow) => (
-              <Card key={flow.name} className="p-4 space-y-2">
+            {flows.map((flow, flowIdx) => (
+              <Card key={toStableKey(flow.name, `flow-${flowIdx}`)} className="p-4 space-y-2">
                 <h4 className="text-sm font-semibold text-text-primary">
                   {flow.name || 'Flow'}
                 </h4>
-                {flow.steps && flow.steps.length > 0 && (
+                {Array.isArray(flow.steps) && flow.steps.length > 0 && (
                   <ol className="list-decimal list-inside text-sm text-text-secondary space-y-1">
-                    {flow.steps.map((step) => (
-                      <li key={step}>{step}</li>
-                    ))}
+                    {flow.steps.map((step, stepIdx) => {
+                      const label = toLabel(step) || 'Step';
+                      const keyBase = toStableKey(step, `step-${flow.name || flowIdx}-${stepIdx}`);
+                      const key = `${keyBase}::${stepIdx}`;
+                      return <li key={key}>{label}</li>;
+                    })}
                   </ol>
                 )}
-                {flow.screens && flow.screens.length > 0 && (
+                {Array.isArray(flow.screens) && flow.screens.length > 0 && (
                   <p className="text-xs text-text-secondary">
-                    Screens: {flow.screens.join(', ')}
+                    Screens: {flow.screens.map((s) => toLabel(s) || '[object]').join(', ')}
                   </p>
                 )}
-                {flow.interactions && flow.interactions.length > 0 && (
+                {Array.isArray(flow.interactions) && flow.interactions.length > 0 && (
                   <div className="flex flex-wrap gap-2 text-xs">
-                    {flow.interactions.map((item) => (
-                      <Badge key={item} variant="info" size="sm">
-                        {item}
-                      </Badge>
-                    ))}
+                    {flow.interactions.map((item, itemIdx) => {
+                      const label = toLabel(item) || 'Interaction';
+                      const keyBase = toStableKey(
+                        item,
+                        `interaction-${flow.name || flowIdx}-${itemIdx}`
+                      );
+                      const key = `${keyBase}::${itemIdx}`;
+                      return (
+                        <Badge key={key} variant="info" size="sm">
+                          {label}
+                        </Badge>
+                      );
+                    })}
                   </div>
                 )}
               </Card>

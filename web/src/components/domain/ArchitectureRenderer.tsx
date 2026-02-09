@@ -158,7 +158,7 @@ export function ArchitectureRenderer({ content }: { content: string }) {
                   <Badge variant="default" size="sm">
                     {flow.from || 'source'}
                   </Badge>
-                  <span className="text-text-muted text-xs">→</span>
+                  <span className="text-text-muted text-xs">-&gt;</span>
                   <Badge variant="default" size="sm">
                     {flow.to || 'target'}
                   </Badge>

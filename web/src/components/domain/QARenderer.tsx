@@ -219,21 +219,21 @@ export function QARenderer({ content }: { content: string }) {
           <div className="space-y-3">
             {data.risk_assessment.map((risk, index) => (
               <Card key={String(risk.risk || index)} className="p-4 space-y-2">
-                <p className="text-sm font-semibold text-text-primary">
-                  {String(risk.risk || 'Risk')}
-                </p>
-                {risk.severity && (
-                  <Badge variant="warning" size="sm">
-                    {String(risk.severity)}
-                  </Badge>
-                )}
-                {risk.mitigation && (
-                  <p className="text-sm text-text-secondary">
-                    Mitigation: {String(risk.mitigation)}
-                  </p>
-                )}
-              </Card>
-            ))}
+                 <p className="text-sm font-semibold text-text-primary">
+                   {String(risk.risk || 'Risk')}
+                 </p>
+                 {risk.severity !== undefined && risk.severity !== null && (
+                   <Badge variant="warning" size="sm">
+                     {String(risk.severity)}
+                   </Badge>
+                 )}
+                 {risk.mitigation !== undefined && risk.mitigation !== null && (
+                   <p className="text-sm text-text-secondary">
+                     Mitigation: {String(risk.mitigation)}
+                   </p>
+                 )}
+               </Card>
+             ))}
           </div>
         </Section>
       )}

@@ -265,7 +265,15 @@ class Container:
         # Check PostgreSQL
         try:
             pool = await self.postgres_pool()
-            async with pool.acquire() as conn:
+            # asyncpg.Pool.acquire() returns an async context manager (not awaitable).
+            # In tests we sometimes use AsyncMock() for the pool, where acquire() is awaitable.
+            import inspect
+
+            acquire_cm = pool.acquire()
+            if inspect.isawaitable(acquire_cm):
+                acquire_cm = await acquire_cm
+
+            async with acquire_cm as conn:
                 await conn.execute("SELECT 1")
             result["postgres"] = {"status": "healthy"}
         except Exception as e:

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 
 import json
+import re
 from typing import Any, Dict
 
 from .base import BaseAgent, AgentTask, AgentResult
@@ -100,16 +101,14 @@ class ArchitectAgent(BaseAgent):
                     prompt=user_prompt,
                     system=system_prompt,
                     thinking_budget=2048,
-                    max_tokens=settings.anthropic_max_tokens,
+                    # Architecture should be concise. Very large outputs tend to get truncated,
+                    # which breaks downstream JSON parsing and UI renderers.
+                    max_tokens=min(settings.anthropic_max_tokens, 6000),
                 )
 
-                # Try to parse as JSON, fallback to raw text
-                try:
-                    architecture_payload = json.loads(response_text)
-                    architecture_content = json.dumps(architecture_payload, indent=2)
-                except json.JSONDecodeError:
-                    architecture_payload = {"raw_architecture": response_text}
-                    architecture_content = response_text
+                architecture_payload, architecture_content = await self._coerce_to_architecture_json(
+                    response_text=response_text, system_prompt=system_prompt
+                )
 
             # Save architecture as artifact
             artifact_id = await self.save_artifact(
@@ -166,7 +165,10 @@ class ArchitectAgent(BaseAgent):
 
     def _build_architecture_system_prompt(self) -> str:
         """Build system prompt for architecture generation."""
-        return f"""{self._truth_system_guardrails()}
+        guardrails = self._truth_system_guardrails()
+        # NOTE: Do not use an f-string here. The prompt intentionally embeds JSON examples
+        # containing many `{`/`}` which can trigger `SyntaxError: f-string: expressions nested too deeply`.
+        return guardrails + """
 You are an expert Solution Architect specialized in designing scalable, maintainable software systems.
 
 Your role is to transform PRDs and project plans into detailed technical architecture specifications.
@@ -178,6 +180,11 @@ Your role is to transform PRDs and project plans into detailed technical archite
 - Ability to identify technical risks and propose mitigation strategies
 
 ## Architecture Output (JSON format):
+IMPORTANT:
+- Output MUST be a single valid JSON object and NOTHING ELSE (no markdown, no headings, no code fences).
+- Keep it concise so it fits comfortably within the output limit.
+- Prefer short arrays and small strings over long prose.
+
 {
   "system_overview": {
     "description": "High-level system description",
@@ -237,7 +244,12 @@ Your role is to transform PRDs and project plans into detailed technical archite
 - Consider scalability, maintainability, and security from the start
 - Identify integration points and external dependencies
 - Document key architectural decisions and trade-offs
-- Keep it practical and implementable"""
+- Keep it practical and implementable
+- Size limits:
+  - components: <= 12
+  - data_flows: <= 12
+  - data_models: <= 10
+  - keep any "risks"/"decisions" sections very short if included"""
 
     def _build_architecture_user_prompt(
         self, prd_content: str, requirements: str, plan_content: str
@@ -260,8 +272,96 @@ And this project plan:
 
         prompt += """
 
-Please create a detailed technical architecture specification in JSON format following the structure provided. 
-Focus on creating a practical, implementable architecture that addresses the requirements while maintaining 
-good engineering practices."""
+Please create a technical architecture specification as a SINGLE JSON object following the structure provided.
+Return ONLY JSON, no markdown or code fences.
+
+Constraints:
+- Keep it implementable and specific.
+- Be concise: avoid long narrative paragraphs.
+- Respect the size limits from the system prompt (components/flows/models).
+"""
 
         return prompt
+
+    @staticmethod
+    def _extract_json_from_code_fence(value: str) -> str | None:
+        """
+        Best-effort: extract JSON from a markdown code fence.
+
+        Handles both closed fences:
+          ```json
+          {...}
+          ```
+        and unclosed fences (take the remainder).
+        """
+        # Closed fence
+        m = re.search(r"```(?:json)?\s*([\s\S]*?)```", value, flags=re.IGNORECASE)
+        if m:
+            return m.group(1).strip()
+
+        # Unclosed fence
+        m2 = re.search(r"```(?:json)?\s*", value, flags=re.IGNORECASE)
+        if m2:
+            return value[m2.end() :].strip()
+
+        return None
+
+    async def _coerce_to_architecture_json(
+        self, response_text: str, system_prompt: str
+    ) -> tuple[Dict[str, Any], str]:
+        """
+        Convert LLM output into parseable JSON for the architecture artifact.
+
+        The LLM is instructed to output JSON only, but we still harden:
+        - Try raw JSON parse
+        - Try extracting JSON from code fences
+        - As a last resort, ask the LLM to repair into strict JSON
+        """
+        # 1) Direct JSON
+        try:
+            payload = json.loads(response_text)
+            if isinstance(payload, dict):
+                return payload, json.dumps(payload, indent=2)
+        except json.JSONDecodeError:
+            pass
+
+        # 2) Code-fence extraction
+        extracted = self._extract_json_from_code_fence(response_text) or ""
+        if extracted:
+            try:
+                payload = json.loads(extracted)
+                if isinstance(payload, dict):
+                    return payload, json.dumps(payload, indent=2)
+            except json.JSONDecodeError:
+                pass
+
+        # 3) Repair: ask for strict JSON only (small output)
+        repair_system = (
+            system_prompt
+            + "\n\nYou will be given an invalid/non-JSON architecture draft. "
+            "Your job is to output a single valid JSON object that follows the schema. "
+            "Do not include any other text."
+        )
+        repair_prompt = (
+            "Convert the following draft into a single valid JSON object.\n\n"
+            "DRAFT (may be truncated/invalid):\n"
+            f"{response_text}\n"
+        )
+
+        from ..config import settings
+
+        repaired = await self.query_llm(
+            prompt=repair_prompt,
+            system=repair_system,
+            thinking_budget=1024,
+            max_tokens=min(settings.anthropic_max_tokens, 4000),
+        )
+        try:
+            payload = json.loads(repaired)
+            if isinstance(payload, dict):
+                return payload, json.dumps(payload, indent=2)
+        except json.JSONDecodeError:
+            pass
+
+        # Final fallback: persist raw text so UI can at least show something
+        return {"raw_architecture": response_text}, response_text

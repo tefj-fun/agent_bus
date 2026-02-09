@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '../../utils/utils';
 
+type PdfStatus = { available: boolean; detail?: string };
+
 type PdfState =
-  | { phase: 'loading' }
+  | { phase: 'loading'; detail?: string }
   | { phase: 'ready'; src: string }
   | { phase: 'error'; detail: string };
 
@@ -15,20 +17,23 @@ export function PdfPreview({
   className?: string;
   emptyMessage?: string;
 }) {
-  const [status, setStatus] = useState<PdfStatus | null>(null);
   const [state, setState] = useState<PdfState>({ phase: 'loading' });
   const objectUrlRef = useRef<string | null>(null);
 
-  const pdfUrl = useMemo(() => {
-    if (!artifactId) return '';
-    const url = new URL(`/api/artifacts/pdf/${artifactId}`, window.location.origin);
-    url.searchParams.set('ts', String(Date.now()));
-    return url.toString();
+  const makePdfUrl = useMemo(() => {
+    return () => {
+      if (!artifactId) return '';
+      const url = new URL(`/api/artifacts/pdf/${artifactId}`, window.location.origin);
+      url.searchParams.set('ts', String(Date.now()));
+      return url.toString();
+    };
   }, [artifactId]);
 
   useEffect(() => {
     let active = true;
     const controller = new AbortController();
+    const MAX_POLLS = 120; // ~6 minutes at 3s interval
+    const POLL_MS = 3000;
 
     const cleanupObjectUrl = () => {
       if (objectUrlRef.current) {
@@ -47,8 +52,6 @@ export function PdfPreview({
     }
 
     setState({ phase: 'loading' });
-    const statusUrl = new URL(`/api/artifacts/pdf/${artifactId}/status`, window.location.origin);
-    statusUrl.searchParams.set('ts', String(Date.now()));
 
     const fetchPdf = async () => {
       const pdfEndpoint = new URL(`/api/artifacts/pdf/${artifactId}`, window.location.origin);
@@ -66,51 +69,70 @@ export function PdfPreview({
       }
     };
 
-    fetch(statusUrl.toString(), { signal: controller.signal })
-      .then(async (res) => {
+    const pollStatus = async (attempt: number) => {
+      const statusUrl = new URL(`/api/artifacts/pdf/${artifactId}/status`, window.location.origin);
+      statusUrl.searchParams.set('ts', String(Date.now()));
+
+      try {
+        const res = await fetch(statusUrl.toString(), { signal: controller.signal });
         if (res.status === 404) {
           // Backward-compatible fallback when status endpoint isn't available
           await fetchPdf();
-          return null;
+          return;
         }
         if (!res.ok) {
           throw new Error(`PDF preview error (${res.status})`);
         }
-        return (await res.json()) as PdfStatus;
-      })
-      .then(async (payload) => {
-        if (!payload) return;
+        const payload = (await res.json()) as PdfStatus;
         if (!active) return;
+
         if (payload.available) {
           cleanupObjectUrl();
-          setState({ phase: 'ready', src: pdfUrl });
-        } else {
+          // Use a fresh cache-buster when switching to the server-rendered PDF.
+          setState({ phase: 'ready', src: makePdfUrl() });
+          return;
+        }
+
+        // Keep polling while backend generates the PDF (status endpoint should be fast).
+        const detail = payload.detail || 'PDF not ready yet. Generating...';
+        setState({ phase: 'loading', detail });
+
+        if (attempt >= MAX_POLLS) {
           setState({
             phase: 'error',
-            detail: payload.detail || emptyMessage,
+            detail: `PDF is taking longer than expected. ${detail}`,
           });
+          return;
         }
-      })
-      .catch((err) => {
+        setTimeout(() => {
+          if (!active) return;
+          void pollStatus(attempt + 1);
+        }, POLL_MS);
+      } catch (err) {
         if (!active) return;
         setState({
           phase: 'error',
           detail: err instanceof Error ? err.message : 'Unable to load PDF preview.',
         });
-      });
+      }
+    };
+
+    void pollStatus(0);
 
     return () => {
       active = false;
       controller.abort();
       cleanupObjectUrl();
     };
-  }, [artifactId, emptyMessage, pdfUrl]);
+  }, [artifactId, emptyMessage, makePdfUrl]);
 
   return (
     <div className="doc-shell">
       <div className="doc-page doc-page--a4 doc-page--pdf">
         {state.phase === 'loading' && (
-          <p className="text-sm text-text-secondary">Loading PDF preview...</p>
+          <p className="text-sm text-text-secondary">
+            {state.detail || 'Loading PDF preview...'}
+          </p>
         )}
         {state.phase === 'error' && (
           <p className="text-sm text-text-secondary">

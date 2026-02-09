@@ -5,8 +5,8 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { SkeletonCard } from '../components/ui/Skeleton';
-import { useJobs, useDeleteJob, useRestartJob } from '../hooks/useProject';
-import { formatRelativeTime } from '../utils/utils';
+import { useJobs, useDeleteJob, useRestartJob, useJobUsage } from '../hooks/useProject';
+import { formatRelativeTime, formatCompactNumber, formatCurrencyUSD } from '../utils/utils';
 import { Plus, AlertCircle, Clock, CheckCircle, XCircle, ArrowRight, Trash2 } from 'lucide-react';
 import type { Job } from '../types';
 
@@ -135,12 +135,24 @@ export function Dashboard() {
                       {formatRelativeTime(job.updated_at)}
                     </span>
                   </div>
-                  <Link to={`/prd/${job.job_id}`} state={{ from: currentPath }}>
-                    <Button size="sm">
-                      Review PRD
-                      <ArrowRight className="w-4 h-4 ml-1" />
+                  <div className="flex items-center gap-2">
+                    <Link to={`/prd/${job.job_id}`} state={{ from: currentPath }}>
+                      <Button size="sm">
+                        Review PRD
+                        <ArrowRight className="w-4 h-4 ml-1" />
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDelete(job.job_id, job.project_id)}
+                      disabled={deletingId === job.job_id}
+                      className="text-text-muted hover:text-error-600 hover:bg-error-50"
+                      title="Delete project"
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </Button>
-                  </Link>
+                  </div>
                 </div>
               </Card>
             ))}
@@ -325,6 +337,9 @@ function StatCard({
 }
 
 function ProjectCard({ job, returnPath }: { job: Job; returnPath: string }) {
+  const { data: usageData } = useJobUsage(job.job_id);
+  const usage = usageData?.usage;
+
   const getStageProgress = (stage: string): number => {
     const stages = [
       'initialization', 'prd_generation', 'waiting_for_approval', 'feature_tree', 'plan_generation',
@@ -358,6 +373,11 @@ function ProjectCard({ job, returnPath }: { job: Job; returnPath: string }) {
 
         <p className="text-xs text-text-muted mt-2">
           Started {formatRelativeTime(job.created_at)}
+        </p>
+
+        <p className="text-xs text-text-muted mt-1">
+          Tokens: {usage ? formatCompactNumber(usage.total_tokens) : '—'}
+          {usage && (usage.cost_available ? ` · Cost: ${formatCurrencyUSD(usage.cost_usd)}` : ' · Cost: —')}
         </p>
       </Card>
     </Link>

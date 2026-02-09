@@ -248,3 +248,11 @@ hr {
 .page-break {
   page-break-before: always;
 }
+
+/* PM review PDFs are often short and can start with large tables/code blocks.
+   Avoid "blank page 1" when the first element is too tall to fit under `page-break-inside: avoid`. */
+.doc--pm_review pre,
+.doc--pm_review table {
+  page-break-inside: auto;
+  break-inside: auto;
+}

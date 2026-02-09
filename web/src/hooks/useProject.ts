@@ -59,6 +59,7 @@ export function useJobUsage(jobId: string | undefined) {
     queryFn: () => api.getJobUsage(jobId!),
     enabled: !!jobId,
     refetchInterval: 10000,
+    refetchIntervalInBackground: true,
   });
 }
 

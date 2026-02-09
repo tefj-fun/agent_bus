@@ -165,7 +165,7 @@ class APIDocumentParser:
                 spec = yaml.safe_load(doc.content)
         except (json.JSONDecodeError, yaml.YAMLError) as e:
             # Fall back to text parsing if spec is invalid
-            return self._parse_text(doc)
+            return self._parse_text(doc.model_copy(update={"format": DocumentFormat.TEXT}))
 
         info = spec.get("info", {})
         servers = spec.get("servers", [])
@@ -534,7 +534,7 @@ class APIDocumentParser:
             else:
                 spec = yaml.safe_load(doc.content)
         except (json.JSONDecodeError, yaml.YAMLError):
-            return self._parse_text(doc)
+            return self._parse_text(doc.model_copy(update={"format": DocumentFormat.TEXT}))
 
         info = spec.get("info", {})
 

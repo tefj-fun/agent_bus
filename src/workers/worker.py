@@ -111,6 +111,34 @@ class AgentWorker:
                     "SELECT status FROM jobs WHERE id = $1",
                     task_dict.get("job_id"),
                 )
+                task_exists = await conn.fetchval(
+                    "SELECT 1 FROM tasks WHERE id = $1",
+                    task_id,
+                )
+
+            # Job was hard-deleted. Do not attempt DB writes (tasks/artifacts were deleted too).
+            if job_status is None:
+                await self.redis.set_with_expiry(
+                    f"agent_bus:results:{task_id}",
+                    json.dumps(
+                        {"success": False, "error": "Job deleted", "task_id": task_id}
+                    ),
+                    3600,
+                )
+                print(f"Task {task_id} skipped (job deleted)")
+                return
+
+            # Task row missing (e.g., deleted as part of job deletion or manual cleanup).
+            if not task_exists:
+                await self.redis.set_with_expiry(
+                    f"agent_bus:results:{task_id}",
+                    json.dumps(
+                        {"success": False, "error": "Task missing", "task_id": task_id}
+                    ),
+                    3600,
+                )
+                print(f"Task {task_id} skipped (task missing)")
+                return
             if job_status == "canceled":
                 await self.postgres.update_task_status(
                     task_id=task_id, status="canceled", error="Job canceled"
@@ -124,7 +152,15 @@ class AgentWorker:
                 return
 
             # Update task status to RUNNING
-            await self.postgres.update_task_status(task_id, "running")
+            updated = await self.postgres.update_task_status(task_id, "running")
+            if not updated:
+                await self.redis.set_with_expiry(
+                    f"agent_bus:results:{task_id}",
+                    json.dumps({"success": False, "error": "Task missing", "task_id": task_id}),
+                    3600,
+                )
+                print(f"Task {task_id} skipped (task missing)")
+                return
 
             # Get agent class
             AgentClass = self.agent_registry.get(agent_type)
@@ -157,14 +193,74 @@ class AgentWorker:
                 metadata=task_dict.get("metadata", {}),
             )
 
-            # Execute
-            result = await agent.execute(agent_task)
+            # Execute with cooperative cancellation.
+            # If the user hits "Stop" (job status -> canceled), cancel the running task.
+            # This can interrupt in-flight LLM calls (httpx) and stops burning tokens.
+            exec_task = asyncio.create_task(agent.execute(agent_task))
+            try:
+                while True:
+                    done, _pending = await asyncio.wait({exec_task}, timeout=0.5)
+                    if done:
+                        break
+
+                    # Check job status periodically for stop/delete.
+                    pool = await self.postgres.get_pool()
+                    async with pool.acquire() as conn:
+                        job_status = await conn.fetchval(
+                            "SELECT status FROM jobs WHERE id = $1",
+                            task_dict.get("job_id"),
+                        )
+                    if job_status is None:
+                        exec_task.cancel()
+                        await self.redis.set_with_expiry(
+                            f"agent_bus:results:{task_id}",
+                            json.dumps(
+                                {"success": False, "error": "Job deleted", "task_id": task_id}
+                            ),
+                            3600,
+                        )
+                        print(f"Task {task_id} canceled mid-flight (job deleted)")
+                        return
+                    if job_status == "canceled":
+                        exec_task.cancel()
+                        try:
+                            await self.postgres.update_task_status(
+                                task_id=task_id, status="canceled", error="Canceled by user"
+                            )
+                        except Exception:
+                            pass
+                        await self.redis.set_with_expiry(
+                            f"agent_bus:results:{task_id}",
+                            json.dumps(
+                                {"success": False, "error": "Job canceled", "task_id": task_id}
+                            ),
+                            3600,
+                        )
+                        print(f"Task {task_id} canceled mid-flight (job canceled)")
+                        return
+
+                # Task finished
+                result = await exec_task
+            except asyncio.CancelledError:
+                # If we get canceled externally, behave like a user cancel.
+                await self.redis.set_with_expiry(
+                    f"agent_bus:results:{task_id}",
+                    json.dumps({"success": False, "error": "Task canceled", "task_id": task_id}),
+                    3600,
+                )
+                print(f"Task {task_id} canceled")
+                return
 
             if not result.success:
                 # Persist failure details
-                await self.postgres.update_task_status(
-                    task_id=task_id, status="failed", error=result.error or "Agent reported failure"
-                )
+                try:
+                    await self.postgres.update_task_status(
+                        task_id=task_id,
+                        status="failed",
+                        error=result.error or "Agent reported failure",
+                    )
+                except Exception:
+                    pass
                 # Also store output (may contain partials) for master/debug
                 await self.redis.set_with_expiry(
                     f"agent_bus:results:{task_id}",
@@ -180,10 +276,49 @@ class AgentWorker:
                 print(f"Task {task_id} failed (agent reported failure)")
                 return
 
+            # If the job was canceled while the agent was running, do not write "completed".
+            pool = await self.postgres.get_pool()
+            async with pool.acquire() as conn:
+                final_job_status = await conn.fetchval(
+                    "SELECT status FROM jobs WHERE id = $1",
+                    task_dict.get("job_id"),
+                )
+            if final_job_status is None:
+                await self.redis.set_with_expiry(
+                    f"agent_bus:results:{task_id}",
+                    json.dumps({"success": False, "error": "Job deleted", "task_id": task_id}),
+                    3600,
+                )
+                print(f"Task {task_id} finished but job deleted; result discarded")
+                return
+            if final_job_status == "canceled":
+                try:
+                    await self.postgres.update_task_status(
+                        task_id=task_id, status="canceled", error="Canceled by user"
+                    )
+                except Exception:
+                    pass
+                await self.redis.set_with_expiry(
+                    f"agent_bus:results:{task_id}",
+                    json.dumps({"success": False, "error": "Job canceled", "task_id": task_id}),
+                    3600,
+                )
+                print(f"Task {task_id} finished but job canceled; result discarded")
+                return
+
             # Save success result
-            await self.postgres.update_task_status(
+            updated = await self.postgres.update_task_status(
                 task_id=task_id, status="completed", output_data=result.output
             )
+            if not updated:
+                # Task row vanished; still return result to unblock master.
+                await self.redis.set_with_expiry(
+                    f"agent_bus:results:{task_id}",
+                    json.dumps({"success": False, "error": "Task missing", "task_id": task_id}),
+                    3600,
+                )
+                print(f"Task {task_id} completed but task row missing; result stored in Redis")
+                return
 
             # Store result in Redis for master agent
             await self.redis.set_with_expiry(
@@ -195,7 +330,10 @@ class AgentWorker:
         except Exception as e:
             print(f"Task {task_id} failed: {str(e)}")
 
-            await self.postgres.update_task_status(task_id=task_id, status="failed", error=str(e))
+            try:
+                await self.postgres.update_task_status(task_id=task_id, status="failed", error=str(e))
+            except Exception:
+                pass
 
             # Ensure master agent doesn't hang forever waiting for a result key
             await self.redis.set_with_expiry(

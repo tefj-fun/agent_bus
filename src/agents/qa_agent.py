@@ -337,7 +337,10 @@ class QAAgent(BaseAgent):
 
     def _build_qa_system_prompt(self) -> str:
         """Build system prompt for QA strategy generation."""
-        return f"""{self._truth_system_guardrails()}
+        guardrails = self._truth_system_guardrails()
+        # NOTE: Do not use an f-string here. The prompt intentionally embeds JSON examples
+        # containing many `{`/`}` which can trigger `SyntaxError: f-string: expressions nested too deeply`.
+        return guardrails + """
 You are an expert QA Engineer and Test Architect with deep expertise in software quality assurance.
 
 Your role is to create comprehensive QA strategies, test plans, and test cases based on development plans and system architecture.
